@@ -27,23 +27,29 @@ async def get_feature_changes(
     if not result:
         return {
             "message": "No feature changes found",
-            "feature_type": feature_type,
-            "action": action,
-            "lastFeeding": lastFeeding
+            "input_params": {
+                "feature_type": feature_type,
+                "action": action,
+                "lastFeeding": lastFeeding
+            }
         }
     if result.get("status") != "Accepted":
         return {
             "message": "Error fetching feature changes",
-            "feature_type": feature_type,
-            "action": action,
-            "lastFeeding": lastFeeding,
+            "input_params": {
+                "feature_type": feature_type,
+                "action": action,
+                "lastFeeding": lastFeeding
+            },
             "result": result
         }
 
     return {
         "message": "Fetched feature changes successfully",
-        "feature_type": feature_type,
-        "action": action,
-        "lastFeeding": lastFeeding,
+        "input_params": {
+            "feature_type": feature_type,
+            "action": action,
+            "lastFeeding": lastFeeding
+        },
         "result": result
     }
