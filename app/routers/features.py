@@ -4,10 +4,9 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query
 from datetime import date
 from typing import Literal
-from ..database import get_db
 from ..utils import create_body_dict, execute_procedure, create_log
 
 router = APIRouter(prefix="/features", tags=["Features"])
