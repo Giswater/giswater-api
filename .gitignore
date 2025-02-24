@@ -8,6 +8,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Config files
+app/config/app.config
+
 # Logs and temp files
 *.log
 *.tmp

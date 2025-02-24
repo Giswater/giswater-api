@@ -4,3 +4,4 @@ gunicorn
 pydantic
 httpx
 pytest
+psycopg2
