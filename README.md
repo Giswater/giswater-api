@@ -7,12 +7,13 @@ A lightweight, modular FastAPI application with **Swagger UI**, **Docker support
 ```
 giswater_api_server/
 │── app/
+│   │── config/         # Configuration files folder
+|   |   |── app.config  # Main configuration file (an app.config_example is provided, change its name or create a copy)
 │   │── routers/        # API endpoints (organized by feature)
 │   │── services/       # Business logic and processing
-│   │── models/         # Pydantic models for validation
-│   │── dependencies.py # Shared dependencies
-│   │── config.py       # Configuration settings
+│   │── database.py     #
 │   │── main.py         # Entry point of the FastAPI app
+│   │── utils.py        # Functions and utilities
 │
 │── tests/              # Unit and integration tests
 │── .gitignore          # Git ignore rules
@@ -20,6 +21,7 @@ giswater_api_server/
 │── Dockerfile          # Dockerization setup
 │── gunicorn.conf.py    # Gunicorn configuration
 │── README.md           # Project documentation
+│── requirements.txt    # Requirement packages
 ```
 
 ## 🚀 Quick Start
