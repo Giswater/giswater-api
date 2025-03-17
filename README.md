@@ -9,9 +9,11 @@ giswater_api_server/
 │── app/
 │   │── config/         # Configuration files folder
 |   |   |── app.config  # Main configuration file (an app.config_example is provided, change its name or create a copy)
-│   │── routers/        # API endpoints (organized by feature)
+│   │
+│   │── models/         # Pydantic models to use as input parameters
+│   │── routers/        # API endpoints (organized by type)
 │   │── services/       # Business logic and processing
-│   │── database.py     #
+│   │── database.py     # Functions to connect to the database
 │   │── main.py         # Entry point of the FastAPI app
 │   │── utils.py        # Functions and utilities
 │
@@ -79,13 +81,19 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 
 ## 🛠️ API Endpoints
 
-| Endpoint                          | Method | Description                    |
-| --------------------------------- | ------ | ------------------------------ |
-| `/`                               | GET    | Root endpoint                  |
-| `/features/getfeaturechanges`     | GET    | Fetch feature changes for GMAO |
-| `/mincut/setmincut`               | POST   | Set mincut parameters          |
-| `/waterbalance/getdmahydrometers` | GET    | Retrieve DMA hydrometers data  |
-| `/digitaltwin/getepafile`         | GET    | Get EPA file data              |
+| Endpoint                          | Method | Description                                                                 |
+| --------------------------------- | ------ | --------------------------------------------------------------------------- |
+| `/`                               | GET    | Root endpoint                                                               |
+| `/features/getfeaturechanges`     | GET    | Fetch feature changes for GMAO                                              |
+| `/mincut/newmincut`               | POST   | Create new mincut                                                           |
+| `/mincut/updatemincut`            | PUT    | Update an existing mincut                                                   |
+| `/mincut/valveunaccess`           | PUT    | Recalculate mincut due to an inaccessible or inoperative valve              |
+| `/mincut/startmincut`             | PUT    | Start the mincut and interrupt water supply in the affected zone            |
+| `/mincut/endmincut`               | PUT    | End the mincut and restore water supply in the affected zone                |
+| `/mincut/repairmincut`            | PUT    | Perform repair without interrupting water supply (silent mincut)            |
+| `/mincut/cancelmincut`            | PUT    | Cancel the mincut and keep the issue recorded for future resolution         |
+| `/waterbalance/getdmahydrometers` | GET    | Retrieve DMA hydrometers data                                               |
+| `/digitaltwin/getepafile`         | GET    | Get EPA file data                                                           |
 
 ---
 
