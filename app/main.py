@@ -9,7 +9,7 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.routers import features, mincut, water_balance, digital_twin
+from app.routers import features, hydraulic_engine_ud, hydraulic_engine_ws, mincut, water_balance
 
 app = FastAPI()
 
@@ -20,7 +20,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(features.router)
 app.include_router(mincut.router)
 app.include_router(water_balance.router)
-app.include_router(digital_twin.router)
+app.include_router(hydraulic_engine_ud.router)
+app.include_router(hydraulic_engine_ws.router)
 
 @app.get("/")
 async def root():
