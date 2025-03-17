@@ -11,9 +11,9 @@ from ..utils import create_body_dict, execute_procedure, create_log
 
 router = APIRouter(prefix="/features", tags=["Features"])
 
-@router.get("/getfeaturechanges")
+@router.get("/getfeaturechanges", description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.")
 async def get_feature_changes(
-    feature_type: Literal["FEATURE", "ELEMENT"] = Query(..., title="Feature Type", description="Type of feature to fetch"),
+    feature_type: Literal["FEATURE", "ELEMENT"] = Query(..., alias="featureType", title="Feature Type", description="Type of feature to fetch"),
     action: Literal["INSERT", "UPDATE"] = Query(..., title="Action", description="Indicate wether to fetch inserts or updates"),
     lastFeeding: date = Query(..., title="Last Feeding", description="Last feeding date of the feature"),
 ):
@@ -28,7 +28,7 @@ async def get_feature_changes(
         return {
             "message": "No feature changes found",
             "input_params": {
-                "feature_type": feature_type,
+                "featureType": feature_type,
                 "action": action,
                 "lastFeeding": lastFeeding
             }
@@ -37,7 +37,7 @@ async def get_feature_changes(
         return {
             "message": "Error fetching feature changes",
             "input_params": {
-                "feature_type": feature_type,
+                "featureType": feature_type,
                 "action": action,
                 "lastFeeding": lastFeeding
             },
@@ -47,7 +47,7 @@ async def get_feature_changes(
     return {
         "message": "Fetched feature changes successfully",
         "input_params": {
-            "feature_type": feature_type,
+            "featureType": feature_type,
             "action": action,
             "lastFeeding": lastFeeding
         },
