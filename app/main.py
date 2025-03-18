@@ -5,6 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 import os
+from . import config
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -17,11 +18,17 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include routers
-app.include_router(features.router)
-app.include_router(mincut.router)
-app.include_router(water_balance.router)
-app.include_router(hydraulic_engine_ud.router)
-app.include_router(hydraulic_engine_ws.router)
+if config.get_bool("api", "features"):
+    app.include_router(features.router)
+if config.get_bool("api", "mincut"):
+    app.include_router(mincut.router)
+if config.get_bool("api", "water_balance"):
+    app.include_router(water_balance.router)
+if config.get_bool("hydraulic_engine", "enabled"):
+    if config.get_bool("hydraulic_engine", "ud"):
+        app.include_router(hydraulic_engine_ud.router)
+    if config.get_bool("hydraulic_engine", "ws"):
+        app.include_router(hydraulic_engine_ws.router)
 
 @app.get("/")
 async def root():

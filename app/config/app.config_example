@@ -1,3 +1,8 @@
+[api]
+features=True
+mincut=True
+water_balance=True
+
 [database]
 host=localhost
 port=5432
@@ -5,3 +10,9 @@ db=postgres
 user=postgres
 password=postgres
 schema=public
+
+[hydraulic_engine]
+enabled=True
+ws=True
+ud=True
+url=localhost

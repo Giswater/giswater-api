@@ -1,21 +1,19 @@
 import psycopg2
 import psycopg2.pool
-import configparser
 from contextlib import contextmanager
 
+from . import config
+
 # Get from config/app.config
-config_file = "app/config/app.config"
-cp = configparser.ConfigParser()
-cp.read(config_file)
-host = cp.get("database", "host")
-port = cp.get("database", "port")
-dbname = cp.get("database", "db")
-user = cp.get("database", "user")
-password = cp.get("database", "password")
+host = config.get_str("database", "host")
+port = config.get_str("database", "port")
+dbname = config.get_str("database", "db")
+user = config.get_str("database", "user")
+password = config.get_str("database", "password")
 
 # Database connection string
 DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
-SCHEMA_NAME = cp.get("database", "schema")
+SCHEMA_NAME = config.get_str("database", "schema")
 
 # Initialize the connection pool
 connection_pool = psycopg2.pool.SimpleConnectionPool(
