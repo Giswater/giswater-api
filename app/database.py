@@ -16,14 +16,21 @@ DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
 SCHEMA_NAME = config.get_str("database", "schema")
 
 # Initialize the connection pool
-connection_pool = psycopg2.pool.SimpleConnectionPool(
-    1,  # Minimum number of connections
-    10, # Maximum number of connections
-    DATABASE_URL
-)
+try:
+    connection_pool = psycopg2.pool.SimpleConnectionPool(
+        1,  # Minimum number of connections
+        10, # Maximum number of connections
+        DATABASE_URL
+    )
+except Exception as e:
+    print(e)
+    connection_pool = None
 
 @contextmanager
 def get_db():
+    if connection_pool is None:
+        yield None
+        return
     conn = connection_pool.getconn()
     try:
         yield conn

@@ -93,6 +93,7 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
         log.warning(" Schema is None")
         remove_handlers()
         return create_response(status=False, message="Schema not found")
+
     sql = f"SELECT {schema_name}.{function_name}("
     if parameters:
         sql += f"{parameters}"
@@ -102,6 +103,10 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
     response_msg = ""
 
     with get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            remove_handlers()
+            return create_response(status=False, message="No connection to database")
         result = dict()
         print(f"SERVER EXECUTION: {sql}\n")
         identity = user
