@@ -12,7 +12,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routers import features, hydraulic_engine_ud, hydraulic_engine_ws, mincut, water_balance
 
-app = FastAPI()
+TITLE = "Giswater API"
+VERSION = "0.2.0"
+DESCRIPTION = "API for interacting with a Giswater database as well as working with hydraulic models."
+
+app = FastAPI(version=VERSION, title=TITLE, description=DESCRIPTION)
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
