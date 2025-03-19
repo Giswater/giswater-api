@@ -10,7 +10,7 @@ from . import config
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.routers import features, hydraulic_engine_ud, hydraulic_engine_ws, mincut, water_balance
+from .routers import features, hydraulic_engine_ud, hydraulic_engine_ws, mincut, water_balance
 
 TITLE = "Giswater API"
 VERSION = "0.2.0"
@@ -36,7 +36,7 @@ if config.get_bool("hydraulic_engine", "enabled"):
 
 @app.get("/")
 async def root():
-    return {"message": "FastAPI Application"}
+    return {"status": "Accepted", "message": f"{TITLE} is running.", "version": VERSION, "description": DESCRIPTION}
 
 # Favicon endpoint
 @app.get("/favicon.ico", include_in_schema=False)
