@@ -7,3 +7,12 @@ services:
       - .:/app
     environment:
       - ENV=development
+    networks:
+      api-network:
+        ipv4_address: 172.21.1.50
+
+networks:
+  api-network:
+    ipam:
+      config:
+        - subnet: 172.21.1.0/24
