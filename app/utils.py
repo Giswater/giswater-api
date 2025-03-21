@@ -19,6 +19,25 @@ api = None
 tenant_handler = None
 mail = None
 
+def load_plugins():
+    """ Load plugins from the plugins directory """
+    from . import config
+    from importlib import import_module
+
+    plugins_dir = "plugins"
+    if not os.path.exists(plugins_dir):
+        return
+
+    for plugin in os.listdir(plugins_dir):
+        if not os.path.isdir(f"{plugins_dir}/{plugin}"):
+            continue
+
+        try:
+            module = import_module(f".{plugin}", package=f"{plugins_dir}")
+            module.register_plugin(app)
+        except Exception as e:
+            print(f"Error loading plugin {plugin}: {e}")
+
 def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, extras={}) -> str:
     info_type = 1
     lang = "es_ES"  # TODO: get from app lang

@@ -5,7 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 import os
-from . import config
+from . import config, utils
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +33,9 @@ if config.get_bool("hydraulic_engine", "enabled"):
         app.include_router(hydraulic_engine_ud.router)
     if config.get_bool("hydraulic_engine", "ws"):
         app.include_router(hydraulic_engine_ws.router)
+
+utils.app = app
+utils.load_plugins()
 
 @app.get("/")
 async def root():
