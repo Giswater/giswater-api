@@ -16,7 +16,12 @@ TITLE = "Giswater API"
 VERSION = "0.2.0"
 DESCRIPTION = "API for interacting with a Giswater database as well as working with hydraulic models."
 
-app = FastAPI(version=VERSION, title=TITLE, description=DESCRIPTION)
+app = FastAPI(
+    version=VERSION,
+    title=TITLE,
+    description=DESCRIPTION,
+    root_path="/api"
+)
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
