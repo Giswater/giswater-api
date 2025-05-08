@@ -116,8 +116,12 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
                 cursor.execute(sql)
                 result = cursor.fetchone()
                 result = result[0] if result else None
+                # Manual commit after successful execution
+                conn.commit()
             response_msg = json.dumps(result)
         except Exception as e:
+            # Rollback on error
+            conn.rollback()
             result = {"dbmessage": str(e)}
             response_msg = str(e)
 
