@@ -206,3 +206,29 @@ def create_log(class_name):
 def remove_handlers(log=logging.getLogger()):
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
+
+def create_api_response(
+    message: str,
+    status: Literal["Accepted", "Failed"],
+    result: Dict[str, Any] | Any | None = None
+) -> Dict[str, Any]:
+    """
+    Creates a standardized API response.
+    
+    Args:
+        message: Response message
+        status: Response status ("Accepted" or "Failed")
+        result: Optional result data to include in the response
+        
+    Returns:
+        Dict containing the standardized response
+    """
+    response: Dict[str, Any] = {
+        "message": message,
+        "status": status
+    }
+
+    if result is not None:
+        response["result"] = result
+
+    return response
