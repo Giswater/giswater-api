@@ -10,8 +10,10 @@ import os
 import logging
 import json
 
+from typing import Any, Optional, Dict, Union, Literal
 from datetime import date
-from .database import SCHEMA_NAME, get_db, user
+
+from .database import DEFAULT_SCHEMA, get_db, user, validate_schema
 
 
 app = None
@@ -97,21 +99,28 @@ def create_response(db_result=None, form_xml=None, status=None, message=None):
     return response
 
 
-def execute_procedure(log, function_name, parameters=None, set_role=True, needs_write=False):
+def execute_procedure(log, function_name, parameters=None, set_role=True, needs_write=False, schema=None):
     """ Manage execution database function
     :param function_name: Name of function to call (text)
     :param parameters: Parameters for function (json) or (query parameters)
     :param log_sql: Show query in qgis log (bool)
     :param set_role: Set role in database with the current user
+    :param schema: Database schema to use (defaults to config schema)
     :return: Response of the function executed (json)
     """
 
     # Manage schema_name and parameters
-    schema_name = SCHEMA_NAME
+    schema_name = schema or DEFAULT_SCHEMA
     if schema_name is None:
         log.warning(" Schema is None")
         remove_handlers()
         return create_response(status=False, message="Schema not found")
+
+    # Validate schema exists
+    if not validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        remove_handlers()
+        return create_response(status=False, message=f"Schema '{schema_name}' not found")
 
     sql = f"SELECT {schema_name}.{function_name}("
     if parameters:

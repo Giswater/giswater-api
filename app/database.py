@@ -2,6 +2,7 @@ import psycopg2
 import psycopg2.pool
 from contextlib import contextmanager
 from time import sleep
+from fastapi import HTTPException
 
 from . import config
 
@@ -14,7 +15,7 @@ password = config.get_str("database", "password")
 
 # Database connection string
 DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
-SCHEMA_NAME = config.get_str("database", "schema")
+DEFAULT_SCHEMA = config.get_str("database", "schema")
 
 connection_pool = None
 
@@ -52,3 +53,15 @@ def get_db():
         yield conn
     finally:
         connection_pool.putconn(conn)
+
+def validate_schema(schema: str) -> bool:
+    """Validate if a schema exists in the database"""
+    with get_db() as conn:
+        if conn is None:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (schema,))
+                return cursor.fetchone() is not None
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
