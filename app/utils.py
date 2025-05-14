@@ -40,7 +40,7 @@ def load_plugins():
         except Exception as e:
             print(f"Error loading plugin {plugin}: {e}")
 
-def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, extras={}) -> str:
+def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}) -> str:
     info_type = 1
     lang = "es_ES"  # TODO: get from app lang
 
@@ -48,6 +48,7 @@ def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, e
         "device": 5,
         "lang": lang,
         "cur_user": user,
+        **client_extras
     }
     if info_type is not None:
         client["infoType"] = info_type
@@ -58,10 +59,8 @@ def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, e
         "client": client,
         "form": form,
         "feature": feature,
-        "filterFields": filter_fields,
-        "pageInfo": {},
         "data": {
-            **filter_fields,
+            "filterFields": filter_fields,
             "pageInfo": {},
             **extras
         }
