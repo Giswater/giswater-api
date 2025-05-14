@@ -19,13 +19,16 @@ async def new_mincut(
     schema: str = Depends(get_schema),
     coordinates: Coordinates = Body(..., title="Coordinates", description="Coordinates on which the mincut will be created"),
     workcatId: int = Body(..., title="Workcat ID", description="ID of the work associated to the anomaly", examples=[1]),
-    plan: MincutPlanParams = Body(..., title="Plan", description="Plan of the mincut"),
+    plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan of the mincut"),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)
 
     coordinates_dict = coordinates.model_dump()
-    plan_dict = plan.model_dump()
+    if plan:
+        plan_dict = plan.model_dump(exclude_unset=True)
+    else:
+        plan_dict = {}
 
     body = create_body_dict(
         client_extras={"tiled": True},
@@ -45,19 +48,19 @@ async def new_mincut(
 async def update_mincut(
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
-    plan: Optional[MincutPlanParams] = Body(..., title="Plan", description="Plan parameters"),
-    exec: Optional[MincutExecParams] = Body(..., title="Execution", description="Execution parameters"),
+    plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
+    exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)
 
     if plan:
-        plan_dict = plan.model_dump()
+        plan_dict = plan.model_dump(exclude_unset=True)
     else:
         plan_dict = {}
 
     if exec:
-        exec_dict = exec.model_dump()
+        exec_dict = exec.model_dump(exclude_unset=True)
     else:
         exec_dict = {}
 
