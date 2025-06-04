@@ -12,18 +12,39 @@ from ..dependencies import get_schema
 
 router = APIRouter(prefix="/features", tags=["Features"])
 
-@router.get("/getfeaturechanges", description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.")
+
+@router.get(
+    "/getfeaturechanges",
+    description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter."
+)
 async def get_feature_changes(
     schema: str = Depends(get_schema),
-    feature_type: Literal["FEATURE", "ELEMENT"] = Query(..., alias="featureType", title="Feature Type", description="Type of feature to fetch"),
-    action: Literal["INSERT", "UPDATE"] = Query(..., title="Action", description="Indicate wether to fetch inserts or updates"),
-    lastFeeding: date = Query(..., title="Last Feeding", description="Last feeding date of the feature", example="2024-11-11"),
+    feature_type: Literal["FEATURE", "ELEMENT"] = Query(
+        ...,
+        alias="featureType",
+        title="Feature Type",
+        description="Type of feature to fetch"
+    ),
+    action: Literal["INSERT", "UPDATE"] = Query(
+        ...,
+        title="Action",
+        description="Indicate wether to fetch inserts or updates"
+    ),
+    lastFeeding: date = Query(
+        ...,
+        title="Last Feeding",
+        description="Last feeding date of the feature",
+        example="2024-11-11"
+    ),
 ):
     log = create_log(__name__)
 
     body = create_body_dict(
         feature={"feature_type": feature_type},
-        extras={"action": action, "lastFeeding": lastFeeding.strftime("%Y-%m-%d")}
+        extras={
+            "action": action,
+            "lastFeeding": lastFeeding.strftime("%Y-%m-%d")
+        }
     )
     result = execute_procedure(log, "gw_fct_featurechanges", body, schema=schema)
     if not result:

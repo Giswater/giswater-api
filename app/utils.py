@@ -10,7 +10,7 @@ import os
 import logging
 import json
 
-from typing import Any, Optional, Dict, Union, Literal
+from typing import Any, Dict, Literal
 from datetime import date
 
 from .database import DEFAULT_SCHEMA, get_db, user, validate_schema
@@ -21,9 +21,10 @@ api = None
 tenant_handler = None
 mail = None
 
+
 def load_plugins():
     """ Load plugins from the plugins directory """
-    from . import config
+    # from . import config
     from importlib import import_module
 
     plugins_dir = "plugins"
@@ -39,6 +40,7 @@ def load_plugins():
             module.register_plugin(app)
         except Exception as e:
             print(f"Error loading plugin {plugin}: {e}")
+
 
 def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}) -> str:
     info_type = 1
@@ -66,6 +68,7 @@ def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, f
         }
     })
     return f"$${json_str}$$"
+
 
 def create_response(db_result=None, form_xml=None, status=None, message=None):
     """ Create and return a json response to send to the client """
@@ -139,7 +142,8 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
         identity = user
         try:
             with conn.cursor() as cursor:
-                if set_role: cursor.execute(f"SET ROLE '{identity}';")
+                if set_role:
+                    cursor.execute(f"SET ROLE '{identity}';")
                 cursor.execute(sql)
                 result = cursor.fetchone()
                 result = result[0] if result else None
@@ -161,6 +165,7 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
 
         return result
+
 
 # Create log pointer
 def create_log(class_name):
@@ -189,7 +194,7 @@ def create_log(class_name):
 
     fileh = logging.FileHandler(f"{today_directory}/{log_file}", "a", encoding="utf-8")
     # Declares how log info is added to the file
-    formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt = "%d/%m/%y %H:%M:%S")
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
     fileh.setFormatter(formatter)
 
     # Removes previous handlers on root Logger
@@ -202,10 +207,12 @@ def create_log(class_name):
     log.setLevel(logging.DEBUG)
     return log
 
+
 # Removes previous handlers on root Logger
 def remove_handlers(log=logging.getLogger()):
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
+
 
 def create_api_response(
     message: str,
@@ -214,12 +221,12 @@ def create_api_response(
 ) -> Dict[str, Any]:
     """
     Creates a standardized API response.
-    
+
     Args:
         message: Response message
         status: Response status ("Accepted" or "Failed")
         result: Optional result data to include in the response
-        
+
     Returns:
         Dict containing the standardized response
     """

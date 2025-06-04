@@ -1,9 +1,9 @@
-name: Run FastAPI Tests
+name: Code Style Check (flake8)
 
 on: [push, pull_request]
 
 jobs:
-  fastapi-test:
+  flake8:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install flake8
 
-      - name: Run tests with pytest
-        run: pytest -v
+      - name: Run flake8
+        run: flake8 .

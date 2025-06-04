@@ -42,9 +42,11 @@ if config.get_bool("hydraulic_engine", "enabled"):
 utils.app = app
 utils.load_plugins()
 
+
 @app.get("/")
 async def root():
     return {"status": "Accepted", "message": f"{TITLE} is running.", "version": VERSION, "description": DESCRIPTION}
+
 
 # Favicon endpoint
 @app.get("/favicon.ico", include_in_schema=False)
