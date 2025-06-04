@@ -10,8 +10,10 @@ import os
 import logging
 import json
 
+from typing import Any, Optional, Dict, Union, Literal
 from datetime import date
-from .database import SCHEMA_NAME, get_db, user
+
+from .database import DEFAULT_SCHEMA, get_db, user, validate_schema
 
 
 app = None
@@ -19,7 +21,26 @@ api = None
 tenant_handler = None
 mail = None
 
-def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, extras={}) -> str:
+def load_plugins():
+    """ Load plugins from the plugins directory """
+    from . import config
+    from importlib import import_module
+
+    plugins_dir = "plugins"
+    if not os.path.exists(plugins_dir):
+        return
+
+    for plugin in os.listdir(plugins_dir):
+        if not os.path.isdir(f"{plugins_dir}/{plugin}"):
+            continue
+
+        try:
+            module = import_module(f".{plugin}", package=f"{plugins_dir}")
+            module.register_plugin(app)
+        except Exception as e:
+            print(f"Error loading plugin {plugin}: {e}")
+
+def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}) -> str:
     info_type = 1
     lang = "es_ES"  # TODO: get from app lang
 
@@ -27,6 +48,7 @@ def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, e
         "device": 5,
         "lang": lang,
         "cur_user": user,
+        **client_extras
     }
     if info_type is not None:
         client["infoType"] = info_type
@@ -37,10 +59,8 @@ def create_body_dict(project_epsg=None, form={}, feature={}, filter_fields={}, e
         "client": client,
         "form": form,
         "feature": feature,
-        "filterFields": filter_fields,
-        "pageInfo": {},
         "data": {
-            **filter_fields,
+            "filterFields": filter_fields,
             "pageInfo": {},
             **extras
         }
@@ -78,21 +98,28 @@ def create_response(db_result=None, form_xml=None, status=None, message=None):
     return response
 
 
-def execute_procedure(log, function_name, parameters=None, set_role=True, needs_write=False):
+def execute_procedure(log, function_name, parameters=None, set_role=True, needs_write=False, schema=None):
     """ Manage execution database function
     :param function_name: Name of function to call (text)
     :param parameters: Parameters for function (json) or (query parameters)
     :param log_sql: Show query in qgis log (bool)
     :param set_role: Set role in database with the current user
+    :param schema: Database schema to use (defaults to config schema)
     :return: Response of the function executed (json)
     """
 
     # Manage schema_name and parameters
-    schema_name = SCHEMA_NAME
+    schema_name = schema or DEFAULT_SCHEMA
     if schema_name is None:
         log.warning(" Schema is None")
         remove_handlers()
         return create_response(status=False, message="Schema not found")
+
+    # Validate schema exists
+    if not validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        remove_handlers()
+        return create_response(status=False, message=f"Schema '{schema_name}' not found")
 
     sql = f"SELECT {schema_name}.{function_name}("
     if parameters:
@@ -179,3 +206,29 @@ def create_log(class_name):
 def remove_handlers(log=logging.getLogger()):
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
+
+def create_api_response(
+    message: str,
+    status: Literal["Accepted", "Failed"],
+    result: Dict[str, Any] | Any | None = None
+) -> Dict[str, Any]:
+    """
+    Creates a standardized API response.
+    
+    Args:
+        message: Response message
+        status: Response status ("Accepted" or "Failed")
+        result: Optional result data to include in the response
+        
+    Returns:
+        Dict containing the standardized response
+    """
+    response: Dict[str, Any] = {
+        "message": message,
+        "status": status
+    }
+
+    if result is not None:
+        response["result"] = result
+
+    return response
