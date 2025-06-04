@@ -19,20 +19,23 @@ DEFAULT_SCHEMA = config.get_str("database", "schema")
 
 connection_pool = None
 
+
 def init_conn_pool():
     global connection_pool
     # Initialize the connection pool
     try:
         connection_pool = psycopg2.pool.SimpleConnectionPool(
-            1,  # Minimum number of connections
-            10, # Maximum number of connections
+            1,   # Minimum number of connections
+            10,  # Maximum number of connections
             DATABASE_URL
         )
     except Exception as e:
         print(e)
         connection_pool = None
 
+
 init_conn_pool()
+
 
 @contextmanager
 def get_db():
@@ -53,6 +56,7 @@ def get_db():
         yield conn
     finally:
         connection_pool.putconn(conn)
+
 
 def validate_schema(schema: str) -> bool:
     """Validate if a schema exists in the database"""

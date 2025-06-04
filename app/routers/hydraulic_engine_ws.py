@@ -13,8 +13,10 @@ from ..models.hydraulic_engine_ws_models import HydrantReachabilityUpdate, Reser
 
 router = APIRouter(prefix="/hydraulicengine/ws", tags=["Hydraulic Engine (WS)"])
 
+
 def get_network_scenario(networkScenario: str = Query(..., description="EPANET network scenario")):
     return networkScenario
+
 
 @router.get("/getepafile")
 async def get_epa_file(
@@ -22,11 +24,13 @@ async def get_epa_file(
 ):
     return {"message": "Fetched EPA file successfully"}
 
+
 @router.post("/setepafile")
 async def set_epa_file(
     networkScenario: str = Depends(get_network_scenario)
 ):
     return {"message": "EPA file attributes modified successfully"}
+
 
 @router.put("/sethydrantreachability")
 async def set_hydrant_reachability(
@@ -35,12 +39,14 @@ async def set_hydrant_reachability(
 ):
     return {"message": "Hydrant reachability set successfully"}
 
+
 @router.put("/setreservoirvalue")
 async def set_reservoir_value(
     networkScenario: str = Depends(get_network_scenario),
     update: ReservoirValueUpdate | List[ReservoirValueUpdate] = Body(..., title="Update", description="Update body")
 ):
     return {"message": "Reservoir value updated successfully"}
+
 
 @router.put("/setlinkvalue")
 async def set_link_value(
@@ -49,12 +55,14 @@ async def set_link_value(
 ):
     return {"message": "Link value updated successfully"}
 
+
 @router.put("/setvalvevalue")
 async def set_valve_value(
     networkScenario: str = Depends(get_network_scenario),
     update: ValveValueUpdate | List[ValveValueUpdate] = Body(..., title="Update", description="Update body")
 ):
     return {"message": "Valve value modified successfully"}
+
 
 @router.put("/settankvalue")
 async def set_tank_value(
@@ -63,12 +71,14 @@ async def set_tank_value(
 ):
     return {"message": "Tank value modified successfully"}
 
+
 @router.put("/setpumpvalue")
 async def set_pump_value(
     networkScenario: str = Depends(get_network_scenario),
     update: PumpValueUpdate | List[PumpValueUpdate] = Body(..., title="Update", description="Update body")
 ):
     return {"message": "Pump value modified successfully"}
+
 
 @router.put("/setjunctionvalue")
 async def set_junction_value(
@@ -77,12 +87,14 @@ async def set_junction_value(
 ):
     return {"message": "Junction value modified successfully"}
 
+
 @router.put("/setpatternvalue")
 async def set_pattern_value(
     networkScenario: str = Depends(get_network_scenario),
     update: PatternValueUpdate | List[PatternValueUpdate] = Body(..., title="Update", description="Update body")
 ):
     return {"message": "Pattern value modified successfully"}
+
 
 @router.put("/setcontrolsvalue")
 async def set_controls_value(
@@ -91,11 +103,13 @@ async def set_controls_value(
 ):
     return {"message": "Controls value modified successfully"}
 
+
 @router.post("/setsolveh")
 async def set_solve_h(
     networkScenario: str = Depends(get_network_scenario)
 ):
     return {"message": "Pressure & flow simulation ran successfully"}
+
 
 @router.post("/setsolveq")
 async def set_solve_q(

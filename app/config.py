@@ -7,6 +7,7 @@ cp.read(config_file)
 
 config = cp
 
+
 def get_bool(section: str, option: str, default: bool = False) -> bool:
     try:
         value = config.get(section, option)
@@ -17,6 +18,7 @@ def get_bool(section: str, option: str, default: bool = False) -> bool:
     except:
         print(f"Exception getting option {section=} {option=}")
         return default
+
 
 def get_str(section: str, option: str, default: str | None = None) -> str | None:
     try:

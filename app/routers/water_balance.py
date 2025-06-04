@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 
 router = APIRouter(prefix="/waterbalance", tags=["Water Balance"])
 
+
 @router.get(
     "/listdmas",
     description="Returns a collection of DMAs.",
@@ -20,6 +21,7 @@ async def list_dmas():
     ]
     return {"dmas": dmas}
 
+
 @router.get(
     "/getdmahydrometers",
     description="Returns a collection of hydrometers within a specific DMA, providing details on their location, status, and measurement data.",
@@ -28,6 +30,7 @@ async def get_dma_hydrometers(
     dma_id: int = Query(..., title="DMA ID", description="The unique identifier of the DMA for which to fetch hydrometers", examples=[1]),
 ):
     return {"message": "Fetched DMA hydrometers successfully"}
+
 
 @router.get(
     "/getdmaparameters",

@@ -12,6 +12,7 @@ from ..dependencies import get_schema
 
 router = APIRouter(prefix="/features", tags=["Features"])
 
+
 @router.get("/getfeaturechanges", description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.")
 async def get_feature_changes(
     schema: str = Depends(get_schema),
