@@ -11,7 +11,7 @@ router = APIRouter(prefix="/waterbalance", tags=["Water Balance"])
 
 @router.get(
     "/listdmas",
-    description="Returns a collection of DMAs.",
+    description="Returns a collection of DMAs."
 )
 async def list_dmas():
     dmas = [
@@ -24,19 +24,36 @@ async def list_dmas():
 
 @router.get(
     "/getdmahydrometers",
-    description="Returns a collection of hydrometers within a specific DMA, providing details on their location, status, and measurement data.",
+    description=(
+        "Returns a collection of hydrometers within a specific DMA, "
+        "providing details on their location, status, and measurement data."
+    )
 )
 async def get_dma_hydrometers(
-    dma_id: int = Query(..., title="DMA ID", description="The unique identifier of the DMA for which to fetch hydrometers", examples=[1]),
+    dma_id: int = Query(
+        ...,
+        title="DMA ID",
+        description="The unique identifier of the DMA for which to fetch hydrometers",
+        examples=[1]
+    ),
 ):
     return {"message": "Fetched DMA hydrometers successfully"}
 
 
 @router.get(
     "/getdmaparameters",
-    description="Retrieves specific parameters within a DMA, excluding geometry. Provides consumption data, network information, and other key metrics for performance analysis over a selected period.",
+    description=(
+        "Retrieves specific parameters within a DMA, excluding geometry. "
+        "Provides consumption data, network information, and other key metrics "
+        "for performance analysis over a selected period."
+    )
 )
 async def get_dma_parameters(
-    dma_id: int = Query(..., title="DMA ID", description="The unique identifier of the DMA for which to fetch parameters", examples=[1]),
+    dma_id: int = Query(
+        ...,
+        title="DMA ID",
+        description="The unique identifier of the DMA for which to fetch parameters",
+        examples=[1]
+    ),
 ):
     return {"message": "Fetched DMA parameters successfully"}

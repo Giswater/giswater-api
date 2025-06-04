@@ -7,14 +7,24 @@ or (at your option) any later version.
 from fastapi import APIRouter, Query, Depends, Body
 from typing import List
 
-from ..models.hydraulic_engine_ws_models import HydrantReachabilityUpdate, ReservoirValueUpdate, LinkValueUpdate, \
-    ValveValueUpdate, TankValueUpdate, PumpValueUpdate, JunctionValueUpdate, PatternValueUpdate, ControlValueUpdate
-
+from ..models.hydraulic_engine_ws_models import (
+    HydrantReachabilityUpdate,
+    ReservoirValueUpdate,
+    LinkValueUpdate,
+    ValveValueUpdate,
+    TankValueUpdate,
+    PumpValueUpdate,
+    JunctionValueUpdate,
+    PatternValueUpdate,
+    ControlValueUpdate
+)
 
 router = APIRouter(prefix="/hydraulicengine/ws", tags=["Hydraulic Engine (WS)"])
 
 
-def get_network_scenario(networkScenario: str = Query(..., description="EPANET network scenario")):
+def get_network_scenario(
+    networkScenario: str = Query(..., description="EPANET network scenario")
+):
     return networkScenario
 
 
@@ -35,7 +45,11 @@ async def set_epa_file(
 @router.put("/sethydrantreachability")
 async def set_hydrant_reachability(
     networkScenario: str = Depends(get_network_scenario),
-    update: HydrantReachabilityUpdate | List[HydrantReachabilityUpdate] = Body(..., title="Update", description="Update body")
+    update: HydrantReachabilityUpdate | List[HydrantReachabilityUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Hydrant reachability set successfully"}
 
@@ -43,7 +57,11 @@ async def set_hydrant_reachability(
 @router.put("/setreservoirvalue")
 async def set_reservoir_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: ReservoirValueUpdate | List[ReservoirValueUpdate] = Body(..., title="Update", description="Update body")
+    update: ReservoirValueUpdate | List[ReservoirValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Reservoir value updated successfully"}
 
@@ -51,7 +69,11 @@ async def set_reservoir_value(
 @router.put("/setlinkvalue")
 async def set_link_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: LinkValueUpdate | List[LinkValueUpdate] = Body(..., title="Update", description="Update body")
+    update: LinkValueUpdate | List[LinkValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Link value updated successfully"}
 
@@ -59,7 +81,11 @@ async def set_link_value(
 @router.put("/setvalvevalue")
 async def set_valve_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: ValveValueUpdate | List[ValveValueUpdate] = Body(..., title="Update", description="Update body")
+    update: ValveValueUpdate | List[ValveValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Valve value modified successfully"}
 
@@ -67,7 +93,11 @@ async def set_valve_value(
 @router.put("/settankvalue")
 async def set_tank_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: TankValueUpdate | List[TankValueUpdate] = Body(..., title="Update", description="Update body")
+    update: TankValueUpdate | List[TankValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Tank value modified successfully"}
 
@@ -75,7 +105,11 @@ async def set_tank_value(
 @router.put("/setpumpvalue")
 async def set_pump_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: PumpValueUpdate | List[PumpValueUpdate] = Body(..., title="Update", description="Update body")
+    update: PumpValueUpdate | List[PumpValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Pump value modified successfully"}
 
@@ -83,7 +117,11 @@ async def set_pump_value(
 @router.put("/setjunctionvalue")
 async def set_junction_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: JunctionValueUpdate | List[JunctionValueUpdate] = Body(..., title="Update", description="Update body")
+    update: JunctionValueUpdate | List[JunctionValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Junction value modified successfully"}
 
@@ -91,7 +129,11 @@ async def set_junction_value(
 @router.put("/setpatternvalue")
 async def set_pattern_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: PatternValueUpdate | List[PatternValueUpdate] = Body(..., title="Update", description="Update body")
+    update: PatternValueUpdate | List[PatternValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Pattern value modified successfully"}
 
@@ -99,7 +141,11 @@ async def set_pattern_value(
 @router.put("/setcontrolsvalue")
 async def set_controls_value(
     networkScenario: str = Depends(get_network_scenario),
-    update: ControlValueUpdate | List[ControlValueUpdate] = Body(..., title="Update", description="Update body")
+    update: ControlValueUpdate | List[ControlValueUpdate] = Body(
+        ...,
+        title="Update",
+        description="Update body"
+    )
 ):
     return {"message": "Controls value modified successfully"}
 
