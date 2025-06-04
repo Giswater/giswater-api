@@ -21,7 +21,7 @@ connection_pool = None
 
 
 def init_conn_pool():
-    global connection_pool
+    global connection_pool  # noqa: F824
     # Initialize the connection pool
     try:
         connection_pool = psycopg2.pool.SimpleConnectionPool(
@@ -39,7 +39,7 @@ init_conn_pool()
 
 @contextmanager
 def get_db():
-    global connection_pool
+    global connection_pool  # noqa: F824
     max_tries = 2
     n_try = 0
     while connection_pool is None and n_try < max_tries:

@@ -10,7 +10,7 @@ import os
 import logging
 import json
 
-from typing import Any, Optional, Dict, Union, Literal
+from typing import Any, Dict, Literal
 from datetime import date
 
 from .database import DEFAULT_SCHEMA, get_db, user, validate_schema
@@ -24,7 +24,7 @@ mail = None
 
 def load_plugins():
     """ Load plugins from the plugins directory """
-    from . import config
+    # from . import config
     from importlib import import_module
 
     plugins_dir = "plugins"
@@ -142,7 +142,8 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
         identity = user
         try:
             with conn.cursor() as cursor:
-                if set_role: cursor.execute(f"SET ROLE '{identity}';")
+                if set_role:
+                    cursor.execute(f"SET ROLE '{identity}';")
                 cursor.execute(sql)
                 result = cursor.fetchone()
                 result = result[0] if result else None
@@ -220,12 +221,12 @@ def create_api_response(
 ) -> Dict[str, Any]:
     """
     Creates a standardized API response.
-    
+
     Args:
         message: Response message
         status: Response status ("Accepted" or "Failed")
         result: Optional result data to include in the response
-        
+
     Returns:
         Dict containing the standardized response
     """
