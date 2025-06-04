@@ -14,6 +14,7 @@ from ..dependencies import get_schema
 
 router = APIRouter(prefix="/mincut", tags=["Mincut"])
 
+
 @router.post("/newmincut", description="This action should be used when an anomaly is detected in field that wasn't planified.\nIn this case there is no mincut created, therefore a new one will be created.")
 async def new_mincut(
     schema: str = Depends(get_schema),
@@ -43,6 +44,7 @@ async def new_mincut(
         return create_api_response("Error creating mincut", "Failed", result=result)
 
     return create_api_response("Created mincut successfully", "Accepted", result=result)
+
 
 @router.patch("/updatemincut", description="This action should be used when a mincut is already created and it needs to be updated.")
 async def update_mincut(
@@ -84,6 +86,7 @@ async def update_mincut(
 
     return create_api_response("Updated mincut successfully", "Accepted", result=result)
 
+
 @router.put(
         "/valveunaccess",
         description=("Recalculates the mincut when a defined one is invalid due to an inaccessible or inoperative valve. "
@@ -97,6 +100,7 @@ async def valve_unaccess(
 ):
     return create_api_response("Valve unaccessed successfully", "Accepted")
 
+
 @router.put(
     "/startmincut",
     description="This action should be used when the mincut is ready to be executed. The system will start the mincut and the water supply will be interrupted on the affected zone."
@@ -107,6 +111,7 @@ async def start_mincut(
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     return create_api_response("Mincut started successfully", "Accepted")
+
 
 @router.put(
     "/endmincut",
@@ -120,6 +125,7 @@ async def end_mincut(
 ):
     return create_api_response("Mincut ended successfully", "Accepted")
 
+
 @router.put(
     "/repairmincut",
     description=("Accepts the mincut but performs the repair without interrupting the water supply. "
@@ -132,6 +138,7 @@ async def repair_mincut(
 ):
     return create_api_response("Mincut repaired successfully", "Accepted")
 
+
 @router.put(
     "/cancelmincut",
     description=("Cancels the mincut when the repair is not feasible, nullifying the planned cut while keeping the issue recorded for future resolution. "
@@ -143,6 +150,7 @@ async def cancel_mincut(
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     return create_api_response("Mincut canceled successfully", "Accepted")
+
 
 @router.delete(
     "/deletemincut",

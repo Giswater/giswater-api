@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 class MincutPlanParams(BaseModel):
     mincut_type: Optional[str] = Field(None, title="Mincut Type", description="Type of the mincut", examples=["Test"])
     anl_cause: Optional[str] = Field(None, title="Analysis Cause", description="Cause of the analysis", examples=["2"])
@@ -8,6 +9,7 @@ class MincutPlanParams(BaseModel):
     anl_descript: Optional[str] = Field(None, title="Analysis Description", description="Description of the analysis", examples=["aaaaaaaaaaaaaaa"])
     forecast_start: Optional[str] = Field(None, title="Forecast Start", description="Start of the forecast", examples=["2025-05-15T14:30"])
     forecast_end: Optional[str] = Field(None, title="Forecast End", description="End of the forecast", examples=["2025-05-16T15:40"])
+
 
 class MincutExecParams(BaseModel):
     exec_start: Optional[str] = Field(None, title="Execution Start", description="Start date of the mincut", examples=["2025-05-15T14:30"])

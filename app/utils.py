@@ -21,6 +21,7 @@ api = None
 tenant_handler = None
 mail = None
 
+
 def load_plugins():
     """ Load plugins from the plugins directory """
     from . import config
@@ -39,6 +40,7 @@ def load_plugins():
             module.register_plugin(app)
         except Exception as e:
             print(f"Error loading plugin {plugin}: {e}")
+
 
 def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}) -> str:
     info_type = 1
@@ -66,6 +68,7 @@ def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, f
         }
     })
     return f"$${json_str}$$"
+
 
 def create_response(db_result=None, form_xml=None, status=None, message=None):
     """ Create and return a json response to send to the client """
@@ -162,6 +165,7 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
 
         return result
 
+
 # Create log pointer
 def create_log(class_name):
     today = date.today()
@@ -189,7 +193,7 @@ def create_log(class_name):
 
     fileh = logging.FileHandler(f"{today_directory}/{log_file}", "a", encoding="utf-8")
     # Declares how log info is added to the file
-    formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt = "%d/%m/%y %H:%M:%S")
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
     fileh.setFormatter(formatter)
 
     # Removes previous handlers on root Logger
@@ -202,10 +206,12 @@ def create_log(class_name):
     log.setLevel(logging.DEBUG)
     return log
 
+
 # Removes previous handlers on root Logger
 def remove_handlers(log=logging.getLogger()):
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
+
 
 def create_api_response(
     message: str,
