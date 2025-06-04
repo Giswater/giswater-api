@@ -3,7 +3,7 @@ name: Run FastAPI Tests
 on: [push, pull_request]
 
 jobs:
-  test:
+  fastapi-test:
     runs-on: ubuntu-latest
 
     steps:

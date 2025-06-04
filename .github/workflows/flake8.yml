@@ -3,7 +3,7 @@ name: Code Style Check (flake8)
 on: [push, pull_request]
 
 jobs:
-  test:
+  flake8:
     runs-on: ubuntu-latest
 
     steps:
