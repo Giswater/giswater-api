@@ -37,6 +37,7 @@ async def new_mincut(
     else:
         plan_dict = {}
 
+    print(plan_dict)
     # TODO: Add workcatId to the body
     # TODO: Use the plan fields
     body = create_body_dict(
@@ -128,6 +129,7 @@ async def valve_unaccess(
 
     response = ValveUnaccessResponse(**result)
     return response
+
 
 @router.put(
     "/startmincut",

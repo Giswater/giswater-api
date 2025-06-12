@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
-from pydantic_geojson import FeatureCollectionModel
+from pydantic import BaseModel, Field
 from typing import Optional, Any, List, Dict
 from .util_models import BaseAPIResponse, Body, Data, ExtentModel, Message, Version, UserValue, Form, FormTab, TabAction
 
