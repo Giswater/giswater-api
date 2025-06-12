@@ -7,8 +7,8 @@ or (at your option) any later version.
 from fastapi import APIRouter, Body, Query, Depends
 from typing import Optional
 
-from ..models.util_models import Coordinates
-from ..models.mincut_models import MincutPlanParams, MincutExecParams
+from ..models.util_models import CoordinatesModel, APIResponse
+from ..models.mincut_models import MincutPlanParams, MincutExecParams, ValveUnaccessResponse
 from ..utils import create_body_dict, create_log, execute_procedure, create_api_response
 from ..dependencies import get_schema
 
@@ -24,11 +24,11 @@ router = APIRouter(prefix="/mincut", tags=["Mincut"])
 )
 async def new_mincut(
     schema: str = Depends(get_schema),
-    coordinates: Coordinates = Body(..., title="Coordinates", description="Coordinates on which the mincut will be created"),  # noqa: E501
+    coordinates: CoordinatesModel = Body(..., title="Coordinates", description="Coordinates on which the mincut will be created"),  # noqa: E501
     workcatId: int = Body(..., title="Workcat ID", description="ID of the work associated to the anomaly", examples=[1]),  # noqa: E501
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan of the mincut"),
     user: str = Body(..., title="User", description="User who is doing the action"),
-):
+) -> APIResponse:
     log = create_log(__name__)
 
     coordinates_dict = coordinates.model_dump()
@@ -37,7 +37,8 @@ async def new_mincut(
     else:
         plan_dict = {}
 
-    print(plan_dict)
+    # TODO: Add workcatId to the body
+    # TODO: Use the plan fields
     body = create_body_dict(
         client_extras={"tiled": True},
         extras={"action": "mincutNetwork", "usePsectors": "False", "coordinates": coordinates_dict, "status": "check"}
@@ -63,7 +64,7 @@ async def update_mincut(
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     user: str = Body(..., title="User", description="User who is doing the action"),
-):
+) -> APIResponse:
     log = create_log(__name__)
 
     if plan:
@@ -108,11 +109,25 @@ async def update_mincut(
 async def valve_unaccess(
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
-    nodeId: int = Body(..., title="Node ID", description="ID of the node where the unaccessible valve is located", examples=[1001]),  # noqa: E501
+    nodeId: int = Body(..., title="Node ID", description="ID of the node where the unaccessible valve is located", examples=[1114]),  # noqa: E501
     user: str = Body(..., title="User", description="User who is doing the action"),
-):
-    return create_api_response("Valve unaccessed successfully", "Accepted")
+) -> ValveUnaccessResponse | APIResponse:
+    log = create_log(__name__)
 
+    body = create_body_dict(
+        client_extras={"tiled": True},
+        extras={"action": "mincutValveUnaccess", "nodeId": nodeId, "mincutId": mincutId, "usePsectors": "False"}
+    )
+
+    result = execute_procedure(log, "gw_fct_setmincut", body, schema=schema)
+    if not result:
+        return create_api_response("Error recalculating mincut", "Failed")
+
+    if result.get("status") != "Accepted":
+        return create_api_response("Error recalculating mincut", "Failed", result=result)
+
+    response = ValveUnaccessResponse(**result)
+    return response
 
 @router.put(
     "/startmincut",
