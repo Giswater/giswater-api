@@ -6,9 +6,8 @@ or (at your option) any later version.
 """
 from fastapi import APIRouter, Query, Depends, HTTPException
 from datetime import date
-from typing import Literal, List
+from typing import Literal
 import json
-from json import JSONDecodeError
 from pydantic import ValidationError
 from ..utils.routing_utils import get_valhalla_route, get_geojson_from_route
 from ..utils.utils import create_body_dict, execute_procedure, create_log
@@ -156,6 +155,7 @@ async def get_object_hydraulic_order(
     }
     return result
 
+
 @router.get(
     "/getobjectshortestpathorder",
     description=(
@@ -215,10 +215,10 @@ async def get_object_shortest_path_order(
             duration = valhalla_response["trip"]["summary"]["time"]  # type: ignore
         except Exception:
             duration = None
-        try:
-            status = valhalla_response["trip"]["status"]  # type: ignore
-        except Exception:
-            status = None
+        # try:
+        #     status = valhalla_response["trip"]["status"]  # type: ignore
+        # except Exception:
+        #     status = None
         try:
             status_message = valhalla_response["trip"]["status_message"]  # type: ignore
         except Exception:

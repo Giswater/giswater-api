@@ -49,6 +49,7 @@ def get_geojson_from_route(route, mode):
         "features": [geojson_feature]
     }
 
+
 def get_valhalla_route(input_parameters):
     """
     Get the route from Valhalla API

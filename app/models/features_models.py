@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_geojson import FeatureCollectionModel
 from typing import Optional, Any, List, Dict, Literal, Tuple
 from typing_extensions import Self
@@ -10,8 +10,8 @@ from pyproj import Transformer
 
 class Location(BaseModel):
     """Location model for routing"""
-    x: float = Field(..., title="X coordinate", description="X coordinate in the specified EPSG system", examples=[418777.3])
-    y: float = Field(..., title="Y coordinate", description="Y coordinate in the specified EPSG system", examples=[4576692.9])
+    x: float = Field(..., title="X coordinate", description="X coordinate in the specified EPSG system", examples=[418777.3])  # noqa: E501
+    y: float = Field(..., title="Y coordinate", description="Y coordinate in the specified EPSG system", examples=[4576692.9])  # noqa: E501
     street: Optional[str] = Field(None, title="Street", description="Street name", examples=["Appleton"])
     epsg: int = Field(4326, title="EPSG", description="EPSG code of the coordinate system", examples=[4326, 25831])
 
@@ -19,13 +19,13 @@ class Location(BaseModel):
     def _transform_coordinates(x: float, y: float, from_epsg: int, to_epsg: int = 4326) -> Tuple[float, float]:
         """
         Transform coordinates from one EPSG system to another.
-        
+
         Args:
             x: X coordinate in the source EPSG system
             y: Y coordinate in the source EPSG system
             from_epsg: Source EPSG code
             to_epsg: Target EPSG code (default: 4326 - WGS84)
-            
+
         Returns:
             Tuple of (x, y) coordinates in the target EPSG system
         """
@@ -57,6 +57,7 @@ class Location(BaseModel):
             "lon": transformed_x,
             "lat": transformed_y
         }
+
 
 class ShortestPathParams(BaseModel):
     """Shortest path parameters model"""
