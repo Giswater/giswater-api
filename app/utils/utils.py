@@ -13,8 +13,8 @@ import json
 from typing import Any, Dict, Literal
 from datetime import date
 
-from .database import DEFAULT_SCHEMA, get_db, user, validate_schema
-from .models.util_models import APIResponse
+from ..database import DEFAULT_SCHEMA, get_db, user, validate_schema
+from ..models.util_models import APIResponse
 
 
 app = None

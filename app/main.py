@@ -5,7 +5,8 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 import os
-from . import config, utils
+from . import config
+from .utils import utils
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
