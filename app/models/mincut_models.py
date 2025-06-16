@@ -1,5 +1,10 @@
 from pydantic import BaseModel, Field
+from pydantic_geojson import FeatureCollectionModel
 from typing import Optional
+from .util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version
+
+
+# region Input parameters
 
 
 class MincutPlanParams(BaseModel):
@@ -84,3 +89,39 @@ class MincutExecParams(BaseModel):
         description="End date of the mincut",
         examples=["2025-05-16T15:40"]
     )
+
+# endregion
+
+# region Response models
+
+
+class ValveUnaccessData(Data):
+    """Valve unaccess data"""
+    # NOTE: fields are inherited from Data
+    info: Optional[Info] = Field(None, description="Info of the data")
+    mincutId: int = Field(..., description="Mincut id", examples=[1])
+    mincutState: int = Field(..., description="Mincut state", examples=[1])
+    mincutInit: FeatureCollectionModel = Field(..., description="Mincut initial point")
+    mincutProposedValve: FeatureCollectionModel = Field(..., description="Mincut proposed valve")
+    mincutNotProposedValve: FeatureCollectionModel = Field(..., description="Mincut not proposed valve")
+    mincutNode: FeatureCollectionModel = Field(..., description="Mincut node")
+    mincutConnec: FeatureCollectionModel = Field(..., description="Mincut connecs")
+    mincutArc: FeatureCollectionModel = Field(..., description="Mincut arcs")
+    tiled: bool = Field(..., description="Tiled", examples=[True])
+    geometry: ExtentModel = Field(..., description="Extent of the mincut")
+
+
+class ValveUnaccessBody(Body[ValveUnaccessData]):
+    pass
+
+
+class ValveUnaccessResponse(BaseAPIResponse[ValveUnaccessBody]):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.status = kwargs.get("status", "Failed")
+        self.message: Message = kwargs.get("message", {})
+        self.version: Version = kwargs.get("version", {})
+        self.body: ValveUnaccessBody = kwargs.get("body", {})
+
+# endregion

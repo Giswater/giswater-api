@@ -13,7 +13,8 @@ import json
 from typing import Any, Dict, Literal
 from datetime import date
 
-from .database import DEFAULT_SCHEMA, get_db, user, validate_schema
+from ..database import DEFAULT_SCHEMA, get_db, user, validate_schema
+from ..models.util_models import APIResponse
 
 
 app = None
@@ -47,7 +48,7 @@ def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, f
     lang = "es_ES"  # TODO: get from app lang
 
     client = {
-        "device": 5,
+        "device": 5,  # TODO: get from app device
         "lang": lang,
         "cur_user": user,
         **client_extras
@@ -153,7 +154,13 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
         except Exception as e:
             # Rollback on error
             conn.rollback()
-            result = {"dbmessage": str(e)}
+            # TODO: get db version
+            result = {
+                "status": "Failed",
+                "message": {"level": 3, "text": str(e)},
+                "version": {"db": "4.0.001", "api": app.version},
+                "body": {}
+            }
             response_msg = str(e)
 
         if not result or result.get('status') == "Failed":
@@ -163,6 +170,18 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
 
         if result:
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
+
+        if result and "version" in result:
+            if type(result["version"]) is str:
+                result["version"] = json.loads(result["version"])
+
+            if "value" in result["version"]:
+                result["version"] = {"db": result["version"]["value"], "api": app.version}
+            elif "db" in result["version"]:
+                result["version"]["api"] = app.version
+            else:
+                # TODO: get db version
+                result["version"] = {"db": "4.0.001", "api": app.version}
 
         return result
 
@@ -218,7 +237,7 @@ def create_api_response(
     message: str,
     status: Literal["Accepted", "Failed"],
     result: Dict[str, Any] | Any | None = None
-) -> Dict[str, Any]:
+) -> APIResponse:
     """
     Creates a standardized API response.
 
@@ -228,14 +247,10 @@ def create_api_response(
         result: Optional result data to include in the response
 
     Returns:
-        Dict containing the standardized response
+        APIResponse containing the standardized response
     """
-    response: Dict[str, Any] = {
-        "message": message,
-        "status": status
-    }
-
-    if result is not None:
-        response["result"] = result
-
-    return response
+    return APIResponse(
+        message=message,
+        status=status,
+        result=result
+    )
