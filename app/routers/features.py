@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 from fastapi import APIRouter, Query, Depends, HTTPException
 from datetime import date
-from typing import Literal, Union
+from typing import Literal, Union, Optional
 import json
 from pydantic import ValidationError
 from ..utils.routing_utils import get_valhalla_route, get_geojson_from_route
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/features", tags=["Features"])
 @router.get(
     "/getfeaturechanges",
     description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.",
-    response_model=GetFeatureChangesResponse,
+    response_model=Union[GetFeatureChangesResponse, GwErrorResponse],
     response_model_exclude_unset=True
 )
 async def get_feature_changes(
@@ -108,15 +108,36 @@ async def get_info_from_coordinates(
 @router.get(
     "/getselectors",
     description="Fetch current selectors",
-    response_model=GetSelectorsResponse,
+    response_model=Union[GetSelectorsResponse, GwErrorResponse],
     response_model_exclude_unset=True
 )
 async def get_selectors(
     schema: str = Depends(get_schema),
+    selectorType: Literal["selector_basic", "selector_mincut", "selector_netscenario"] = Query(
+        "selector_basic",
+        title="Selector type",
+        description="Type of selector to fetch"
+    ),
+    filterText: str = Query(
+        "",
+        title="Filter text",
+        description="Filter text to apply to the selector"
+    ),
+    currentTab: Optional[str] = Query(
+        None,
+        title="Current tab",
+        description="Current tab to fetch"
+    )
 ):
-    # log = create_log(__name__)
+    log = create_log(__name__)
 
-    result = {"status":"Accepted","version":{"db":"3.6.011.1", "api": "0.2.0"},"message":{"level":4,"text":"Process done successfully"},"body":{"form":{"formName":"","formLabel":"","currentTab":"tab_exploitation","formText":"","formTabs":[{"tabName":"tab_exploitation","tableName":"selector_expl","tabLabel":"Expl","tooltip":"Active exploitation","selectorType":"selector_basic","manageAll":"True","typeaheadFilter":" AND lower(concat(expl_id, ' - ', name))","selectionMode":"keepPreviousUsingShift","typeaheadForced":"True","orderby":1},{"tabName":"tab_network_state","tableName":"selector_state","tabLabel":"State","tooltip":"Network","selectorType":"selector_basic","manageAll":"False","selectionMode":"keepPrevious","orderby":4}],"style":{"rowsColor":True}},"feature":{},"data":{"fields":[{"expl_id":1,"label":"1 - expl_01","name":1,"widgetname":"1","orderby":1,"columnname":"expl_id","widgettype":"check","datatype":"boolean","value":False,"hidden":False,"iseditable":True,"tabname":"tab_exploitation","ismandatory":False,"tooltip":None,"layoutname":None,"layoutorder":None,"isparent":None,"isautoupdate":None,"isfilter":None,"selectedId":None,"comboIds":None,"comboNames":None},{"expl_id":2,"label":"2 - expl_02","name":2,"widgetname":"2","orderby":2,"columnname":"expl_id","widgettype":"check","datatype":"boolean","value":False,"hidden":False,"iseditable":True,"tabname":"tab_exploitation","ismandatory":False,"tooltip":None,"layoutname":None,"layoutorder":None,"isparent":None,"isautoupdate":None,"isfilter":None,"selectedId":None,"comboIds":None,"comboNames":None},{"id":0,"label":"0 - OBSOLETE","name":0,"widgetname":"0","orderby":1,"columnname":"state_id","widgettype":"check","datatype":"boolean","value":False,"hidden":False,"iseditable":True,"tabname":"tab_network_state","ismandatory":False,"tooltip":None,"layoutname":None,"layoutorder":None,"isparent":None,"isautoupdate":None,"isfilter":None,"selectedId":None,"comboIds":None,"comboNames":None},{"id":1,"label":"1 - OPERATIVE","name":1,"widgetname":"1","orderby":2,"columnname":"state_id","widgettype":"check","datatype":"boolean","value":True,"hidden":False,"iseditable":True,"tabname":"tab_network_state","ismandatory":False,"tooltip":None,"layoutname":None,"layoutorder":None,"isparent":None,"isautoupdate":None,"isfilter":None,"selectedId":None,"comboIds":None,"comboNames":None}],"userValues":[{"parameter":"plan_psector_vdefault","value":"1"},{"parameter":"utils_workspace_vdefault","value":None}],"geometry":{},"layerColumns":{}}}}  # noqa: E501, E231
+    body = create_body_dict(
+        form={"currentTab": currentTab},
+        feature={},
+        extras={"selectorType": selectorType, "filterText": filterText}
+    )
+
+    result = execute_procedure(log, "gw_fct_getselectors", body, schema=schema)
     return result
 
 
