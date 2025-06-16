@@ -167,6 +167,9 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
 
         if result and "version" in result:
+            if type(result["version"]) is str:
+                result["version"] = json.loads(result["version"])
+
             if "value" in result["version"]:
                 result["version"] = {"db": result["version"]["value"], "api": app.version}
             elif "db" in result["version"]:
