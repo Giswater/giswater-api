@@ -119,13 +119,7 @@ class GetInfoFromCoordinatesBody(Body[GetInfoFromCoordinatesData]):
 
 
 class GetInfoFromCoordinatesResponse(BaseAPIResponse[GetInfoFromCoordinatesBody]):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.status = kwargs.get("status", "Failed")
-        self.message: Message = Message(**kwargs.get("message", {}))
-        self.version: Version = kwargs.get("version", {})
-        self.body: Body = kwargs.get("body", {})
+    pass
 
 
 class GetSelectorsData(Data):
