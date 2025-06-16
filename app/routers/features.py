@@ -18,7 +18,8 @@ from ..models.features_models import (
     GetObjectHydraulicOrderResponse,
     ShortestPathParams,
     GetObjectShortestPathOrderResponse,
-    Location
+    Location,
+    GetFeatureChangesResponse
 )
 
 router = APIRouter(prefix="/features", tags=["Features"])
@@ -26,7 +27,9 @@ router = APIRouter(prefix="/features", tags=["Features"])
 
 @router.get(
     "/getfeaturechanges",
-    description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter."
+    description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.",
+    response_model=GetFeatureChangesResponse,
+    response_model_exclude_unset=True
 )
 async def get_feature_changes(
     schema: str = Depends(get_schema),
@@ -60,36 +63,14 @@ async def get_feature_changes(
     result = execute_procedure(log, "gw_fct_featurechanges", body, schema=schema)
     if not result:
         return {
-            "message": "No feature changes found",
-            "input_params": {
-                "schema": schema,
-                "featureType": feature_type,
-                "action": action,
-                "lastFeeding": lastFeeding
+            "status": "Failed",
+            "message": {"level": 4, "text": "No feature changes found"},
+            "version": {"db": "4.0.001", "api": "0.2.0"},
+            "body": {
+                "feature": []
             }
         }
-    if result.get("status") != "Accepted":
-        return {
-            "message": "Error fetching feature changes",
-            "input_params": {
-                "schema": schema,
-                "featureType": feature_type,
-                "action": action,
-                "lastFeeding": lastFeeding
-            },
-            "result": result
-        }
-
-    return {
-        "message": "Fetched feature changes successfully",
-        "input_params": {
-            "schema": schema,
-            "featureType": feature_type,
-            "action": action,
-            "lastFeeding": lastFeeding
-        },
-        "result": result
-    }
+    return result
 
 
 @router.get(
@@ -141,7 +122,7 @@ async def get_object_hydraulic_order(
 
     result = {
         "status": "Accepted",
-        "message": {"level": 5, "text": "Process done successfully"},
+        "message": {"level": 4, "text": "Process done successfully"},
         "version": {"db": "4.0.001", "api": "0.2.0"},
         "body": {
             "data": {

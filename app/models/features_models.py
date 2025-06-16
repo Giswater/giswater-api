@@ -85,6 +85,28 @@ class ShortestPathParams(BaseModel):
 
 # region Response models
 
+class GetFeatureChangesFeature(BaseModel):
+    """Get feature changes feature model"""
+    nodeId: str = Field(..., description="Node ID")
+    featureClass: str = Field(..., description="Feature class")
+    macroSector: int = Field(..., description="Macro sector")
+    assetId: Optional[str] = Field(None, description="Asset ID")
+    state: Literal[0, 1, 2, 3] = Field(..., description="State")
+
+
+class GetFeatureChangesData(BaseModel):
+    """Get feature changes data"""
+    pass
+
+
+class GetFeatureChangesBody(Body[GetFeatureChangesData]):
+    feature: Optional[List[GetFeatureChangesFeature]] = Field(None, description="Feature")
+    form: Optional[Dict] = Field(None, description="Form")
+
+
+class GetFeatureChangesResponse(BaseAPIResponse[GetFeatureChangesBody]):
+    pass
+
 
 class GetInfoFromCoordinatesData(Data):
     """Get info from coordinates data"""
