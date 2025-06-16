@@ -10,7 +10,7 @@ from typing import Literal, Union, Optional
 import json
 from pydantic import ValidationError
 from ..utils.routing_utils import get_valhalla_route, get_geojson_from_route
-from ..utils.utils import create_body_dict, execute_procedure, create_log
+from ..utils.utils import create_body_dict, execute_procedure, create_log, app
 from ..dependencies import get_schema
 from ..models.features_models import (
     GetInfoFromCoordinatesResponse,
@@ -66,7 +66,7 @@ async def get_feature_changes(
         return {
             "status": "Failed",
             "message": {"level": 4, "text": "No feature changes found"},
-            "version": {"db": "4.0.001", "api": "0.2.0"},
+            "version": {"db": "4.0.001", "api": app.version},
             "body": {
                 "feature": []
             }

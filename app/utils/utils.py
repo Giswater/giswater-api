@@ -12,12 +12,13 @@ import json
 
 from typing import Any, Dict, Literal
 from datetime import date
+from fastapi import FastAPI
 
 from ..database import DEFAULT_SCHEMA, get_db, user, validate_schema
 from ..models.util_models import APIResponse
 
 
-app = None
+app: FastAPI = None
 api = None
 tenant_handler = None
 mail = None

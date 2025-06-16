@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from .routers import features, hydraulic_engine_ud, hydraulic_engine_ws, mincut, water_balance
 
 TITLE = "Giswater API"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 DESCRIPTION = "API for interacting with a Giswater database as well as working with hydraulic models."
 
 app = FastAPI(
