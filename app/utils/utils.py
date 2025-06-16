@@ -155,7 +155,12 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             # Rollback on error
             conn.rollback()
             # TODO: get db version
-            result = {"status": "Failed", "message": {"level": 3, "text": str(e)}, "version": {"db": "4.0.001", "api": app.version}, "body": {}}
+            result = {
+                "status": "Failed",
+                "message": {"level": 3, "text": str(e)},
+                "version": {"db": "4.0.001", "api": app.version},
+                "body": {}
+            }
             response_msg = str(e)
 
         if not result or result.get('status') == "Failed":

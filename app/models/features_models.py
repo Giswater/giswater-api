@@ -85,6 +85,7 @@ class ShortestPathParams(BaseModel):
 
 # region Response models
 
+
 class GetFeatureChangesFeature(BaseModel):
     """Get feature changes feature model"""
     nodeId: str = Field(..., description="Node ID")
