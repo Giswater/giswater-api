@@ -186,6 +186,15 @@ class BaseAPIResponse(BaseModel, Generic[T]):
     body: T = Field(..., description="Body of the response")
 
 
+class GwErrorResponse(BaseModel):
+    """Gw error response model"""
+    status: Literal["Failed"] = Field(..., description="Status of the response", examples=["Failed"])
+    message: Optional[Message] = Field(None, description="Response message")
+    version: Optional[Version] = Field(None, description="Version of the database and API")
+    NOSQLERR: Optional[str] = Field(None, description="SQL error message", examples=["Function: [gw_fct_getinfofromcoordinates] - SCHEMA DEFINED DOES NOT EXISTS. CHECK YOUR QGIS PROJECT VARIABLE GWADDSCHEMA. HINT:  - <NULL>"])
+    SQLSTATE: Optional[str] = Field(None, description="SQL error code", examples=["GW001"])
+    MSGERR: Optional[str] = Field(None, description="Message error")
+
 # endregion
 
 # Example of a specific response type for an endpoint
