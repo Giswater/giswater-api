@@ -7,12 +7,12 @@ or (at your option) any later version.
 from fastapi import APIRouter, Body, Query, Depends
 from typing import Optional
 
-from ..models.util_models import CoordinatesModel, APIResponse
-from ..models.mincut_models import MincutPlanParams, MincutExecParams, ValveUnaccessResponse
-from ..utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
-from ..dependencies import get_schema
+from ...models.util_models import CoordinatesModel, APIResponse
+from ...models.om.mincut_models import MincutPlanParams, MincutExecParams, ValveUnaccessResponse
+from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
+from ...dependencies import get_schema
 
-router = APIRouter(prefix="/mincut", tags=["Mincut"])
+router = APIRouter(prefix="/om", tags=["OM - Mincut"])
 
 
 @router.post(

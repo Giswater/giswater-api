@@ -1,5 +1,5 @@
 [api]
-features=True
+basic=True
 mincut=True
 water_balance=True
 

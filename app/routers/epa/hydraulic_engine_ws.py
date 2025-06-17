@@ -7,7 +7,7 @@ or (at your option) any later version.
 from fastapi import APIRouter, Query, Depends, Body
 from typing import List
 
-from ..models.hydraulic_engine_ws_models import (
+from ...models.epa.hydraulic_engine_ws_models import (
     HydrantReachabilityUpdate,
     ReservoirValueUpdate,
     LinkValueUpdate,
@@ -19,7 +19,7 @@ from ..models.hydraulic_engine_ws_models import (
     ControlValueUpdate
 )
 
-router = APIRouter(prefix="/hydraulicengine/ws", tags=["Hydraulic Engine (WS)"])
+router = APIRouter(prefix="/epa/ws", tags=["EPA - Hydraulic Engine (WS)"])
 
 
 def get_network_scenario(

@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 from pydantic_geojson import FeatureCollectionModel
 from typing import Optional, Any, List, Dict, Literal, Tuple
 from typing_extensions import Self
-from .util_models import BaseAPIResponse, Body, Data, ExtentModel, Message, Version, UserValue, Form, FormTab
+from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Message, Version, UserValue, Form, FormTab
 from pyproj import Transformer
 
 

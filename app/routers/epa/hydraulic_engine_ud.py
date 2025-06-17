@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 from fastapi import APIRouter, Query, Depends, Body
 from typing import List
-from ..models.hydraulic_engine_ud_models import (
+from ...models.epa.hydraulic_engine_ud_models import (
     NodeValueUpdate,
     LinkValueUpdate,
     PumpValueUpdate,
@@ -14,7 +14,7 @@ from ..models.hydraulic_engine_ud_models import (
     ControlValueUpdate
 )
 
-router = APIRouter(prefix="/hydraulicengine/ud", tags=["Hydraulic Engine (UD)"])
+router = APIRouter(prefix="/epa/ud", tags=["EPA - Hydraulic Engine (UD)"])
 
 
 def get_network_scenario(

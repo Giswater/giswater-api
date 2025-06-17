@@ -9,10 +9,10 @@ from datetime import date
 from typing import Literal, Union, Optional
 import json
 from pydantic import ValidationError
-from ..utils.routing_utils import get_valhalla_route, get_geojson_from_route
-from ..utils.utils import create_body_dict, execute_procedure, create_log, app
-from ..dependencies import get_schema
-from ..models.features_models import (
+from ...utils.routing_utils import get_valhalla_route, get_geojson_from_route
+from ...utils.utils import create_body_dict, execute_procedure, create_log, app
+from ...dependencies import get_schema
+from ...models.basic.basic_models import (
     GetInfoFromCoordinatesResponse,
     GetSelectorsResponse,
     GetObjectHydraulicOrderResponse,
@@ -22,9 +22,9 @@ from ..models.features_models import (
     GetFeatureChangesResponse,
     GetSearchResponse
 )
-from ..models.util_models import CoordinatesModel, GwErrorResponse
+from ...models.util_models import CoordinatesModel, GwErrorResponse
 
-router = APIRouter(prefix="/features", tags=["Features"])
+router = APIRouter(prefix="/basic", tags=["Basic"])
 
 
 @router.get(

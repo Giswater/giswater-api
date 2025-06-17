@@ -11,7 +11,10 @@ from .utils import utils
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from .routers import features, hydraulic_engine_ud, hydraulic_engine_ws, mincut, water_balance
+from .routers.basic import basic
+from .routers.om import mincut
+from .routers.waterbalance import water_balance
+from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 
 TITLE = "Giswater API"
 VERSION = "0.3.0"
@@ -28,8 +31,8 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include routers
-if config.get_bool("api", "features"):
-    app.include_router(features.router)
+if config.get_bool("api", "basic"):
+    app.include_router(basic.router)
 if config.get_bool("api", "mincut"):
     app.include_router(mincut.router)
 if config.get_bool("api", "water_balance"):
