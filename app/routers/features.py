@@ -19,7 +19,8 @@ from ..models.features_models import (
     ShortestPathParams,
     GetObjectShortestPathOrderResponse,
     Location,
-    GetFeatureChangesResponse
+    GetFeatureChangesResponse,
+    GetSearchResponse
 )
 from ..models.util_models import CoordinatesModel, GwErrorResponse
 
@@ -135,6 +136,32 @@ async def get_selectors(
         form={"currentTab": currentTab},
         feature={},
         extras={"selectorType": selectorType, "filterText": filterText}
+    )
+
+    result = execute_procedure(log, "gw_fct_getselectors", body, schema=schema)
+    return result
+
+
+@router.get(
+    "/getsearch",
+    description="Search features",
+    response_model=Union[GetSearchResponse, GwErrorResponse],
+    response_model_exclude_unset=True
+)
+async def get_search(
+    schema: str = Depends(get_schema),
+    searchText: str = Query(
+        "",
+        title="Search text",
+        description="Text to search for"
+    )
+):
+    log = create_log(__name__)
+
+    body = create_body_dict(
+        form={},
+        feature={},
+        filter_fields={"searchText": searchText}
     )
 
     result = execute_procedure(log, "gw_fct_getselectors", body, schema=schema)

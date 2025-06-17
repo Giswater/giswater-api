@@ -157,13 +157,37 @@ class GetSelectorsBody(Body[GetSelectorsData]):
 
 
 class GetSelectorsResponse(BaseAPIResponse[GetSelectorsBody]):
+    pass
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.status = kwargs.get("status", "Failed")
-        self.message: Message = kwargs.get("message", {})
-        self.version: Version = kwargs.get("version", {})
-        self.body: Body = kwargs.get("body", {})
+
+class SearchResultValue(BaseModel):
+    """Search result value model"""
+    key: str = Field(..., description="Key")
+    value: str = Field(..., description="Value")
+    displayName: str = Field(..., description="Display name")
+
+
+class SearchResult(BaseModel):
+    """Search result model"""
+    section: str = Field(..., description="Section")
+    alias: str = Field(..., description="Alias")
+    execFunc: Optional[str] = Field(None, description="Exec function")
+    tableName: str = Field(..., description="Table name")
+    values: Optional[List[SearchResultValue]] = Field(None, description="Values")
+
+
+class GetSearchData(BaseModel):
+    """Get search data"""
+    searchResults: List[SearchResult] = Field(..., description="Search results")
+
+
+class GetSearchBody(Body[GetSearchData]):
+    form: None = Field(None, description="Form")
+    feature: None = Field(None, description="Feature")
+
+
+class GetSearchResponse(BaseAPIResponse[GetSearchBody]):
+    pass
 
 
 class GetObjectHydraulicOrderData(Data):
