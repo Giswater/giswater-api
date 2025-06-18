@@ -15,6 +15,7 @@ from .routers.basic import basic
 from .routers.om import mincut
 from .routers.waterbalance import water_balance
 from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
+from .routers.routing import routing
 
 TITLE = "Giswater API"
 VERSION = "0.3.0"
@@ -37,6 +38,8 @@ if config.get_bool("api", "mincut"):
     app.include_router(mincut.router)
 if config.get_bool("api", "water_balance"):
     app.include_router(water_balance.router)
+if config.get_bool("api", "routing"):
+    app.include_router(routing.router)
 if config.get_bool("hydraulic_engine", "enabled"):
     if config.get_bool("hydraulic_engine", "ud"):
         app.include_router(hydraulic_engine_ud.router)
