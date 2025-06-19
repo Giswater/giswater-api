@@ -5,21 +5,20 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 from fastapi import APIRouter, Query, Depends, HTTPException
-from datetime import date
-from typing import Literal, Union, Optional
+from typing import Literal
 import json
 from pydantic import ValidationError
 from ...utils.routing_utils import get_network_points, get_valhalla_optimized_route, get_geojson_from_optimized_route
-from ...utils.utils import create_body_dict, execute_procedure, create_log, app
+from ...utils.utils import create_body_dict, execute_procedure, create_log
 from ...dependencies import get_schema
 from ...models.routing.routing_models import (
-    GetObjectHydraulicOrderResponse,
+    # GetObjectHydraulicOrderResponse,
     OptimalPathParams,
     GetObjectOptimalPathOrderResponse,
     Location,
     GetObjectParameterOrderResponse,
 )
-from ...models.util_models import CoordinatesModel, GwErrorResponse
+# from ...models.util_models import CoordinatesModel, GwErrorResponse
 
 router = APIRouter(prefix="/routing", tags=["OM - Routing"])
 
@@ -68,7 +67,11 @@ router = APIRouter(prefix="/routing", tags=["OM - Routing"])
 )
 async def get_object_optimal_path_order(
     schema: str = Depends(get_schema),
-    objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT', 'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT', 'NETWJOIN', 'PUMP', 'REDUCTION', 'REGISTER', 'SOURCE', 'TANK', 'VALVE', 'WATERWELL'] = Query(
+    objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT',
+                        'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT',
+                        'NETWJOIN', 'PUMP', 'REDUCTION', 'REGISTER', 'SOURCE',
+                        'TANK', 'VALVE', 'WATERWELL']
+    = Query(
         ...,
         title="Object type",
         description="Type of the object"
@@ -209,7 +212,11 @@ async def get_object_optimal_path_order(
 )
 async def get_object_parameter_order(
     schema: str = Depends(get_schema),
-    objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT', 'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT', 'NETWJOIN', 'PUMP', 'REDUCTION', 'REGISTER', 'SOURCE', 'TANK', 'VALVE', 'WATERWELL'] = Query(
+    objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT',
+                        'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT',
+                        'NETWJOIN', 'PUMP', 'REDUCTION', 'REGISTER', 'SOURCE',
+                        'TANK', 'VALVE', 'WATERWELL']
+    = Query(
         ...,
         title="Object type",
         description="Type of the object"

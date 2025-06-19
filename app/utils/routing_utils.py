@@ -112,7 +112,7 @@ def get_geojson_from_optimized_route(trip_data, mode):
                 "fill": colors[color_index],
                 "fill-opacity": 0.1,
                 "title": f"Leg {i}",
-                "description": f"Distance: {leg.get('summary', {}).get('length', 'N/A')} km, Duration: {leg.get('summary', {}).get('time', 'N/A')} s"
+                "description": f"Distance: {leg.get('summary', {}).get('length', 'N/A')} km, Duration: {leg.get('summary', {}).get('time', 'N/A')} s"  # noqa: E501
             })
 
             # Add any additional leg-specific properties

@@ -4,12 +4,9 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Query, Depends
 from datetime import date
 from typing import Literal, Union, Optional
-import json
-from pydantic import ValidationError
-from ...utils.routing_utils import get_valhalla_route, get_geojson_from_route
 from ...utils.utils import create_body_dict, execute_procedure, create_log, app
 from ...dependencies import get_schema
 from ...models.basic.basic_models import (
@@ -162,4 +159,3 @@ async def get_search(
 
     result = execute_procedure(log, "gw_fct_getselectors", body, schema=schema)
     return result
-
