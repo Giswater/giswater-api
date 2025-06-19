@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional, List, Dict, Literal, Tuple
+from typing import Optional, List, Dict, Literal, Tuple, Union
 from typing_extensions import Self
 from ..util_models import BaseAPIResponse, Body, Data
 from pyproj import Transformer
@@ -110,4 +110,38 @@ class GetObjectOptimalPathOrderBody(Body[GetObjectOptimalPathOrderData]):
 
 
 class GetObjectOptimalPathOrderResponse(BaseAPIResponse[GetObjectOptimalPathOrderBody]):
+    pass
+
+
+class GetObjectParameterOrderFeature(BaseModel):
+    """Get object parameter order feature"""
+    assetId: Optional[str] = Field(None, description="Asset ID")
+    macroSector: int = Field(..., description="Macro sector")
+    aresepId: Optional[str] = Field(None, description="Aresép ID")
+    state: int = Field(..., description="State")
+    featureClass: str = Field(..., description="Feature class")
+
+
+class GetObjectParameterOrderNode(GetObjectParameterOrderFeature):
+    """Get object parameter order node"""
+    nodeId: str = Field(..., description="Node ID")
+
+
+class GetObjectParameterOrderArc(GetObjectParameterOrderFeature):
+    """Get object parameter order arc"""
+    arcId: str = Field(..., description="Arc ID")
+
+
+class GetObjectParameterOrderData(Data):
+    """Get object parameter order data"""
+    fields: None = Field(None, description="Fields")
+    features: List[Union[GetObjectParameterOrderNode, GetObjectParameterOrderArc]] = Field(..., description="Features")
+
+
+class GetObjectParameterOrderBody(Body[GetObjectParameterOrderData]):
+    form: dict = Field({}, description="Form")
+    feature: dict = Field({}, description="Feature")
+
+
+class GetObjectParameterOrderResponse(BaseAPIResponse[GetObjectParameterOrderBody]):
     pass
