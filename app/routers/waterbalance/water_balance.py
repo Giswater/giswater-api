@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 from fastapi import APIRouter, Query
 
-router = APIRouter(prefix="/waterbalance", tags=["Water Balance"])
+router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
 
 
 @router.get(

@@ -1,12 +1,10 @@
 from pydantic import BaseModel, Field, model_validator
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional, Any, List, Dict, Literal, Tuple
+from typing import Optional, List, Dict, Literal, Tuple, Union
 from typing_extensions import Self
-from .util_models import BaseAPIResponse, Body, Data, ExtentModel, Message, Version, UserValue, Form, FormTab
+from ..util_models import BaseAPIResponse, Body, Data
 from pyproj import Transformer
 
-
-# region Input parameters
 
 class Location(BaseModel):
     """Location model for routing"""
@@ -59,14 +57,13 @@ class Location(BaseModel):
         }
 
 
-class ShortestPathParams(BaseModel):
-    """Shortest path parameters model"""
+class OptimalPathParams(BaseModel):
+    """Optimal path parameters model"""
     locations: List[Location] = Field(
         default=...,
         title="Locations",
         description="List of locations to route between",
-        min_length=2,
-        max_length=2
+        min_length=2
     )
     costing: Literal["auto", "pedestrian", "bicycle"] = Field(
         "auto",
@@ -80,90 +77,6 @@ class ShortestPathParams(BaseModel):
         description="Units for distance measurements",
         examples=["kilometers"]
     )
-
-# endregion
-
-# region Response models
-
-
-class GetFeatureChangesFeature(BaseModel):
-    """Get feature changes feature model"""
-    nodeId: str = Field(..., description="Node ID")
-    featureClass: str = Field(..., description="Feature class")
-    macroSector: int = Field(..., description="Macro sector")
-    assetId: Optional[str] = Field(None, description="Asset ID")
-    state: Literal[0, 1, 2, 3] = Field(..., description="State")
-
-
-class GetFeatureChangesData(BaseModel):
-    """Get feature changes data"""
-    pass
-
-
-class GetFeatureChangesBody(Body[GetFeatureChangesData]):
-    feature: Optional[List[GetFeatureChangesFeature]] = Field(None, description="Feature")
-    form: Optional[Dict] = Field(None, description="Form")
-
-
-class GetFeatureChangesResponse(BaseAPIResponse[GetFeatureChangesBody]):
-    pass
-
-
-class GetInfoFromCoordinatesData(Data):
-    """Get info from coordinates data"""
-    # NOTE: fields are inherited from Data
-    parentFields: List[str] = Field(..., description="Parent fields")
-
-
-class GetInfoFromCoordinatesBody(Body[GetInfoFromCoordinatesData]):
-    pass
-
-
-class GetInfoFromCoordinatesResponse(BaseAPIResponse[GetInfoFromCoordinatesBody]):
-    pass
-
-
-class GetSelectorsData(Data):
-    """Get selectors data"""
-    # NOTE: fields are inherited from Data
-    userValues: Optional[List[UserValue]] = Field(None, description="User values")
-    geometry: Optional[ExtentModel] = Field(None, description="Geometry")
-
-
-class FormStyle(BaseModel):
-    """Form style model"""
-    rowsColor: Optional[bool] = Field(None, description="Whether the selectors rows are colored or not")
-
-
-class SelectorFormTab(FormTab):
-    """Selector form tab model"""
-    tableName: str = Field(..., description="Table name")
-    selectorType: str = Field(..., description="Selector type")
-    manageAll: bool = Field(..., description="Manage all")
-    typeaheadFilter: Optional[str] = Field(None, description="Typeahead filter")
-    selectionMode: Optional[str] = Field(None, description="Selection mode")
-    typeaheadForced: bool = Field(False, description="Typeahead forced")
-
-
-class SelectorForm(Form):
-    """Selector form model"""
-    formTabs: Optional[List[SelectorFormTab]] = Field(None, description="Form tabs")
-    style: Optional[FormStyle] = Field(None, description="Form style")
-
-
-class GetSelectorsBody(Body[GetSelectorsData]):
-    form: Optional[SelectorForm] = Field(None, description="Selector form")
-    feature: Optional[Dict[str, Any]] = Field(None, description="Feature")
-
-
-class GetSelectorsResponse(BaseAPIResponse[GetSelectorsBody]):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.status = kwargs.get("status", "Failed")
-        self.message: Message = kwargs.get("message", {})
-        self.version: Version = kwargs.get("version", {})
-        self.body: Body = kwargs.get("body", {})
 
 
 class GetObjectHydraulicOrderData(Data):
@@ -183,20 +96,52 @@ class GetObjectHydraulicOrderResponse(BaseAPIResponse[GetObjectHydraulicOrderBod
     pass
 
 
-class GetObjectShortestPathOrderData(Data):
-    """Get object shortest path order data"""
+class GetObjectOptimalPathOrderData(Data):
+    """Get object optimal path order data"""
     fields: None = Field(None, description="Fields")
     path: Optional[FeatureCollectionModel] = Field(None, description="Path")
     distance: Optional[float] = Field(None, description="Distance")
     duration: Optional[float] = Field(None, description="Duration")
 
 
-class GetObjectShortestPathOrderBody(Body[GetObjectShortestPathOrderData]):
+class GetObjectOptimalPathOrderBody(Body[GetObjectOptimalPathOrderData]):
     form: None = Field(None, description="Form")
     feature: None = Field(None, description="Feature")
 
 
-class GetObjectShortestPathOrderResponse(BaseAPIResponse[GetObjectShortestPathOrderBody]):
+class GetObjectOptimalPathOrderResponse(BaseAPIResponse[GetObjectOptimalPathOrderBody]):
     pass
 
-# endregion
+
+class GetObjectParameterOrderFeature(BaseModel):
+    """Get object parameter order feature"""
+    assetId: Optional[str] = Field(None, description="Asset ID")
+    macroSector: int = Field(..., description="Macro sector")
+    aresepId: Optional[str] = Field(None, description="Aresép ID")
+    state: int = Field(..., description="State")
+    featureClass: str = Field(..., description="Feature class")
+
+
+class GetObjectParameterOrderNode(GetObjectParameterOrderFeature):
+    """Get object parameter order node"""
+    nodeId: str = Field(..., description="Node ID")
+
+
+class GetObjectParameterOrderArc(GetObjectParameterOrderFeature):
+    """Get object parameter order arc"""
+    arcId: str = Field(..., description="Arc ID")
+
+
+class GetObjectParameterOrderData(Data):
+    """Get object parameter order data"""
+    fields: None = Field(None, description="Fields")
+    features: List[Union[GetObjectParameterOrderNode, GetObjectParameterOrderArc]] = Field(..., description="Features")
+
+
+class GetObjectParameterOrderBody(Body[GetObjectParameterOrderData]):
+    form: dict = Field({}, description="Form")
+    feature: dict = Field({}, description="Feature")
+
+
+class GetObjectParameterOrderResponse(BaseAPIResponse[GetObjectParameterOrderBody]):
+    pass

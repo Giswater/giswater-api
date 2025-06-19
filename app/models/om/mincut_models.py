@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from pydantic_geojson import FeatureCollectionModel
 from typing import Optional
-from .util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version
+from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version
 
 
 # region Input parameters

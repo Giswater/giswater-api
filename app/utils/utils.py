@@ -12,12 +12,13 @@ import json
 
 from typing import Any, Dict, Literal
 from datetime import date
+from fastapi import FastAPI
 
 from ..database import DEFAULT_SCHEMA, get_db, user, validate_schema
 from ..models.util_models import APIResponse
 
 
-app = None
+app: FastAPI = None
 api = None
 tenant_handler = None
 mail = None
@@ -172,7 +173,8 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
 
         if result and "version" in result:
-            if type(result["version"]) is str:
+            # TODO: ensure the database always returns the version as "version": {"db": "4.0.001"}
+            if type(result["version"]) is str and result["version"].startswith("{"):
                 result["version"] = json.loads(result["version"])
 
             if "value" in result["version"]:
