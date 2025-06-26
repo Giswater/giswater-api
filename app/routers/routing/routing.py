@@ -8,7 +8,12 @@ from fastapi import APIRouter, Query, Depends, HTTPException
 from typing import Literal
 import json
 from pydantic import ValidationError
-from ...utils.routing_utils import get_network_points, get_valhalla_optimized_route, get_geojson_from_optimized_route
+from ...utils.routing_utils import (
+    get_network_points,
+    get_valhalla_optimized_route,
+    get_geojson_from_optimized_route,
+    get_maneuvers
+)
 from ...utils.utils import create_body_dict, execute_procedure, create_log
 from ...dependencies import get_schema
 from ...models.routing.routing_models import (
@@ -108,6 +113,24 @@ async def get_object_optimal_path_order(
         description="Units for distance measurements",
         examples=["kilometers", "miles"]
     ),
+    language: Literal[
+        "bg-BG", "ca-ES", "cs-CZ", "da-DK", "de-DE", "el-GR", "en-GB",
+        "en-US-x-pirate", "en-US", "es-ES", "et-EE", "fi-FI", "fr-FR",
+        "hi-IN", "hu-HU", "it-IT", "ja-JP", "nb-NO", "nl-NL", "pl-PL",
+        "pt-BR", "pt-PT", "ro-RO", "ru-RU", "sk-SK", "sl-SI", "sv-SE",
+        "tr-TR", "uk-UA"
+    ] = Query(
+        "en-US",
+        title="Language",
+        description="Language for the response",
+        examples=[
+            "bg-BG", "ca-ES", "cs-CZ", "da-DK", "de-DE", "el-GR", "en-GB",
+            "en-US-x-pirate", "en-US", "es-ES", "et-EE", "fi-FI", "fr-FR",
+            "hi-IN", "hu-HU", "it-IT", "ja-JP", "nb-NO", "nl-NL", "pl-PL",
+            "pt-BR", "pt-PT", "ro-RO", "ru-RU", "sk-SK", "sl-SI", "sv-SE",
+            "tr-TR", "uk-UA"
+        ]
+    ),
 ):
     log = create_log(__name__)
 
@@ -124,7 +147,8 @@ async def get_object_optimal_path_order(
             mapzone_type = "EXPL"
 
         # Get the network of points
-        network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
+        json_result, network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
+        features = json_result["body"]["data"]["features"]
 
         locations_data = [initial_point, *network_points, final_point]
         # Create a ShortestPathParams instance to validate the input
@@ -138,9 +162,11 @@ async def get_object_optimal_path_order(
             "locations": [location.to_dict() for location in locations_data],
             "costing": params.costing,
             "units": params.units,
+            "language": language,
         }
         # Get the route from Valhalla API
         valhalla_response, legs = get_valhalla_optimized_route(valhalla_params)
+        print(json.dumps(valhalla_response))
 
         # Check if we got a valid response
         if not isinstance(valhalla_response, dict):
@@ -173,8 +199,8 @@ async def get_object_optimal_path_order(
         except Exception:
             status_message = None
 
-        # Add leg count information
-        leg_count = len(legs) if isinstance(legs, list) else 0
+        # Add maneuvers information
+        maneuvers = get_maneuvers(valhalla_response)
 
         result = {
             "status": "Accepted",
@@ -185,7 +211,8 @@ async def get_object_optimal_path_order(
                     "distance": distance,
                     "duration": duration,
                     "path": geojson_response,
-                    "legCount": leg_count,
+                    "maneuvers": maneuvers,
+                    "features": features,
                 }
             }
         }
