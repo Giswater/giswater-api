@@ -209,6 +209,11 @@ def get_network_points(object_type, mapzone_type, mapzone_id, log, schema) -> Tu
     points_data = result["body"]["data"]["features"]
     for point in points_data:
         point_coordinates = point["coordinates"]
-        points.append(Location(x=point_coordinates['x'], y=point_coordinates['y'], epsg=point_coordinates['epsg'], street=None))
+        points.append(Location(
+            x=point_coordinates['x'],
+            y=point_coordinates['y'],
+            epsg=point_coordinates['epsg'],
+            street=None
+        ))
 
     return result, points

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional, List, Dict, Literal, Tuple, Union, Any
+from typing import Optional, List, Dict, Literal, Tuple, Union
 from typing_extensions import Self
 from ..util_models import BaseAPIResponse, Body, Data
 from pyproj import Transformer
