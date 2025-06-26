@@ -21,12 +21,12 @@ class GetFeatureChangesFeature(BaseModel):
 
 class GetFeatureChangesData(BaseModel):
     """Get feature changes data"""
-    pass
+    features: List[GetFeatureChangesFeature] = Field(..., description="Features")
 
 
 class GetFeatureChangesBody(Body[GetFeatureChangesData]):
-    feature: Optional[List[GetFeatureChangesFeature]] = Field(None, description="Feature")
-    form: Optional[Dict] = Field(None, description="Form")
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
 
 
 class GetFeatureChangesResponse(BaseAPIResponse[GetFeatureChangesBody]):

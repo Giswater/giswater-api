@@ -1,7 +1,7 @@
 import json
 import requests
 from urllib.parse import quote
-from typing import List
+from typing import List, Tuple
 from ..models.routing.routing_models import Location
 from ..utils.utils import create_body_dict, execute_procedure
 
@@ -183,7 +183,18 @@ def get_valhalla_optimized_route(input_parameters):
         return response_json, {}
 
 
-def get_network_points(object_type, mapzone_type, mapzone_id, log, schema) -> List[Location]:
+def get_maneuvers(valhalla_response):
+    """
+    Get the maneuvers from the Valhalla response
+    """
+    maneuvers = []
+    for leg in valhalla_response["trip"]["legs"]:
+        maneuvers.extend(leg["maneuvers"])
+
+    return maneuvers
+
+
+def get_network_points(object_type, mapzone_type, mapzone_id, log, schema) -> Tuple[dict, List[Location]]:
     points = []
 
     # Get the network points from the database
@@ -191,12 +202,18 @@ def get_network_points(object_type, mapzone_type, mapzone_id, log, schema) -> Li
         extras={"sysType": object_type, "mapzoneType": mapzone_type, "mapzoneId": mapzone_id}
     )
 
-    result = execute_procedure(log, "gw_fct_getpoints_bysystype", body, schema=schema)
+    result = execute_procedure(log, "gw_fct_getfeatures", body, schema=schema)
     if not result:
-        return []
+        return {}, []
 
-    points_data = result["body"]["data"]["points"]
+    points_data = result["body"]["data"]["features"]
     for point in points_data:
-        points.append(Location(x=point["x"], y=point["y"], epsg=point["epsg"], street=None))
+        point_coordinates = point["coordinates"]
+        points.append(Location(
+            x=point_coordinates['x'],
+            y=point_coordinates['y'],
+            epsg=point_coordinates['epsg'],
+            street=None
+        ))
 
-    return points
+    return result, points
