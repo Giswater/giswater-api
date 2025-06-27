@@ -157,5 +157,5 @@ async def get_search(
         filter_fields={"searchText": searchText}
     )
 
-    result = execute_procedure(log, "gw_fct_getselectors", body, schema=schema)
+    result = execute_procedure(log, "gw_fct_getsearch", body, schema=schema)
     return result
