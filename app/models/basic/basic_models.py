@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Any, List, Dict, Literal
+from typing import Optional, Any, List, Dict, Literal, Union
 from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, UserValue, Form, FormTab
 
 
@@ -12,16 +12,25 @@ from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, UserValue, F
 
 class GetFeatureChangesFeature(BaseModel):
     """Get feature changes feature model"""
-    nodeId: str = Field(..., description="Node ID")
     featureClass: str = Field(..., description="Feature class")
     macroSector: int = Field(..., description="Macro sector")
     assetId: Optional[str] = Field(None, description="Asset ID")
     state: Literal[0, 1, 2, 3] = Field(..., description="State")
 
 
+class GetFeatureChangesNode(GetFeatureChangesFeature):
+    """Get feature changes node model"""
+    nodeId: int = Field(..., description="Node ID")
+
+
+class GetFeatureChangesConnec(GetFeatureChangesFeature):
+    """Get feature changes connection model"""
+    connecId: int = Field(..., description="Connec ID")
+
+
 class GetFeatureChangesData(BaseModel):
     """Get feature changes data"""
-    features: List[GetFeatureChangesFeature] = Field(..., description="Features")
+    features: List[Union[GetFeatureChangesNode, GetFeatureChangesConnec]] = Field(..., description="Features")
 
 
 class GetFeatureChangesBody(Body[GetFeatureChangesData]):
