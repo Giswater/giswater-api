@@ -151,10 +151,14 @@ async def get_search(
 ):
     log = create_log(__name__)
 
+    parameters = {
+        "searchText": searchText
+    }
+
     body = create_body_dict(
         form={},
         feature={},
-        filter_fields={"searchText": searchText}
+        filter_fields={"parameters": parameters}
     )
 
     result = execute_procedure(log, "gw_fct_getsearch", body, schema=schema)

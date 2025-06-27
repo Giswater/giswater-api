@@ -96,7 +96,7 @@ class GetSelectorsResponse(BaseAPIResponse[GetSelectorsBody]):
 class SearchResultValue(BaseModel):
     """Search result value model"""
     key: str = Field(..., description="Key")
-    value: str = Field(..., description="Value")
+    value: Any = Field(..., description="Value")
     displayName: str = Field(..., description="Display name")
 
 
