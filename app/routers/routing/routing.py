@@ -5,7 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 from fastapi import APIRouter, Query, Depends, HTTPException
-from typing import Literal
+from typing import Literal, Optional
 import json
 from pydantic import ValidationError
 from ...utils.routing_utils import (
@@ -96,8 +96,8 @@ async def get_object_optimal_path_order(
         description="Initial point as JSON string (e.g., '{\"x\": 419436.50, \"y\": 4576993.97, \"epsg\": 25831}')",
         serialization_alias="initialPoint"
     ),
-    finalPoint: str = Query(
-        '{"x": 419251.83, "y": 4576127.70, "epsg": 25831}',
+    finalPoint: Optional[str] = Query(
+        None,
         description="Final point as JSON string (e.g., '{\"x\": 419251.83, \"y\": 4576127.70, \"epsg\": 25831}')",
         serialization_alias="finalPoint"
     ),
@@ -135,6 +135,8 @@ async def get_object_optimal_path_order(
     log = create_log(__name__)
 
     try:
+        if finalPoint is None:
+            finalPoint = initialPoint
         # Parse the locations JSON strings and convert to Location objects
         initial_point_data = json.loads(initialPoint)
         final_point_data = json.loads(finalPoint)
