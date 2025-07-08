@@ -290,7 +290,7 @@ async def get_object_parameter_order(
         }
     )
 
-    result = execute_procedure(log, "gw_fct_getfeatures_byparameter", body, schema=schema)
+    result = execute_procedure(log, "gw_fct_getfeatures", body, schema=schema)
 
     # Get the network of points
     # network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
