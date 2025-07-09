@@ -158,7 +158,7 @@ async def get_search(
     body = create_body_dict(
         form={},
         feature={},
-        filter_fields={"parameters": parameters}
+        extras={"parameters": parameters}
     )
 
     result = execute_procedure(log, "gw_fct_getsearch", body, schema=schema)
