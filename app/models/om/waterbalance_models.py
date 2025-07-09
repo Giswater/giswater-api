@@ -31,6 +31,7 @@ class Hydrometer(BaseModel):
     hydrometerType: str = Field(..., description="Hydrometer type")
     hydrometerStatus: str = Field(..., description="Hydrometer status")
 
+
 class GetDmaHydrometersData(BaseModel):
     hydrometers: List[Hydrometer] = Field(..., description="List of hydrometers")
 
