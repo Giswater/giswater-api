@@ -60,7 +60,7 @@ class GetSelectorsData(Data):
     """Get selectors data"""
     # NOTE: fields are inherited from Data
     userValues: Optional[List[UserValue]] = Field(None, description="User values")
-    geometry: Optional[ExtentModel] = Field(None, description="Geometry")
+    geometry: Union[ExtentModel, Dict[str, Any], None] = Field(None, description="Geometry")
 
 
 class FormStyle(BaseModel):
@@ -96,7 +96,7 @@ class GetSelectorsResponse(BaseAPIResponse[GetSelectorsBody]):
 class SearchResultValue(BaseModel):
     """Search result value model"""
     key: str = Field(..., description="Key")
-    value: str = Field(..., description="Value")
+    value: Any = Field(..., description="Value")
     displayName: str = Field(..., description="Display name")
 
 
