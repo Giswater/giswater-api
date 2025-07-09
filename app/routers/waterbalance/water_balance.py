@@ -36,9 +36,12 @@ async def list_dmas(
     description=(
         "Returns a collection of hydrometers within a specific DMA, "
         "providing details on their location, status, and measurement data."
-    )
+    ),
+    response_model=Union[GetDmaHydrometersResponse, GwErrorResponse],
+    response_model_exclude_unset=True
 )
 async def get_dma_hydrometers(
+    schema: str = Depends(get_schema),
     dma_id: int = Query(
         ...,
         title="DMA ID",
@@ -55,9 +58,12 @@ async def get_dma_hydrometers(
         "Retrieves specific parameters within a DMA, excluding geometry. "
         "Provides consumption data, network information, and other key metrics "
         "for performance analysis over a selected period."
-    )
+    ),
+    response_model=Union[GetDmaParametersResponse, GwErrorResponse],
+    response_model_exclude_unset=True
 )
 async def get_dma_parameters(
+    schema: str = Depends(get_schema),
     dma_id: int = Query(
         ...,
         title="DMA ID",
