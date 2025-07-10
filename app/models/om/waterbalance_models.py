@@ -27,9 +27,17 @@ class ListDmasResponse(BaseAPIResponse[ListDmasBody]):
 
 class Hydrometer(BaseModel):
     hydrometerId: int = Field(..., description="Hydrometer ID")
-    hydrometerName: str = Field(..., description="Hydrometer name")
-    hydrometerType: str = Field(..., description="Hydrometer type")
-    hydrometerStatus: str = Field(..., description="Hydrometer status")
+    hydrometerCode: str = Field(..., description="Hydrometer code")
+    customerName: Optional[str] = Field(None, description="Customer name")
+    connecId: str = Field(..., description="Connection ID")
+    hydrometerCustomerCode: Optional[str] = Field(None, description="Hydrometer customer code")
+    address: Optional[str] = Field(None, description="Address")
+    hydroNumber: Optional[str] = Field(None, description="Hydrometer number")
+    stateId: int = Field(..., description="State ID")
+    startDate: Optional[str] = Field(None, description="Start date")
+    endDate: Optional[str] = Field(None, description="End date")
+    m3Volume: Optional[float] = Field(None, description="Volume in cubic meters")
+    dmaId: int = Field(..., description="DMA ID")
 
 
 class GetDmaHydrometersData(BaseModel):

@@ -48,8 +48,27 @@ async def get_dma_hydrometers(
         description="The unique identifier of the DMA for which to fetch hydrometers",
         examples=[1]
     ),
+    # TODO: Add limit and offset
+    # limit: int = Query(
+    #     ...,
+    #     title="Limit",
+    #     description="The maximum number of hydrometers to fetch",
+    #     examples=[100]
+    # ),
+    # offset: int = Query(
+    #     ...,
+    #     title="Offset",
+    #     description="The number of hydrometers to skip",
+    #     examples=[0, 100, 200]
+    # ),
 ):
-    return {"message": "Fetched DMA hydrometers successfully"}
+    log = create_log(__name__)
+
+    parameters = {"dma_id": dma_id}
+    body = create_body_dict(extras={"parameters": parameters})
+
+    result = execute_procedure(log, "gw_fct_getdmahydrometers", body, schema=schema)
+    return result
 
 
 @router.get(
