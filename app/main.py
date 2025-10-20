@@ -18,7 +18,7 @@ from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 from .routers.routing import routing
 
 TITLE = "Giswater API"
-VERSION = "0.3.4"
+VERSION = "0.4.0"
 DESCRIPTION = "API for interacting with a Giswater database as well as working with hydraulic models."
 
 app = FastAPI(
