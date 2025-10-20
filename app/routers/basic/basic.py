@@ -60,7 +60,7 @@ async def get_feature_changes(
         return {
             "status": "Failed",
             "message": {"level": 4, "text": "No feature changes found"},
-            "version": {"db": "4.0.001", "api": app.version},
+            "version": {"api": app.version},
             "body": {
                 "feature": []
             }
