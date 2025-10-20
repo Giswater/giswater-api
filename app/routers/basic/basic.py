@@ -28,7 +28,7 @@ router = APIRouter(prefix="/basic", tags=["Basic"])
 )
 async def get_feature_changes(
     schema: str = Depends(get_schema),
-    feature_type: Literal["FEATURE", "ELEMENT"] = Query(
+    feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
         ...,
         alias="featureType",
         title="Feature Type",

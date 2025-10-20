@@ -18,19 +18,35 @@ class GetFeatureChangesFeature(BaseModel):
     state: Literal[0, 1, 2, 3] = Field(..., description="State")
 
 
+class GetFeatureChangesArc(GetFeatureChangesFeature):
+    """Get feature changes arc model"""
+    arcId: int = Field(..., description="Arc ID")
+
+
 class GetFeatureChangesNode(GetFeatureChangesFeature):
     """Get feature changes node model"""
     nodeId: int = Field(..., description="Node ID")
 
 
 class GetFeatureChangesConnec(GetFeatureChangesFeature):
-    """Get feature changes connection model"""
+    """Get feature changes connec model"""
     connecId: int = Field(..., description="Connec ID")
+
+
+class GetFeatureChangesGully(GetFeatureChangesFeature):
+    """Get feature changes gully model"""
+    gullyId: int = Field(..., description="Gully ID")
 
 
 class GetFeatureChangesData(BaseModel):
     """Get feature changes data"""
-    features: List[Union[GetFeatureChangesNode, GetFeatureChangesConnec]] = Field(..., description="Features")
+    features: List[Union[
+        GetFeatureChangesArc,
+        GetFeatureChangesNode,
+        GetFeatureChangesConnec,
+        GetFeatureChangesGully,
+        GetFeatureChangesFeature
+    ]] = Field(..., description="Features")
 
 
 class GetFeatureChangesBody(Body[GetFeatureChangesData]):
