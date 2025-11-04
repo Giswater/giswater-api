@@ -10,7 +10,7 @@ class HydrometerBase(BaseModel):
     """Base hydrometer model with all fields"""
     code: str = Field(..., description="Hydrometer code (from CRM)")
     hydroNumber: Optional[str] = Field(None, description="Hydrometer number")
-    connecId: Optional[str] = Field(None, description="Connection ID (linked to connec_customer_code)")
+    connecId: Optional[int] = Field(None, description="Connec ID (linked to connec_id)")
     link: Optional[str] = Field(None, description="URL link to CRM software")
     stateId: Optional[int] = Field(None, description="State ID (catalog)")
     catalogId: Optional[int] = Field(None, description="Catalog ID")
@@ -32,7 +32,7 @@ class HydrometerUpdate(BaseModel):
     """Model for updating hydrometers - all fields optional except code"""
     code: str = Field(..., description="Hydrometer code (identifier)")
     hydroNumber: Optional[str] = Field(None, description="Hydrometer number")
-    connecId: Optional[str] = Field(None, description="Connection ID (linked to connec_customer_code)")
+    connecId: Optional[int] = Field(None, description="Connec ID (linked to connec_id)")
     link: Optional[str] = Field(None, description="URL link to CRM software")
     stateId: Optional[int] = Field(None, description="State ID (catalog)")
     catalogId: Optional[int] = Field(None, description="Catalog ID")
