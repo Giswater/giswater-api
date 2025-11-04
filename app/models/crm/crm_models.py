@@ -62,4 +62,3 @@ class HydrometerBody(Body[HydrometerData]):
 class HydrometerResponse(BaseAPIResponse[HydrometerBody]):
     """Response model for hydrometer operations"""
     pass
-
