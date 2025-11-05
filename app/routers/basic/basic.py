@@ -28,7 +28,7 @@ router = APIRouter(prefix="/basic", tags=["Basic"])
 )
 async def get_feature_changes(
     schema: str = Depends(get_schema),
-    feature_type: Literal["FEATURE", "ELEMENT"] = Query(
+    feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
         ...,
         alias="featureType",
         title="Feature Type",
@@ -60,7 +60,7 @@ async def get_feature_changes(
         return {
             "status": "Failed",
             "message": {"level": 4, "text": "No feature changes found"},
-            "version": {"db": "4.0.001", "api": app.version},
+            "version": {"api": app.version},
             "body": {
                 "feature": []
             }

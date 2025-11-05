@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Optional, Any, List, Dict, Literal, Union
 from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, UserValue, Form, FormTab
 
@@ -16,6 +17,15 @@ class GetFeatureChangesFeature(BaseModel):
     macroSector: int = Field(..., description="Macro sector")
     assetId: Optional[str] = Field(None, description="Asset ID")
     state: Literal[0, 1, 2, 3] = Field(..., description="State")
+    exploitation: int = Field(..., description="Exploitation")
+    uuid: Optional[str] = Field(None, description="UUID")
+    insertAt: Optional[datetime] = Field(None, description="Date of insertion")
+    updateAt: Optional[datetime] = Field(None, description="Date of last update")
+
+
+class GetFeatureChangesArc(GetFeatureChangesFeature):
+    """Get feature changes arc model"""
+    arcId: int = Field(..., description="Arc ID")
 
 
 class GetFeatureChangesNode(GetFeatureChangesFeature):
@@ -24,13 +34,25 @@ class GetFeatureChangesNode(GetFeatureChangesFeature):
 
 
 class GetFeatureChangesConnec(GetFeatureChangesFeature):
-    """Get feature changes connection model"""
+    """Get feature changes connec model"""
     connecId: int = Field(..., description="Connec ID")
+    customerCode: Optional[str] = Field(None, description="Customer code")
+
+
+class GetFeatureChangesGully(GetFeatureChangesFeature):
+    """Get feature changes gully model"""
+    gullyId: int = Field(..., description="Gully ID")
 
 
 class GetFeatureChangesData(BaseModel):
     """Get feature changes data"""
-    features: List[Union[GetFeatureChangesNode, GetFeatureChangesConnec]] = Field(..., description="Features")
+    features: List[Union[
+        GetFeatureChangesArc,
+        GetFeatureChangesNode,
+        GetFeatureChangesConnec,
+        GetFeatureChangesGully,
+        GetFeatureChangesFeature
+    ]] = Field(..., description="Features")
 
 
 class GetFeatureChangesBody(Body[GetFeatureChangesData]):

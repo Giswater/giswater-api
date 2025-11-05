@@ -3,6 +3,7 @@ basic=True
 mincut=True
 water_balance=True
 routing=True
+crm=True
 
 [database]
 host=localhost

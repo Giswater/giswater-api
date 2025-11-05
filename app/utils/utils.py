@@ -155,13 +155,17 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
         except Exception as e:
             # Rollback on error
             conn.rollback()
-            # TODO: get db version
+            db_version = None
+            if result and 'version' in result:
+                db_version = result['version']
             result = {
                 "status": "Failed",
                 "message": {"level": 3, "text": str(e)},
-                "version": {"db": "4.0.001", "api": app.version},
+                "version": {"api": app.version},
                 "body": {}
             }
+            if db_version:
+                result["version"]["db"] = db_version
             response_msg = str(e)
 
         if not result or result.get('status') == "Failed":
@@ -173,17 +177,7 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
 
         if result and "version" in result:
-            # TODO: ensure the database always returns the version as "version": {"db": "4.0.001"}
-            if type(result["version"]) is str and result["version"].startswith("{"):
-                result["version"] = json.loads(result["version"])
-
-            if "value" in result["version"]:
-                result["version"] = {"db": result["version"]["value"], "api": app.version}
-            elif "db" in result["version"]:
-                result["version"]["api"] = app.version
-            else:
-                # TODO: get db version
-                result["version"] = {"db": "4.0.001", "api": app.version}
+            result["version"] = {"db": result['version'], "api": app.version}
 
         return result
 
