@@ -9,17 +9,17 @@ from .config import Config
 
 class DatabaseManager:
     """Manages database connections for a specific client configuration."""
-    
+
     def __init__(self, config: Config):
         """
         Initialize database manager with a specific config.
-        
+
         Args:
             config: Config instance for this database
         """
         self.config = config
         self.connection_pool = None
-        
+
         # Get database settings from config
         self.host = config.get_str("database", "host")
         self.port = config.get_str("database", "port")
@@ -27,13 +27,13 @@ class DatabaseManager:
         self.user = config.get_str("database", "user")
         self.password = config.get_str("database", "password")
         self.default_schema = config.get_str("database", "schema")
-        
+
         # Database connection string
         self.database_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
-        
+
         # Initialize connection pool
         self.init_conn_pool()
-    
+
     def init_conn_pool(self):
         """Initialize the connection pool."""
         try:
@@ -46,12 +46,12 @@ class DatabaseManager:
         except Exception as e:
             print(f"Failed to initialize connection pool for {self.dbname}: {e}")
             self.connection_pool = None
-    
+
     @contextmanager
     def get_db(self):
         """
         Get a database connection from the pool.
-        
+
         Yields:
             psycopg2 connection or None if connection fails
         """
@@ -66,23 +66,23 @@ class DatabaseManager:
         if self.connection_pool is None:
             yield None
             return
-        
+
         conn = self.connection_pool.getconn()
         try:
             yield conn
         finally:
             self.connection_pool.putconn(conn)
-    
+
     def validate_schema(self, schema: str) -> bool:
         """
         Validate if a schema exists in the database.
-        
+
         Args:
             schema: Schema name to validate
-            
+
         Returns:
             True if schema exists, False otherwise
-            
+
         Raises:
             HTTPException: If database connection fails or query error occurs
         """
@@ -91,11 +91,15 @@ class DatabaseManager:
                 raise HTTPException(status_code=500, detail="Database connection failed")
             try:
                 with conn.cursor() as cursor:
-                    cursor.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (schema,))
+                    cursor.execute(
+                        "SELECT schema_name FROM information_schema.schemata "
+                        "WHERE schema_name = %s",
+                        (schema,)
+                    )
                     return cursor.fetchone() is not None
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
-    
+
     def close(self):
         """Close the connection pool."""
         if self.connection_pool:

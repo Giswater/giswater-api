@@ -32,9 +32,9 @@ async def get_swmm_file(
     current_user: OIDCUser = Depends(get_current_user()),
     networkScenario: str = Depends(get_network_scenario)
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Fetched SWMM file successfully",
         "networkScenario": networkScenario
@@ -47,9 +47,9 @@ async def set_swmm_file(
     current_user: OIDCUser = Depends(get_current_user()),
     networkScenario: str = Depends(get_network_scenario)
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "SWMM file attributes modified successfully",
         "networkScenario": networkScenario
@@ -67,9 +67,9 @@ async def set_node_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Node value modified successfully",
         "networkScenario": networkScenario,
@@ -88,9 +88,9 @@ async def set_link_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Link value modified successfully",
         "networkScenario": networkScenario,
@@ -109,9 +109,9 @@ async def set_pump_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Pump value modified successfully",
         "networkScenario": networkScenario,
@@ -130,9 +130,9 @@ async def set_overflow_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Overflow value modified successfully",
         "networkScenario": networkScenario,
@@ -151,9 +151,9 @@ async def set_swmm_result(
         description="SWMM simulation result data"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "SWMM result set successfully",
         "networkScenario": networkScenario,
@@ -172,9 +172,9 @@ async def set_solve_time(
         description="Time for the SWMM simulation to solve"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Solve time set successfully",
         "networkScenario": networkScenario,
@@ -193,9 +193,9 @@ async def set_control_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {
         "message": "Control value modified successfully",
         "networkScenario": networkScenario,

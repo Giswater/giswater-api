@@ -37,9 +37,9 @@ async def get_epa_file(
     current_user: OIDCUser = Depends(get_current_user()),
     networkScenario: str = Depends(get_network_scenario)
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Fetched EPA file successfully"}
 
 
@@ -49,9 +49,9 @@ async def set_epa_file(
     current_user: OIDCUser = Depends(get_current_user()),
     networkScenario: str = Depends(get_network_scenario)
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "EPA file attributes modified successfully"}
 
 
@@ -66,9 +66,9 @@ async def set_hydrant_reachability(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Hydrant reachability set successfully"}
 
 
@@ -83,9 +83,9 @@ async def set_reservoir_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Reservoir value updated successfully"}
 
 
@@ -100,9 +100,9 @@ async def set_link_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Link value updated successfully"}
 
 
@@ -117,9 +117,9 @@ async def set_valve_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Valve value modified successfully"}
 
 
@@ -134,9 +134,9 @@ async def set_tank_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Tank value modified successfully"}
 
 
@@ -151,9 +151,9 @@ async def set_pump_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Pump value modified successfully"}
 
 
@@ -168,9 +168,9 @@ async def set_junction_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Junction value modified successfully"}
 
 
@@ -185,9 +185,9 @@ async def set_pattern_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Pattern value modified successfully"}
 
 
@@ -202,9 +202,9 @@ async def set_controls_value(
         description="Update body"
     )
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Controls value modified successfully"}
 
 
@@ -214,9 +214,9 @@ async def set_solve_h(
     current_user: OIDCUser = Depends(get_current_user()),
     networkScenario: str = Depends(get_network_scenario)
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Pressure & flow simulation ran successfully"}
 
 
@@ -226,7 +226,7 @@ async def set_solve_q(
     current_user: OIDCUser = Depends(get_current_user()),
     networkScenario: str = Depends(get_network_scenario)
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Water quality simulation ran successfully"}

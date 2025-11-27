@@ -62,7 +62,15 @@ async def get_feature_changes(
         },
         cur_user=user_id
     )
-    result = execute_procedure(log, db_manager, "gw_fct_featurechanges", body, schema=schema, api_version=request.app.version, user=user_id)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_featurechanges",
+        body,
+        schema=schema,
+        api_version=request.app.version,
+        user=user_id
+    )
     if not result:
         return {
             "status": "Failed",
@@ -103,10 +111,18 @@ async def get_info_from_coordinates(
                 "v_ext_streetaxis", "v_ext_plot"
             ],
             "coordinates": coordinates_dict
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_getinfofromcoordinates", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_getinfofromcoordinates",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -143,10 +159,18 @@ async def get_selectors(
     body = create_body_dict(
         form={"currentTab": currentTab},
         feature={},
-        extras={"selectorType": selectorType, "filterText": filterText}
+        extras={"selectorType": selectorType, "filterText": filterText},
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_getselectors", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_getselectors",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -177,8 +201,16 @@ async def get_search(
     body = create_body_dict(
         form={},
         feature={},
-        extras={"parameters": parameters}
+        extras={"parameters": parameters},
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_getsearch", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_getsearch",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result

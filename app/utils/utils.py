@@ -10,7 +10,7 @@ import os
 import logging
 import json
 
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal
 from datetime import date
 from fastapi import FastAPI
 
@@ -26,7 +26,7 @@ mail = None
 def load_plugins(app: FastAPI):
     """
     Load plugins from the plugins directory for a specific app instance.
-    
+
     Args:
         app: FastAPI app instance to register plugins to
     """
@@ -47,10 +47,18 @@ def load_plugins(app: FastAPI):
             print(f"Error loading plugin {plugin}: {e}")
 
 
-def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}, cur_user="postgres") -> str:
+def create_body_dict(
+    project_epsg=None,
+    client_extras={},
+    form={},
+    feature={},
+    filter_fields={},
+    extras={},
+    cur_user: str | None = "anonymous"
+) -> str:
     """
     Create request body dictionary for database functions.
-    
+
     Args:
         project_epsg: Project EPSG code
         client_extras: Extra client parameters
@@ -59,7 +67,7 @@ def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, f
         filter_fields: Filter fields
         extras: Extra data
         cur_user: Current user (from JWT or config)
-        
+
     Returns:
         Formatted JSON string
     """
@@ -123,10 +131,20 @@ def create_response(db_result=None, form_xml=None, status=None, message=None):
     return response
 
 
-def execute_procedure(log, db_manager, function_name, parameters=None, set_role=True, needs_write=False, schema=None, user="postgres", api_version="0.4.0"):
+def execute_procedure(
+    log,
+    db_manager,
+    function_name,
+    parameters=None,
+    set_role=True,
+    needs_write=False,
+    schema=None,
+    user: str | None = "anonymous",
+    api_version="0.4.0"
+):
     """
     Manage execution of database function.
-    
+
     Args:
         log: Logger instance
         db_manager: DatabaseManager instance from request.app.state.db_manager
@@ -136,7 +154,7 @@ def execute_procedure(log, db_manager, function_name, parameters=None, set_role=
         schema: Database schema to use (defaults to db_manager's default_schema)
         user: Current user (from JWT or config)
         api_version: API version string
-        
+
     Returns:
         Response of the function executed (json)
     """

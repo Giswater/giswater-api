@@ -7,7 +7,7 @@ class Config:
     def __init__(self, config_file: str):
         """
         Initialize config from a specific config file.
-        
+
         Args:
             config_file: Path to the config file
         """
@@ -38,8 +38,9 @@ class Config:
 
 
 # Legacy support: default global config for backward compatibility during migration
-# This will be deprecated once all modules use the Config class
+# TODO: This will be deprecated once all modules use the Config class
 _default_config = None
+
 
 def get_default_config() -> Config:
     """Get the default global config instance (legacy support)."""

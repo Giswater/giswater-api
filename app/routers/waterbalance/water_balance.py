@@ -31,7 +31,7 @@ async def list_dmas(
     db_manager = request.app.state.db_manager
     user_id = current_user.preferred_username
 
-    body = create_body_dict()
+    body = create_body_dict(cur_user=user_id)
 
     result = execute_procedure(log, db_manager, "gw_fct_getdmas", body, schema=schema, api_version=request.app.version)
     return result
@@ -75,9 +75,16 @@ async def get_dma_hydrometers(
     user_id = current_user.preferred_username
 
     parameters = {"dma_id": dma_id}
-    body = create_body_dict(extras={"parameters": parameters})
+    body = create_body_dict(extras={"parameters": parameters}, cur_user=user_id)
 
-    result = execute_procedure(log, db_manager, "gw_fct_getdmahydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_getdmahydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -102,7 +109,7 @@ async def get_dma_parameters(
         examples=[1]
     ),
 ):
-    log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    log = create_log(__name__)  # noqa: F841
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
     return {"message": "Fetched DMA parameters successfully"}

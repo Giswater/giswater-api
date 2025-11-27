@@ -137,8 +137,8 @@ async def get_object_optimal_path_order(
     ),
 ):
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
+    db_manager = request.app.state.db_manager  # noqa: F841
+    user_id = current_user.preferred_username  # noqa: F841
 
     try:
         if finalPoint is None:
@@ -297,10 +297,18 @@ async def get_object_parameter_order(
             "mapzoneId": mapzoneId,
             "parameter": parameter,
             "order": order
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_getfeatures", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_getfeatures",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
 
     # Get the network of points
     # network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)

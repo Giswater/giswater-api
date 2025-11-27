@@ -52,4 +52,3 @@ def get_current_user():
             preferred_username="anonymous"
         )
     return anonymous_user
-

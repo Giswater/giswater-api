@@ -52,10 +52,18 @@ async def insert_hydrometers(
         extras={
             "action": "INSERT",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_set_hydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_set_hydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -89,10 +97,18 @@ async def update_hydrometer(
         extras={
             "action": "UPDATE",
             "hydrometers": [hydrometer_dict]
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_set_hydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_set_hydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -123,10 +139,18 @@ async def update_hydrometers_bulk(
         extras={
             "action": "UPDATE",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_set_hydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_set_hydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -151,10 +175,18 @@ async def delete_hydrometer(
         extras={
             "action": "DELETE",
             "hydrometers": [{"code": code}]
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_set_hydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_set_hydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -185,10 +217,18 @@ async def delete_hydrometers_bulk(
         extras={
             "action": "DELETE",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_set_hydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_set_hydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result
 
 
@@ -223,8 +263,16 @@ async def replace_all_hydrometers(
         extras={
             "action": "REPLACE",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=user_id
     )
 
-    result = execute_procedure(log, db_manager, "gw_fct_set_hydrometers", body, schema=schema, api_version=request.app.version)
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_set_hydrometers",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
     return result

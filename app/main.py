@@ -31,7 +31,7 @@ app = FastAPI(
     version=VERSION,
     title=TITLE,
     description=DESCRIPTION,
-    root_path=f"/api/v1"
+    root_path="/api/v1"
 )
 
 # Add Keycloak Swagger config if enabled
