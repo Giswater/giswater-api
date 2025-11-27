@@ -1,4 +1,4 @@
-name: 🧪 FastAPI Tests
+name: 🐍 Flake8 Linting
 
 on:
   push:
@@ -15,7 +15,7 @@ on:
       - 'release/**'
 
 jobs:
-  fastapi-test:
+  lint-flake8:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install flake8
 
-      - name: Run tests with pytest
-        run: pytest -v
+      - name: Run flake8
+        run: flake8 .
