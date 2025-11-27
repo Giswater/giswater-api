@@ -4,7 +4,7 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Body, Query, Depends, Request, Path
+from fastapi import APIRouter, Body, Depends, Request, Path
 from fastapi_keycloak import OIDCUser
 from typing import Optional
 
