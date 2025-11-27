@@ -4,7 +4,7 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Body, Query, Depends, Request
+from fastapi import APIRouter, Body, Query, Depends, Request, Path
 from fastapi_keycloak import OIDCUser
 from typing import Optional
 
@@ -18,13 +18,13 @@ router = APIRouter(prefix="/om", tags=["OM - Mincut"])
 
 
 @router.post(
-    "/newmincut",
+    "/mincuts",
     description=(
         "This action should be used when an anomaly is detected in field that wasn't planified.\n"
         "In this case there is no mincut created, therefore a new one will be created."
     )
 )
-async def new_mincut(
+async def create_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
@@ -69,6 +69,7 @@ async def new_mincut(
         schema=schema,
         api_version=request.app.version
     )
+    # TODO: change response to a pydantic model
     if not result:
         return create_api_response("Error creating mincut", "Failed")
 
@@ -79,14 +80,14 @@ async def new_mincut(
 
 
 @router.patch(
-    "/updatemincut",
+    "/mincuts/{mincut_id}",
     description="This action should be used when a mincut is already created and it needs to be updated."
 )
 async def update_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     user: str = Body(..., title="User", description="User who is doing the action"),
@@ -107,9 +108,9 @@ async def update_mincut(
 
     body = create_body_dict(
         client_extras={"tiled": True},
-        feature={"featureType": "", "tableName": "om_mincut", "id": mincutId},
+        feature={"featureType": "", "tableName": "om_mincut", "id": mincut_id},
         extras={"action": "mincutAccept", "mincutClass": 1, "status": "check",
-                "mincutId": mincutId, "usePsectors": "False",
+                "mincutId": mincut_id, "usePsectors": "False",
                 "fields": {
                     **plan_dict,
                     **exec_dict
@@ -126,6 +127,7 @@ async def update_mincut(
         schema=schema,
         api_version=request.app.version
     )
+    # TODO: change response to a pydantic model
     if not result:
         return create_api_response("Error updating mincut", "Failed")
 
@@ -135,8 +137,8 @@ async def update_mincut(
     return create_api_response("Updated mincut successfully", "Accepted", result=result)
 
 
-@router.put(
-    "/valveunaccess",
+@router.post(
+    "/mincuts/{mincut_id}/valve-unaccess",
     description=(
         "Recalculates the mincut when a defined one is invalid due to an inaccessible or inoperative valve. "
         "The system excludes the problematic valve and adjusts the cut polygon based on accessible valves."
@@ -146,7 +148,7 @@ async def valve_unaccess(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
     nodeId: int = Body(
         ...,
         title="Node ID",
@@ -161,7 +163,7 @@ async def valve_unaccess(
 
     body = create_body_dict(
         client_extras={"tiled": True},
-        extras={"action": "mincutValveUnaccess", "nodeId": nodeId, "mincutId": mincutId, "usePsectors": "False"},
+        extras={"action": "mincutValveUnaccess", "nodeId": nodeId, "mincutId": mincut_id, "usePsectors": "False"},
         cur_user=user_id
     )
 
@@ -173,6 +175,7 @@ async def valve_unaccess(
         schema=schema,
         api_version=request.app.version
     )
+    # TODO: change response to a pydantic model
     if not result:
         return create_api_response("Error recalculating mincut", "Failed")
 
@@ -183,8 +186,8 @@ async def valve_unaccess(
     return response
 
 
-@router.put(
-    "/startmincut",
+@router.post(
+    "/mincuts/{mincut_id}/start",
     description=(
         "This action should be used when the mincut is ready to be executed. "
         "The system will start the mincut and the water supply will be interrupted on the affected zone."
@@ -194,17 +197,18 @@ async def start_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to start", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to start", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     db_manager = request.app.state.db_manager  # noqa: F841
     user_id = current_user.preferred_username  # noqa: F841
+    # TODO: Add call to database funtion
     return create_api_response("Mincut started successfully", "Accepted")
 
 
-@router.put(
-    "/endmincut",
+@router.post(
+    "/mincuts/{mincut_id}/end",
     description=(
         "This action should be used when the mincut has been executed and the water supply is restored. "
         "The system will end the mincut and the affected zone will be restored."
@@ -214,17 +218,18 @@ async def end_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     db_manager = request.app.state.db_manager  # noqa: F841
     user_id = current_user.preferred_username  # noqa: F841
+    # TODO: Add call to database funtion
     return create_api_response("Mincut ended successfully", "Accepted")
 
 
-@router.put(
-    "/repairmincut",
+@router.post(
+    "/mincuts/{mincut_id}/repair",
     description=(
         "Accepts the mincut but performs the repair without interrupting the water supply. "
         "A silent mincut is generated, allowing work on the network without affecting users."
@@ -234,17 +239,18 @@ async def repair_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to repair", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to repair", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     db_manager = request.app.state.db_manager  # noqa: F841
     user_id = current_user.preferred_username  # noqa: F841
+    # TODO: Add call to database funtion
     return create_api_response("Mincut repaired successfully", "Accepted")
 
 
-@router.put(
-    "/cancelmincut",
+@router.post(
+    "/mincuts/{mincut_id}/cancel",
     description=(
         "Cancels the mincut when the repair is not feasible, "
         "nullifying the planned cut while keeping the issue recorded for future resolution. "
@@ -255,27 +261,29 @@ async def cancel_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     db_manager = request.app.state.db_manager  # noqa: F841
     user_id = current_user.preferred_username  # noqa: F841
+    # TODO: Add call to database funtion
     return create_api_response("Mincut canceled successfully", "Accepted")
 
 
 @router.delete(
-    "/deletemincut",
+    "/mincuts/{mincut_id}",
     description="Deletes the mincut from the system. This action should be used when the mincut is no longer needed."
 )
 async def delete_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
-    mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     db_manager = request.app.state.db_manager  # noqa: F841
     user_id = current_user.preferred_username  # noqa: F841
+    # TODO: Add call to database funtion
     return create_api_response("Mincut deleted successfully", "Accepted")
