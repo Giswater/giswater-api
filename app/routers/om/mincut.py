@@ -4,13 +4,15 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Body, Query, Depends
+from fastapi import APIRouter, Body, Query, Depends, Request
+from fastapi_keycloak import OIDCUser
 from typing import Optional
 
 from ...models.util_models import CoordinatesModel, APIResponse
 from ...models.om.mincut_models import MincutPlanParams, MincutExecParams, ValveUnaccessResponse
 from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
 from ...dependencies import get_schema
+from ...keycloak import get_current_user
 
 router = APIRouter(prefix="/om", tags=["OM - Mincut"])
 
@@ -23,6 +25,8 @@ router = APIRouter(prefix="/om", tags=["OM - Mincut"])
     )
 )
 async def new_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     coordinates: CoordinatesModel = Body(..., title="Coordinates", description="Coordinates on which the mincut will be created"),  # noqa: E501
     workcatId: int = Body(..., title="Workcat ID", description="ID of the work associated to the anomaly", examples=[1]),  # noqa: E501
@@ -30,6 +34,8 @@ async def new_mincut(
     user: str = Body(..., title="User", description="User who is doing the action"),
 ) -> APIResponse:
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     coordinates_dict = coordinates.model_dump()
     if plan:
@@ -45,7 +51,7 @@ async def new_mincut(
         extras={"action": "mincutNetwork", "usePsectors": "False", "coordinates": coordinates_dict, "status": "check"}
     )
 
-    result = execute_procedure(log, "gw_fct_setmincut", body, schema=schema)
+    result = execute_procedure(log, db_manager, "gw_fct_setmincut", body, schema=schema, api_version=request.app.version)
     if not result:
         return create_api_response("Error creating mincut", "Failed")
 
@@ -60,6 +66,8 @@ async def new_mincut(
     description="This action should be used when a mincut is already created and it needs to be updated."
 )
 async def update_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
@@ -67,6 +75,8 @@ async def update_mincut(
     user: str = Body(..., title="User", description="User who is doing the action"),
 ) -> APIResponse:
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     if plan:
         plan_dict = plan.model_dump(exclude_unset=True)
@@ -90,7 +100,7 @@ async def update_mincut(
                 }
     )
 
-    result = execute_procedure(log, "gw_fct_setmincut", body, schema=schema)
+    result = execute_procedure(log, db_manager, "gw_fct_setmincut", body, schema=schema, api_version=request.app.version)
     if not result:
         return create_api_response("Error updating mincut", "Failed")
 
@@ -108,19 +118,23 @@ async def update_mincut(
     )
 )
 async def valve_unaccess(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
     nodeId: int = Body(..., title="Node ID", description="ID of the node where the unaccessible valve is located", examples=[1114]),  # noqa: E501
     user: str = Body(..., title="User", description="User who is doing the action"),
 ) -> ValveUnaccessResponse | APIResponse:
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     body = create_body_dict(
         client_extras={"tiled": True},
         extras={"action": "mincutValveUnaccess", "nodeId": nodeId, "mincutId": mincutId, "usePsectors": "False"}
     )
 
-    result = execute_procedure(log, "gw_fct_setmincut", body, schema=schema)
+    result = execute_procedure(log, db_manager, "gw_fct_setmincut", body, schema=schema, api_version=request.app.version)
     if not result:
         return create_api_response("Error recalculating mincut", "Failed")
 
@@ -139,10 +153,15 @@ async def valve_unaccess(
     )
 )
 async def start_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to start", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
     return create_api_response("Mincut started successfully", "Accepted")
 
 
@@ -154,10 +173,15 @@ async def start_mincut(
     )
 )
 async def end_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
     return create_api_response("Mincut ended successfully", "Accepted")
 
 
@@ -169,10 +193,15 @@ async def end_mincut(
     )
 )
 async def repair_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to repair", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
     return create_api_response("Mincut repaired successfully", "Accepted")
 
 
@@ -185,10 +214,15 @@ async def repair_mincut(
     )
 )
 async def cancel_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
     return create_api_response("Mincut canceled successfully", "Accepted")
 
 
@@ -197,8 +231,13 @@ async def cancel_mincut(
     description="Deletes the mincut from the system. This action should be used when the mincut is no longer needed."
 )
 async def delete_mincut(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincutId: int = Query(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
     return create_api_response("Mincut deleted successfully", "Accepted")

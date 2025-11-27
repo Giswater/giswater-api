@@ -10,23 +10,26 @@ import os
 import logging
 import json
 
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 from datetime import date
 from fastapi import FastAPI
 
-from ..database import DEFAULT_SCHEMA, get_db, user, validate_schema
 from ..models.util_models import APIResponse
 
 
-app: FastAPI = None
+# Legacy global variables - deprecated, use request.app.state instead
 api = None
 tenant_handler = None
 mail = None
 
 
-def load_plugins():
-    """ Load plugins from the plugins directory """
-    # from . import config
+def load_plugins(app: FastAPI):
+    """
+    Load plugins from the plugins directory for a specific app instance.
+    
+    Args:
+        app: FastAPI app instance to register plugins to
+    """
     from importlib import import_module
 
     plugins_dir = "plugins"
@@ -44,14 +47,31 @@ def load_plugins():
             print(f"Error loading plugin {plugin}: {e}")
 
 
-def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}) -> str:
+def create_body_dict(project_epsg=None, client_extras={}, form={}, feature={}, filter_fields={}, extras={}, cur_user="postgres") -> str:
+    """
+    Create request body dictionary for database functions.
+    
+    Args:
+        project_epsg: Project EPSG code
+        client_extras: Extra client parameters
+        form: Form data
+        feature: Feature data
+        filter_fields: Filter fields
+        extras: Extra data
+        cur_user: Current user (from JWT or config)
+        
+    Returns:
+        Formatted JSON string
+    """
     info_type = 1
     lang = "es_ES"  # TODO: get from app lang
+    if cur_user == 'anonymous':
+        cur_user = None
 
     client = {
         "device": 5,  # TODO: get from app device
         "lang": lang,
-        "cur_user": user,
+        "cur_user": cur_user,
         **client_extras
     }
     if info_type is not None:
@@ -103,25 +123,33 @@ def create_response(db_result=None, form_xml=None, status=None, message=None):
     return response
 
 
-def execute_procedure(log, function_name, parameters=None, set_role=True, needs_write=False, schema=None):
-    """ Manage execution database function
-    :param function_name: Name of function to call (text)
-    :param parameters: Parameters for function (json) or (query parameters)
-    :param log_sql: Show query in qgis log (bool)
-    :param set_role: Set role in database with the current user
-    :param schema: Database schema to use (defaults to config schema)
-    :return: Response of the function executed (json)
+def execute_procedure(log, db_manager, function_name, parameters=None, set_role=True, needs_write=False, schema=None, user="postgres", api_version="0.4.0"):
+    """
+    Manage execution of database function.
+    
+    Args:
+        log: Logger instance
+        db_manager: DatabaseManager instance from request.app.state.db_manager
+        function_name: Name of function to call
+        parameters: Parameters for function (json) or (query parameters)
+        set_role: Set role in database with the current user
+        schema: Database schema to use (defaults to db_manager's default_schema)
+        user: Current user (from JWT or config)
+        api_version: API version string
+        
+    Returns:
+        Response of the function executed (json)
     """
 
     # Manage schema_name and parameters
-    schema_name = schema or DEFAULT_SCHEMA
+    schema_name = schema or db_manager.default_schema
     if schema_name is None:
         log.warning(" Schema is None")
         remove_handlers()
         return create_response(status=False, message="Schema not found")
 
     # Validate schema exists
-    if not validate_schema(schema_name):
+    if not db_manager.validate_schema(schema_name):
         log.warning(f"Schema '{schema_name}' not found")
         remove_handlers()
         return create_response(status=False, message=f"Schema '{schema_name}' not found")
@@ -134,17 +162,20 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
     execution_msg = sql
     response_msg = ""
 
-    with get_db() as conn:
+    with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
             remove_handlers()
             return create_response(status=False, message="No connection to database")
         result = dict()
         print(f"SERVER EXECUTION: {sql}\n")
-        identity = user
+        if user == 'anonymous':
+            identity = None
+        else:
+            identity = user
         try:
             with conn.cursor() as cursor:
-                if set_role:
+                if set_role and identity:
                     cursor.execute(f"SET ROLE '{identity}';")
                 cursor.execute(sql)
                 result = cursor.fetchone()
@@ -161,7 +192,7 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             result = {
                 "status": "Failed",
                 "message": {"level": 3, "text": str(e)},
-                "version": {"api": app.version},
+                "version": {"api": api_version},
                 "body": {}
             }
             if db_version:
@@ -177,7 +208,7 @@ def execute_procedure(log, function_name, parameters=None, set_role=True, needs_
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
 
         if result and "version" in result:
-            result["version"] = {"db": result['version'], "api": app.version}
+            result["version"] = {"db": result['version'], "api": api_version}
 
         return result
 

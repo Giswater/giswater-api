@@ -4,7 +4,8 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Query, Depends, HTTPException, Request
+from fastapi_keycloak import OIDCUser
 from typing import Literal, Optional
 import json
 from pydantic import ValidationError
@@ -16,6 +17,7 @@ from ...utils.routing_utils import (
 )
 from ...utils.utils import create_body_dict, execute_procedure, create_log
 from ...dependencies import get_schema
+from ...keycloak import get_current_user
 from ...models.routing.routing_models import (
     # GetObjectHydraulicOrderResponse,
     OptimalPathParams,
@@ -71,6 +73,8 @@ router = APIRouter(prefix="/routing", tags=["OM - Routing"])
     response_model_exclude_unset=True
 )
 async def get_object_optimal_path_order(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT',
                         'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT',
@@ -133,6 +137,8 @@ async def get_object_optimal_path_order(
     ),
 ):
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     try:
         if finalPoint is None:
@@ -240,6 +246,8 @@ async def get_object_optimal_path_order(
     response_model_exclude_unset=True
 )
 async def get_object_parameter_order(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT',
                         'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT',
@@ -274,6 +282,8 @@ async def get_object_parameter_order(
     ),
 ):
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     mapzone_type = mapzoneType
     if mapzone_type == "EXPLOITATION":
@@ -290,7 +300,7 @@ async def get_object_parameter_order(
         }
     )
 
-    result = execute_procedure(log, "gw_fct_getfeatures", body, schema=schema)
+    result = execute_procedure(log, db_manager, "gw_fct_getfeatures", body, schema=schema, api_version=request.app.version)
 
     # Get the network of points
     # network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)

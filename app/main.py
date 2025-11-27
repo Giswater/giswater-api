@@ -5,12 +5,13 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 import os
-from . import config
-from .utils import utils
-
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+
+from .database import DatabaseManager
+from .keycloak import idp, config
+from .utils import utils
 from .routers.basic import basic
 from .routers.om import mincut
 from .routers.waterbalance import water_balance
@@ -20,19 +21,31 @@ from .routers.crm import crm
 
 TITLE = "Giswater API"
 VERSION = "0.4.0"
-DESCRIPTION = "API for interacting with a Giswater database as well as working with hydraulic models."
+DESCRIPTION = "API for interacting with a Giswater database."
 
+# Database manager
+db_manager = DatabaseManager(config)
+
+# Create FastAPI app
 app = FastAPI(
     version=VERSION,
     title=TITLE,
     description=DESCRIPTION,
-    root_path="/api"
+    root_path=f"/api/v1"
 )
+
+# Add Keycloak Swagger config if enabled
+if idp:
+    idp.add_swagger_config(app)
+
+# Store in app.state for access in routes
+app.state.config = config
+app.state.db_manager = db_manager
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# Include routers
+# Include routers conditionally based on config
 if config.get_bool("api", "basic"):
     app.include_router(basic.router)
 if config.get_bool("api", "mincut"):
@@ -49,17 +62,38 @@ if config.get_bool("hydraulic_engine", "enabled"):
     if config.get_bool("hydraulic_engine", "ws"):
         app.include_router(hydraulic_engine_ws.router)
 
-utils.app = app
-utils.load_plugins()
+# Load plugins
+utils.load_plugins(app)
 
 
 @app.get("/")
 async def root():
-    return {"status": "Accepted", "message": f"{TITLE} is running.", "version": VERSION, "description": DESCRIPTION}
+    """Root endpoint."""
+    return {
+        "status": "Accepted",
+        "message": f"{TITLE} is running.",
+        "version": VERSION,
+        "description": DESCRIPTION
+    }
 
 
-# Favicon endpoint
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    try:
+        with db_manager.get_db() as conn:
+            healthy = conn is not None
+    except Exception:
+        healthy = False
+
+    return {
+        "status": "healthy" if healthy else "degraded",
+        "timestamp": __import__('datetime').datetime.now().isoformat()
+    }
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
+    """Favicon endpoint."""
     favicon_path = os.path.join("app", "static", "favicon.ico")
     return FileResponse(favicon_path)

@@ -4,12 +4,14 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, Request
+from fastapi_keycloak import OIDCUser
 from typing import Union
 from ...utils.utils import create_body_dict, execute_procedure, create_log
 from ...models.util_models import GwErrorResponse
 from ...models.om.waterbalance_models import ListDmasResponse, GetDmaHydrometersResponse, GetDmaParametersResponse
 from ...dependencies import get_schema
+from ...keycloak import get_current_user
 
 router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
 
@@ -21,13 +23,17 @@ router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
     response_model_exclude_unset=True
 )
 async def list_dmas(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
 ):
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     body = create_body_dict()
 
-    result = execute_procedure(log, "gw_fct_getdmas", body, schema=schema)
+    result = execute_procedure(log, db_manager, "gw_fct_getdmas", body, schema=schema, api_version=request.app.version)
     return result
 
 
@@ -41,6 +47,8 @@ async def list_dmas(
     response_model_exclude_unset=True
 )
 async def get_dma_hydrometers(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     dma_id: int = Query(
         ...,
@@ -63,11 +71,13 @@ async def get_dma_hydrometers(
     # ),
 ):
     log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
 
     parameters = {"dma_id": dma_id}
     body = create_body_dict(extras={"parameters": parameters})
 
-    result = execute_procedure(log, "gw_fct_getdmahydrometers", body, schema=schema)
+    result = execute_procedure(log, db_manager, "gw_fct_getdmahydrometers", body, schema=schema, api_version=request.app.version)
     return result
 
 
@@ -82,6 +92,8 @@ async def get_dma_hydrometers(
     response_model_exclude_unset=True
 )
 async def get_dma_parameters(
+    request: Request,
+    current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     dma_id: int = Query(
         ...,
@@ -90,4 +102,7 @@ async def get_dma_parameters(
         examples=[1]
     ),
 ):
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
     return {"message": "Fetched DMA parameters successfully"}
