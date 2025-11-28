@@ -4,13 +4,11 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends, Request
-from fastapi_keycloak import OIDCUser
+from fastapi import APIRouter, Query
 from datetime import date
 from typing import Literal, Union, Optional
 from ...utils.utils import create_body_dict, execute_procedure, create_log
-from ...dependencies import get_schema
-from ...keycloak import get_current_user
+from ...dependencies import CommonsDep
 from ...models.basic.basic_models import (
     GetInfoFromCoordinatesResponse,
     GetSelectorsResponse,
@@ -29,9 +27,7 @@ router = APIRouter(prefix="/basic", tags=["Basic"])
     response_model_exclude_unset=True
 )
 async def get_feature_changes(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
         ...,
         alias="featureType",
@@ -51,31 +47,30 @@ async def get_feature_changes(
     ),
 ):
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     body = create_body_dict(
+        device=commons["device"],
         feature={"feature_type": feature_type},
         extras={
             "action": action,
             "lastFeeding": lastFeeding.strftime("%Y-%m-%d")
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_featurechanges",
         body,
-        schema=schema,
-        api_version=request.app.version,
-        user=user_id
+        schema=commons["schema"],
+        api_version=commons["api_version"],
+        user=commons["user_id"]
     )
     if not result:
         return {
             "status": "Failed",
             "message": {"level": 4, "text": "No feature changes found"},
-            "version": {"api": request.app.version},
+            "version": {"api": commons["api_version"]},
             "body": {
                 "feature": []
             }
@@ -90,18 +85,15 @@ async def get_feature_changes(
     response_model_exclude_unset=True
 )
 async def get_info_from_coordinates(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     coordinates: CoordinatesModel = Query(..., description="Coordinates of the info")
 ):
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     coordinates_dict = coordinates.model_dump()
 
     body = create_body_dict(
+        device=commons["device"],
         form={"editable": "False"},
         feature={},
         extras={
@@ -112,16 +104,16 @@ async def get_info_from_coordinates(
             ],
             "coordinates": coordinates_dict
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_getinfofromcoordinates",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -133,9 +125,7 @@ async def get_info_from_coordinates(
     response_model_exclude_unset=True
 )
 async def get_selectors(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     selectorType: Literal["selector_basic", "selector_mincut", "selector_netscenario"] = Query(
         "selector_basic",
         title="Selector type",
@@ -153,23 +143,22 @@ async def get_selectors(
     )
 ):
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     body = create_body_dict(
+        device=commons["device"],
         form={"currentTab": currentTab},
         feature={},
         extras={"selectorType": selectorType, "filterText": filterText},
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_getselectors",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -181,9 +170,7 @@ async def get_selectors(
     response_model_exclude_unset=True
 )
 async def get_search(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     searchText: str = Query(
         "",
         title="Search text",
@@ -191,26 +178,25 @@ async def get_search(
     )
 ):
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     parameters = {
         "searchText": searchText
     }
 
     body = create_body_dict(
+        device=commons["device"],
         form={},
         feature={},
         extras={"parameters": parameters},
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_getsearch",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result

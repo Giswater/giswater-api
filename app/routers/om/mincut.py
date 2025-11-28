@@ -4,8 +4,7 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Body, Depends, Request, Path
-from fastapi_keycloak import OIDCUser
+from fastapi import APIRouter, Body, Path
 from typing import Optional
 
 from ...models.util_models import CoordinatesModel, APIResponse
@@ -16,8 +15,7 @@ from ...models.om.mincut_models import (
     MincutStartResponse,
 )
 from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
-from ...dependencies import get_schema
-from ...keycloak import get_current_user
+from ...dependencies import CommonsDep
 
 router = APIRouter(prefix="/om", tags=["OM - Mincut"])
 
@@ -30,9 +28,7 @@ router = APIRouter(prefix="/om", tags=["OM - Mincut"])
     )
 )
 async def create_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     coordinates: CoordinatesModel = Body(
         ...,
         title="Coordinates",
@@ -48,8 +44,6 @@ async def create_mincut(
     user: str = Body(..., title="User", description="User who is doing the action"),
 ) -> APIResponse:
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     coordinates_dict = coordinates.model_dump()
     if plan:
@@ -61,18 +55,19 @@ async def create_mincut(
     # TODO: Add workcatId to the body
     # TODO: Use the plan fields
     body = create_body_dict(
+        device=commons["device"],
         client_extras={"tiled": True},
         extras={"action": "mincutNetwork", "usePsectors": "False", "coordinates": coordinates_dict, "status": "check"},
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_setmincut",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     # TODO: change response to a pydantic model
     if not result:
@@ -89,17 +84,13 @@ async def create_mincut(
     description="This action should be used when a mincut is already created and it needs to be updated."
 )
 async def update_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ) -> APIResponse:
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     if plan:
         plan_dict = plan.model_dump(exclude_unset=True)
@@ -112,6 +103,7 @@ async def update_mincut(
         exec_dict = {}
 
     body = create_body_dict(
+        device=commons["device"],
         client_extras={"tiled": True},
         feature={"featureType": "", "tableName": "om_mincut", "id": mincut_id},
         extras={"action": "mincutAccept", "mincutClass": 1, "status": "check",
@@ -121,16 +113,16 @@ async def update_mincut(
                     **exec_dict
                     }
                 },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_setmincut",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     # TODO: change response to a pydantic model
     if not result:
@@ -150,9 +142,7 @@ async def update_mincut(
     )
 )
 async def valve_unaccess(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
     nodeId: int = Body(
         ...,
@@ -163,22 +153,21 @@ async def valve_unaccess(
     user: str = Body(..., title="User", description="User who is doing the action"),
 ) -> ValveUnaccessResponse | APIResponse:
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     body = create_body_dict(
+        device=commons["device"],
         client_extras={"tiled": True},
         extras={"action": "mincutValveUnaccess", "nodeId": nodeId, "mincutId": mincut_id, "usePsectors": "False"},
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_setmincut",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     # TODO: change response to a pydantic model
     if not result:
@@ -201,21 +190,43 @@ async def valve_unaccess(
     response_model_exclude_unset=True
 )
 async def start_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
-    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to start", examples=[1]),
+    commons: CommonsDep,
+    mincut_id: int = Path(
+        ...,
+        title="Mincut ID",
+        description="ID of the mincut to start",
+        examples=[1]
+    ),
     # TODO: check if these parameters are needed/wanted
-    # arc_id: int = Body(..., title="Arc ID", description="ID of the arc to start the mincut", examples=[113875]),
-    # mincut_type: Literal["Demo", "Test", "Real"] = Body(..., title="Mincut Type", description="Type of the mincut", examples=["Demo"]),
-    # forecast_start: str = Body(..., title="Forecast Start", description="Expected start of the mincut", examples=["2025-11-27 00:00:00"]),
-    # forecast_end: str = Body(..., title="Forecast End", description="Expected end of the mincut", examples=["2025-11-27 00:00:00"]),
+    # arc_id: int = Body(
+    #     ...,
+    #     title="Arc ID",
+    #     description="ID of the arc to start the mincut",
+    #     examples=[113875]
+    # ),
+    # mincut_type: Literal["Demo", "Test", "Real"] = Body(
+    #     ...,
+    #     title="Mincut Type",
+    #     description="Type of the mincut",
+    #     examples=["Demo"]
+    # ),
+    # forecast_start: str = Body(
+    #     ...,
+    #     title="Forecast Start",
+    #     description="Expected start of the mincut",
+    #     examples=["2025-11-27 00:00:00"]
+    # ),
+    # forecast_end: str = Body(
+    #     ...,
+    #     title="Forecast End",
+    #     description="Expected end of the mincut",
+    #     examples=["2025-11-27 00:00:00"]
+    # ),
 ):
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "mincutStart",
             "usePsectors": "False",
@@ -225,16 +236,16 @@ async def start_mincut(
             # "dialogForecastStart": forecast_start,
             # "dialogForecastEnd": forecast_end
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_setmincut",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -247,15 +258,11 @@ async def start_mincut(
     )
 )
 async def end_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
-    db_manager = request.app.state.db_manager  # noqa: F841
-    user_id = current_user.preferred_username  # noqa: F841
     # TODO: Add call to database funtion
     return create_api_response("Mincut ended successfully", "Accepted")
 
@@ -268,15 +275,11 @@ async def end_mincut(
     )
 )
 async def repair_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to repair", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
-    db_manager = request.app.state.db_manager  # noqa: F841
-    user_id = current_user.preferred_username  # noqa: F841
     # TODO: Add call to database funtion
     return create_api_response("Mincut repaired successfully", "Accepted")
 
@@ -290,15 +293,11 @@ async def repair_mincut(
     )
 )
 async def cancel_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
-    db_manager = request.app.state.db_manager  # noqa: F841
-    user_id = current_user.preferred_username  # noqa: F841
     # TODO: Add call to database funtion
     return create_api_response("Mincut canceled successfully", "Accepted")
 
@@ -308,14 +307,10 @@ async def cancel_mincut(
     description="Deletes the mincut from the system. This action should be used when the mincut is no longer needed."
 )
 async def delete_mincut(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
     user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
-    db_manager = request.app.state.db_manager  # noqa: F841
-    user_id = current_user.preferred_username  # noqa: F841
     # TODO: Add call to database funtion
     return create_api_response("Mincut deleted successfully", "Accepted")

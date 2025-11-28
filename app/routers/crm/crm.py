@@ -5,8 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Depends, Body, Request
-from fastapi_keycloak import OIDCUser
+from fastapi import APIRouter, Body
 from typing import Union, List
 from ...utils.utils import create_body_dict, execute_procedure, create_log
 from ...models.util_models import GwErrorResponse
@@ -15,8 +14,7 @@ from ...models.crm.crm_models import (
     HydrometerUpdate,
     HydrometerResponse
 )
-from ...dependencies import get_schema
-from ...keycloak import get_current_user
+from ...dependencies import CommonsDep
 
 router = APIRouter(prefix="/crm", tags=["CRM"])
 
@@ -28,9 +26,7 @@ router = APIRouter(prefix="/crm", tags=["CRM"])
     response_model_exclude_unset=True
 )
 async def insert_hydrometers(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     hydrometers: Union[HydrometerCreate, List[HydrometerCreate]] = Body(
         ...,
         title="Hydrometers",
@@ -39,8 +35,6 @@ async def insert_hydrometers(
 ):
     """Insert one or multiple hydrometers"""
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     # Convert single object to list for uniform processing
     hydrometers_list = hydrometers if isinstance(hydrometers, list) else [hydrometers]
@@ -49,20 +43,21 @@ async def insert_hydrometers(
     hydrometers_data = [h.model_dump(mode='json', exclude_unset=True) for h in hydrometers_list]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "INSERT",
             "hydrometers": hydrometers_data
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_set_hydrometers",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -74,10 +69,8 @@ async def insert_hydrometers(
     response_model_exclude_unset=True
 )
 async def update_hydrometer(
-    request: Request,
+    commons: CommonsDep,
     code: str,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
     hydrometer: HydrometerUpdate = Body(
         ...,
         title="Hydrometer",
@@ -86,28 +79,27 @@ async def update_hydrometer(
 ):
     """Update a single hydrometer identified by code"""
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     # Override the code from path parameter
     hydrometer_dict = hydrometer.model_dump(mode='json', exclude_unset=True)
     hydrometer_dict['code'] = code
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "UPDATE",
             "hydrometers": [hydrometer_dict]
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_set_hydrometers",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -119,9 +111,7 @@ async def update_hydrometer(
     response_model_exclude_unset=True
 )
 async def update_hydrometers_bulk(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     hydrometers: List[HydrometerUpdate] = Body(
         ...,
         title="Hydrometers",
@@ -130,26 +120,25 @@ async def update_hydrometers_bulk(
 ):
     """Update multiple hydrometers. Each must include 'code' as identifier"""
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     hydrometers_data = [h.model_dump(mode='json', exclude_unset=True) for h in hydrometers]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "UPDATE",
             "hydrometers": hydrometers_data
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_set_hydrometers",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -161,31 +150,28 @@ async def update_hydrometers_bulk(
     response_model_exclude_unset=True
 )
 async def delete_hydrometer(
-    request: Request,
+    commons: CommonsDep,
     code: str,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
 ):
     """Delete a single hydrometer identified by code"""
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "DELETE",
             "hydrometers": [{"code": code}]
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_set_hydrometers",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -197,9 +183,7 @@ async def delete_hydrometer(
     response_model_exclude_unset=True
 )
 async def delete_hydrometers_bulk(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     codes: List[str] = Body(
         ...,
         title="Codes",
@@ -208,26 +192,25 @@ async def delete_hydrometers_bulk(
 ):
     """Delete multiple hydrometers by their codes"""
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     hydrometers_data = [{"code": code} for code in codes]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "DELETE",
             "hydrometers": hydrometers_data
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_set_hydrometers",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result
 
@@ -239,9 +222,7 @@ async def delete_hydrometers_bulk(
     response_model_exclude_unset=True
 )
 async def replace_all_hydrometers(
-    request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     hydrometers: List[HydrometerCreate] = Body(
         ...,
         title="Hydrometers",
@@ -254,25 +235,24 @@ async def replace_all_hydrometers(
     Works consistently whether there are 0 or 1000+ existing hydrometers.
     """
     log = create_log(__name__)
-    db_manager = request.app.state.db_manager
-    user_id = current_user.preferred_username
 
     hydrometers_data = [h.model_dump(mode='json', exclude_unset=True) for h in hydrometers]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "REPLACE",
             "hydrometers": hydrometers_data
         },
-        cur_user=user_id
+        cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
         log,
-        db_manager,
+        commons["db_manager"],
         "gw_fct_set_hydrometers",
         body,
-        schema=schema,
-        api_version=request.app.version
+        schema=commons["schema"],
+        api_version=commons["api_version"]
     )
     return result

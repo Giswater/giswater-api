@@ -1,4 +1,3 @@
-from types import NoneType
 from pydantic import BaseModel, Field
 from pydantic_geojson import FeatureCollectionModel
 from typing import Optional, Dict
@@ -127,9 +126,9 @@ class ValveUnaccessResponse(BaseAPIResponse[ValveUnaccessBody]):
 
 # region Mincut start response models
 
+
 class MincutStartData(Data):
     """Mincut start data"""
-    # fields: dict = Field({})
     mincutId: int = Field(..., description="Mincut id", examples=[1])
     # mincutInit: FeatureCollectionModel = Field(..., description="Mincut initial point")
     # valve: FeatureCollectionModel = Field(..., description="Valve")

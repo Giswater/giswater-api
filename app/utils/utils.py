@@ -54,7 +54,8 @@ def create_body_dict(
     feature={},
     filter_fields={},
     extras={},
-    cur_user: str | None = "anonymous"
+    cur_user: str | None = "anonymous",
+    device: int = 4
 ) -> str:
     """
     Create request body dictionary for database functions.
@@ -67,6 +68,7 @@ def create_body_dict(
         filter_fields: Filter fields
         extras: Extra data
         cur_user: Current user (from JWT or config)
+        device: Device identifier (from X-Device header)
 
     Returns:
         Formatted JSON string
@@ -77,7 +79,7 @@ def create_body_dict(
         cur_user = None
 
     client = {
-        "device": 5,  # TODO: get from app device
+        "device": device,
         "lang": lang,
         "cur_user": cur_user,
         **client_extras
