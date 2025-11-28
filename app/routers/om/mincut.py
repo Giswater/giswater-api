@@ -9,7 +9,12 @@ from fastapi_keycloak import OIDCUser
 from typing import Optional
 
 from ...models.util_models import CoordinatesModel, APIResponse
-from ...models.om.mincut_models import MincutPlanParams, MincutExecParams, ValveUnaccessResponse
+from ...models.om.mincut_models import (
+    MincutPlanParams,
+    MincutExecParams,
+    ValveUnaccessResponse,
+    MincutStartResponse,
+)
 from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
 from ...dependencies import get_schema
 from ...keycloak import get_current_user
@@ -191,20 +196,47 @@ async def valve_unaccess(
     description=(
         "This action should be used when the mincut is ready to be executed. "
         "The system will start the mincut and the water supply will be interrupted on the affected zone."
-    )
+    ),
+    response_model=MincutStartResponse,
+    response_model_exclude_unset=True
 )
 async def start_mincut(
     request: Request,
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to start", examples=[1]),
-    user: str = Body(..., title="User", description="User who is doing the action"),
+    # TODO: check if these parameters are needed/wanted
+    # arc_id: int = Body(..., title="Arc ID", description="ID of the arc to start the mincut", examples=[113875]),
+    # mincut_type: Literal["Demo", "Test", "Real"] = Body(..., title="Mincut Type", description="Type of the mincut", examples=["Demo"]),
+    # forecast_start: str = Body(..., title="Forecast Start", description="Expected start of the mincut", examples=["2025-11-27 00:00:00"]),
+    # forecast_end: str = Body(..., title="Forecast End", description="Expected end of the mincut", examples=["2025-11-27 00:00:00"]),
 ):
-    log = create_log(__name__)  # noqa: F841
-    db_manager = request.app.state.db_manager  # noqa: F841
-    user_id = current_user.preferred_username  # noqa: F841
-    # TODO: Add call to database funtion
-    return create_api_response("Mincut started successfully", "Accepted")
+    log = create_log(__name__)
+    db_manager = request.app.state.db_manager
+    user_id = current_user.preferred_username
+
+    body = create_body_dict(
+        extras={
+            "action": "mincutStart",
+            "usePsectors": "False",
+            "mincutId": mincut_id,
+            # "arcId": arc_id,
+            # "dialogMincutType": dialog_mincut_type,
+            # "dialogForecastStart": forecast_start,
+            # "dialogForecastEnd": forecast_end
+        },
+        cur_user=user_id
+    )
+
+    result = execute_procedure(
+        log,
+        db_manager,
+        "gw_fct_setmincut",
+        body,
+        schema=schema,
+        api_version=request.app.version
+    )
+    return result
 
 
 @router.post(

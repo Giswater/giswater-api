@@ -1,6 +1,7 @@
+from types import NoneType
 from pydantic import BaseModel, Field
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional
+from typing import Optional, Dict
 from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version
 
 
@@ -123,5 +124,30 @@ class ValveUnaccessResponse(BaseAPIResponse[ValveUnaccessBody]):
         self.message: Message = kwargs.get("message", {})
         self.version: Version = kwargs.get("version", {})
         self.body: ValveUnaccessBody = kwargs.get("body", {})
+
+# region Mincut start response models
+
+class MincutStartData(Data):
+    """Mincut start data"""
+    # fields: dict = Field({})
+    mincutId: int = Field(..., description="Mincut id", examples=[1])
+    # mincutInit: FeatureCollectionModel = Field(..., description="Mincut initial point")
+    # valve: FeatureCollectionModel = Field(..., description="Valve")
+    # mincutNode: FeatureCollectionModel = Field(..., description="Mincut node")
+    # mincutConnec: FeatureCollectionModel = Field(..., description="Mincut connecs")
+    # mincutArc: FeatureCollectionModel = Field(..., description="Mincut arcs")
+
+
+class MincutStartBody(Body[MincutStartData]):
+    """Body for mincut start response"""
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
+
+
+class MincutStartResponse(BaseAPIResponse[MincutStartBody]):
+    """Response model for mincut start"""
+    pass
+
+# endregion
 
 # endregion
