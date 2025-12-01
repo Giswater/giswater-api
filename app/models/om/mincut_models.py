@@ -148,6 +148,17 @@ class MincutStartResponse(BaseAPIResponse[MincutStartBody]):
     pass
 
 
+# region Mincut cancel response models
+
+
+class MincutCancelResponse(BaseAPIResponse[Dict]):
+    """Response model for mincut cancel"""
+    pass
+
+
+# endregion
+
+
 # region Mincut delete response models
 
 
@@ -164,13 +175,13 @@ class MincutDeleteResponse(BaseAPIResponse[Dict]):
 # endregion
 
 
-VALID_FIELDS = frozenset(
+MINCUT_VALID_FIELDS = frozenset(
     ["id", "work_order", "state", "mincut_type", "exploitation", "streetaxis", "forecast_start", "forecast_end"]
 )
 
 
-class MincutsFilterFieldsModel(BaseModel):
-    """Mincuts filter fields response"""
+class MincutFilterFieldsModel(BaseModel):
+    """Mincut filter fields response"""
     data: Optional[Dict[str, FilterFieldModel]] = Field(None, description="Data")
 
     @field_validator('data')
@@ -178,6 +189,6 @@ class MincutsFilterFieldsModel(BaseModel):
     def validate_keys(cls, v):
         for key in v.keys():
             parts = [p.strip() for p in key.split(', ')]
-            if not all(p in VALID_FIELDS for p in parts):
+            if not all(p in MINCUT_VALID_FIELDS for p in parts):
                 raise ValueError(f"Invalid key: '{key}'")
         return v

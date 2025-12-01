@@ -16,7 +16,8 @@ from ...models.om.mincut_models import (
     ValveUnaccessResponse,
     MincutStartResponse,
     MincutDeleteResponse,
-    MincutsFilterFieldsModel
+    MincutFilterFieldsModel,
+    MincutCancelResponse
 )
 from ...models.basic.basic_models import GetListResponse
 from ...models.util_models import GwErrorResponse
@@ -295,15 +296,34 @@ async def repair_mincut(
         "Cancels the mincut when the repair is not feasible, "
         "nullifying the planned cut while keeping the issue recorded for future resolution. "
         "This ensures proper outage management and prevents data loss."
-    )
+    ),
+    response_model=MincutCancelResponse,
+    response_model_exclude_unset=True
 )
 async def cancel_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
 ):
-    log = create_log(__name__)  # noqa: F841
-    # TODO: Add call to database funtion
-    return create_api_response("Mincut canceled successfully", "Accepted")
+    log = create_log(__name__)
+
+    body = create_body_dict(
+        device=commons["device"],
+        extras={
+            "action": "mincutCancel",
+            "mincutId": mincut_id
+        },
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_setmincut",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return result
 
 
 @router.delete(
@@ -353,8 +373,8 @@ async def get_mincuts(
     if filterFields:
         try:
             filterFields_dict = json.loads(filterFields)
-            # Validate using MincutsFilterFieldsModel
-            MincutsFilterFieldsModel(data=filterFields_dict)
+            # Validate using MincutFilterFieldsModel
+            MincutFilterFieldsModel(data=filterFields_dict)
         except (json.JSONDecodeError, ValidationError) as e:
             raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}")
 
