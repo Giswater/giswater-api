@@ -13,6 +13,7 @@ from ...models.om.mincut_models import (
     MincutExecParams,
     ValveUnaccessResponse,
     MincutStartResponse,
+    MincutDeleteResponse,
 )
 from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
 from ...dependencies import CommonsDep
@@ -301,13 +302,31 @@ async def cancel_mincut(
 
 @router.delete(
     "/mincuts/{mincut_id}",
-    description="Deletes the mincut from the system. This action should be used when the mincut is no longer needed."
+    description="Deletes the mincut from the system. This action should be used when the mincut is no longer needed.",
+    response_model=MincutDeleteResponse,
+    response_model_exclude_unset=True
 )
 async def delete_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
-    user: str = Body(..., title="User", description="User who is doing the action"),
 ):
-    log = create_log(__name__)  # noqa: F841
-    # TODO: Add call to database funtion
-    return create_api_response("Mincut deleted successfully", "Accepted")
+    log = create_log(__name__)
+
+    body = create_body_dict(
+        device=commons["device"],
+        extras={
+            "action": "mincutDelete",
+            "mincutId": mincut_id
+        },
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_setmincut",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return result

@@ -149,4 +149,14 @@ class MincutStartResponse(BaseAPIResponse[MincutStartBody]):
 
 # endregion
 
+
+# region Mincut delete response models
+
+
+class MincutDeleteResponse(BaseAPIResponse[Dict]):
+    """Response model for mincut delete"""
+    pass
+
+# endregion
+
 # endregion
