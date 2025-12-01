@@ -55,7 +55,8 @@ def create_body_dict(
     filter_fields={},
     extras={},
     cur_user: str | None = "anonymous",
-    device: int = 4
+    device: int = 4,
+    lang: str = "es_ES"
 ) -> str:
     """
     Create request body dictionary for database functions.
@@ -74,7 +75,6 @@ def create_body_dict(
         Formatted JSON string
     """
     info_type = 1
-    lang = "es_ES"  # TODO: get from app lang
     if cur_user == 'anonymous':
         cur_user = None
 

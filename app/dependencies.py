@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from fastapi import Depends, Query, Header, Request, HTTPException
 from fastapi_keycloak import OIDCUser
 from .keycloak import get_current_user
@@ -51,6 +51,12 @@ async def common_parameters(
         ge=1,
         le=5,
     ),
+    lang: Literal["es_ES", "es_CR", "en_US", "pt_BR", "pt_PT", "fr_FR", "ca_ES"] = Header(
+        default="es_ES",
+        alias="X-Lang",
+        description="Language code",
+        examples=["es_ES", "es_CR", "en_US", "pt_BR", "pt_PT", "fr_FR", "ca_ES"],
+    ),
 ):
     db_manager = request.app.state.db_manager
     if not db_manager.validate_schema(schema):
@@ -60,6 +66,7 @@ async def common_parameters(
         "user_id": current_user.preferred_username,
         "schema": schema,
         "device": device,
+        "lang": lang,
         "db_manager": db_manager,
         "api_version": request.app.version,
     }
