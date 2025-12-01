@@ -220,7 +220,29 @@ class CoordinatesModel(BaseModel):
 
 class ExtentModel(BaseModel):
     """Extent model"""
-    x1: float = Field(..., description="Minimum x coordinate", examples=[419058.97611645155])
-    x2: float = Field(..., description="Maximum x coordinate", examples=[419097.86115133995])
-    y1: float = Field(..., description="Minimum y coordinate", examples=[4576635.596078073])
-    y2: float = Field(..., description="Maximum y coordinate", examples=[4576643.836554766])
+    x1: float = Field(..., title="X1", description="Minimum x coordinate", examples=[419058.97611645155])
+    x2: float = Field(..., title="X2", description="Maximum x coordinate", examples=[419097.86115133995])
+    y1: float = Field(..., title="Y1", description="Minimum y coordinate", examples=[4576635.596078073])
+    y2: float = Field(..., title="Y2", description="Maximum y coordinate", examples=[4576643.836554766])
+
+
+class PageInfoModel(BaseModel):
+    """Page info model"""
+    orderBy: Optional[str] = Field(None, description="Order by")
+    orderType: Optional[str] = Field(None, description="Order type")
+    page: Optional[int] = Field(None, description="Page number")
+    limit: Optional[int] = Field(None, description="Limit")
+
+
+class PageInfoReturnModel(BaseModel):
+    """Page info return model"""
+    orderBy: Optional[str] = Field(None, description="Order by")
+    orderType: Optional[str] = Field(None, description="Order type")
+    currentPage: Optional[int] = Field(None, description="Current page")
+    lastPage: Optional[int] = Field(None, description="Last page")
+
+
+class FilterFieldModel(BaseModel):
+    """Filter field model"""
+    value: Any = Field(..., description="Value")
+    filterSign: Literal["=", ">", "<", ">=", "<=", "LIKE", "ILIKE", "BETWEEN"] = Field("=", description="Filter sign")

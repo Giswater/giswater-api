@@ -4,7 +4,10 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query
+
+import json
+from fastapi import APIRouter, Query, HTTPException
+from pydantic import ValidationError
 from datetime import date
 from typing import Literal, Union, Optional
 from ...utils.utils import create_body_dict, execute_procedure, create_log
@@ -13,9 +16,10 @@ from ...models.basic.basic_models import (
     GetInfoFromCoordinatesResponse,
     GetSelectorsResponse,
     GetFeatureChangesResponse,
-    GetSearchResponse
+    GetSearchResponse,
+    GetListResponse
 )
-from ...models.util_models import CoordinatesModel, GwErrorResponse
+from ...models.util_models import CoordinatesModel, GwErrorResponse, ExtentModel, PageInfoModel, FilterFieldModel
 
 router = APIRouter(prefix="/basic", tags=["Basic"])
 
@@ -195,6 +199,73 @@ async def get_search(
         log,
         commons["db_manager"],
         "gw_fct_getsearch",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return result
+
+
+@router.get(
+    "/getlist",
+    description="Fetch a list of features",
+    response_model=Union[GetListResponse, GwErrorResponse],
+    response_model_exclude_unset=True
+)
+async def get_list(
+    commons: CommonsDep,
+    tableName: str = Query(
+        ...,
+        title="Table Name",
+        description="Name of the table or view to query",
+        examples=["ve_arc_pipe", "om_visit_x_arc"]
+    ),
+    coordinates: Optional[str] = Query(None, description="JSON string of coordinates (ExtentModel)"),
+    pageInfo: Optional[str] = Query(None, description="JSON string of page info (PageInfoModel)"),
+    filterFields: Optional[str] = Query(None, description="JSON string of filter fields (Dict[str, FilterFieldModel])"),
+):
+    """Get list"""
+    log = create_log(__name__)
+
+    # Parse JSON strings into models
+    try:
+        coordinates_data = None
+        if coordinates:
+            coords_obj = ExtentModel(**json.loads(coordinates))
+            coordinates_data = coords_obj.model_dump(mode='json', exclude_unset=True)
+
+        page_info_data = None
+        if pageInfo:
+            page_obj = PageInfoModel(**json.loads(pageInfo))
+            page_info_data = page_obj.model_dump(mode='json', exclude_unset=True)
+
+        filterFields_data = None
+        if filterFields:
+            filterFields = json.loads(filterFields)
+            filterFields_data = {
+                k: FilterFieldModel(**v).model_dump(mode='json', exclude_unset=True) for k, v in filterFields.items()
+            }
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    data = {
+        "tableName": tableName
+    }
+    if coordinates:
+        data["canvasExtend"] = coordinates_data
+
+    # Build the body
+    body = create_body_dict(
+        extras=data,
+        filter_fields=filterFields_data if filterFields_data else {},
+        pageInfo=page_info_data if page_info_data else {},
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getlist",
         body,
         schema=commons["schema"],
         api_version=commons["api_version"]

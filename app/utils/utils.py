@@ -47,6 +47,7 @@ def create_body_dict(
     form={},
     feature={},
     filter_fields={},
+    pageInfo={},
     extras={},
     cur_user: str | None = "anonymous",
     device: int = 4,
@@ -89,7 +90,7 @@ def create_body_dict(
         "feature": feature,
         "data": {
             "filterFields": filter_fields,
-            "pageInfo": {},
+            "pageInfo": pageInfo,
             **extras
         }
     })

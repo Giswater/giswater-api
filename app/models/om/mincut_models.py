@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_geojson import FeatureCollectionModel
 from typing import Optional, Dict
-from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version
+from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version, FilterFieldModel
 
 
 # region Input parameters
@@ -147,8 +147,6 @@ class MincutStartResponse(BaseAPIResponse[MincutStartBody]):
     """Response model for mincut start"""
     pass
 
-# endregion
-
 
 # region Mincut delete response models
 
@@ -157,6 +155,29 @@ class MincutDeleteResponse(BaseAPIResponse[Dict]):
     """Response model for mincut delete"""
     pass
 
+
 # endregion
 
 # endregion
+
+
+# endregion
+
+
+VALID_FIELDS = frozenset(
+    ["id", "work_order", "state", "mincut_type", "exploitation", "streetaxis", "forecast_start", "forecast_end"]
+)
+
+
+class MincutsFilterFieldsModel(BaseModel):
+    """Mincuts filter fields response"""
+    data: Optional[Dict[str, FilterFieldModel]] = Field(None, description="Data")
+
+    @field_validator('data')
+    @classmethod
+    def validate_keys(cls, v):
+        for key in v.keys():
+            parts = [p.strip() for p in key.split(', ')]
+            if not all(p in VALID_FIELDS for p in parts):
+                raise ValueError(f"Invalid key: '{key}'")
+        return v

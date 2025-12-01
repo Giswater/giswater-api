@@ -4,8 +4,10 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Body, Path
-from typing import Optional
+import json
+from fastapi import APIRouter, Body, Path, Query, HTTPException
+from typing import Optional, Union
+from pydantic import ValidationError
 
 from ...models.util_models import CoordinatesModel, APIResponse
 from ...models.om.mincut_models import (
@@ -14,9 +16,13 @@ from ...models.om.mincut_models import (
     ValveUnaccessResponse,
     MincutStartResponse,
     MincutDeleteResponse,
+    MincutsFilterFieldsModel
 )
+from ...models.basic.basic_models import GetListResponse
+from ...models.util_models import GwErrorResponse
 from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
 from ...dependencies import CommonsDep
+from ..basic.basic import get_list
 
 router = APIRouter(prefix="/om", tags=["OM - Mincut"])
 
@@ -330,3 +336,32 @@ async def delete_mincut(
         api_version=commons["api_version"]
     )
     return result
+
+
+@router.get(
+    "/mincuts",
+    description="Returns a list of mincuts",
+    response_model=Union[GetListResponse, GwErrorResponse]
+)
+async def get_mincuts(
+    commons: CommonsDep,
+    filterFields: Optional[str] = Query(None, description="Filter fields"),
+):
+    """Get list of mincuts by calling the generic get_list endpoint with tbl_mincut_manger table"""
+
+    # Validate filterFields using the mincut-specific model
+    if filterFields:
+        try:
+            filterFields_dict = json.loads(filterFields)
+            # Validate using MincutsFilterFieldsModel
+            MincutsFilterFieldsModel(data=filterFields_dict)
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}")
+
+    return await get_list(
+        commons=commons,
+        tableName="tbl_mincut_manager",
+        coordinates=None,
+        pageInfo=None,
+        filterFields=filterFields
+    )
