@@ -17,12 +17,6 @@ from fastapi import FastAPI
 from ..models.util_models import APIResponse
 
 
-# Legacy global variables - deprecated, use request.app.state instead
-api = None
-tenant_handler = None
-mail = None
-
-
 def load_plugins(app: FastAPI):
     """
     Load plugins from the plugins directory for a specific app instance.

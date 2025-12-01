@@ -260,7 +260,6 @@ async def start_mincut(
 async def end_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
-    user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     # TODO: Add call to database funtion
@@ -277,7 +276,6 @@ async def end_mincut(
 async def repair_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to repair", examples=[1]),
-    user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     # TODO: Add call to database funtion
@@ -295,7 +293,6 @@ async def repair_mincut(
 async def cancel_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
-    user: str = Body(..., title="User", description="User who is doing the action"),
 ):
     log = create_log(__name__)  # noqa: F841
     # TODO: Add call to database funtion

@@ -11,7 +11,7 @@ T = TypeVar('T')
 
 class Version(BaseModel):
     """Version model"""
-    db: str = Field(..., description="Database version", examples=["4.0.001"])
+    db: str = Field(..., description="Database version", examples=["4.7.0", "4.5.4"])
     api: str = Field(..., description="API version", examples=["1.0.0"])
 
 

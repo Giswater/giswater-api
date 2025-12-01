@@ -35,16 +35,3 @@ class Config:
         except Exception:
             print(f"Exception getting option {section=} {option=} from {self.config_file}")
             return default
-
-
-# Legacy support: default global config for backward compatibility during migration
-# TODO: This will be deprecated once all modules use the Config class
-_default_config = None
-
-
-def get_default_config() -> Config:
-    """Get the default global config instance (legacy support)."""
-    global _default_config
-    if _default_config is None:
-        _default_config = Config("app/config/app.config")
-    return _default_config
