@@ -1,26 +1,46 @@
 from pydantic import BaseModel, Field, field_validator
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional, Dict, Any, List, Union
-from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version, FilterFieldModel, GwField
+from typing import Optional, Dict, Any, List, Union, Literal
+from datetime import datetime
 
+from ..util_models import (
+    BaseAPIResponse,
+    Body,
+    Data,
+    ExtentModel,
+    Info,
+    Message,
+    Version,
+    FilterFieldModel,
+    GwField,
+)
+
+# region Value mappings
+
+MINCUT_CAUSE_VALUES = {
+    "Accidental": 1,
+    "Planified": 2
+}
+
+# endregion
 
 # region Input parameters
 
 
 class MincutPlanParams(BaseModel):
-    mincut_type: Optional[str] = Field(
-        None,
+    mincut_type: Literal["Demo", "Test", "Real"] = Field(
+        "Demo",
         title="Mincut Type",
         description="Type of the mincut",
-        examples=["Test"]
+        examples=["Demo"]
     )
-    anl_cause: Optional[str] = Field(
-        None,
+    anl_cause: Literal["Accidental", "Planified"] = Field(
+        "Accidental",
         title="Analysis Cause",
         description="Cause of the analysis",
-        examples=["2"]
+        examples=["Accidental"]
     )
-    received_date: Optional[str] = Field(
+    received_date: Optional[datetime] = Field(
         None,
         title="Received Date",
         description="Date of the received",
@@ -30,15 +50,15 @@ class MincutPlanParams(BaseModel):
         None,
         title="Analysis Description",
         description="Description of the analysis",
-        examples=["aaaaaaaaaaaaaaa"]
+        examples=["Test mincut"]
     )
-    forecast_start: Optional[str] = Field(
+    forecast_start: Optional[datetime] = Field(
         None,
         title="Forecast Start",
         description="Start of the forecast",
         examples=["2025-05-15T14:30"]
     )
-    forecast_end: Optional[str] = Field(
+    forecast_end: Optional[datetime] = Field(
         None,
         title="Forecast End",
         description="End of the forecast",
@@ -47,7 +67,7 @@ class MincutPlanParams(BaseModel):
 
 
 class MincutExecParams(BaseModel):
-    exec_start: Optional[str] = Field(
+    exec_start: Optional[datetime] = Field(
         None,
         title="Execution Start",
         description="Start date of the mincut",
@@ -57,7 +77,7 @@ class MincutExecParams(BaseModel):
         None,
         title="Execution Description",
         description="Description of the execution",
-        examples=["aaaaaaaaaaaaaaa"]
+        examples=["Test mincut execution"]
     )
     exec_user: Optional[str] = Field(
         None,
@@ -83,7 +103,7 @@ class MincutExecParams(BaseModel):
         description="Appropriate of the mincut",
         examples=[True]
     )
-    exec_end: Optional[str] = Field(
+    exec_end: Optional[datetime] = Field(
         None,
         title="Execution End",
         description="End date of the mincut",
@@ -93,6 +113,41 @@ class MincutExecParams(BaseModel):
 # endregion
 
 # region Response models
+
+# region Mincut create response models
+
+
+class MincutCreateData(Data):
+    """Mincut create data"""
+    mincutId: int = Field(..., description="Mincut id", examples=[1])
+    mincutState: int = Field(
+        ...,
+        description=(
+            "Mincut state (0: Planified, 1: In Progress, 2: Finished, "
+            "3: Canceled, 4: On Planning, 5: Conflict)"
+        ),
+        examples=[1], ge=0, le=5
+    )
+    info: Optional[Info] = Field(None, description="Information about the process")
+    mincutInit: Optional[FeatureCollectionModel] = Field(None, description="Mincut initial point")
+    mincutProposedValve: Optional[FeatureCollectionModel] = Field(None, description="Mincut proposed valve")
+    mincutNotProposedValve: Optional[FeatureCollectionModel] = Field(None, description="Mincut not proposed valve")
+    mincutNode: Optional[FeatureCollectionModel] = Field(None, description="Mincut node")
+    mincutConnec: Optional[FeatureCollectionModel] = Field(None, description="Mincut connecs")
+    mincutArc: Optional[FeatureCollectionModel] = Field(None, description="Mincut arcs")
+    geometry: Optional[ExtentModel] = Field(None, description="Extent of the mincut")
+
+
+class MincutCreateBody(Body[MincutCreateData]):
+    """Body for mincut create response"""
+    pass
+
+class MincutCreateResponse(BaseAPIResponse[MincutCreateBody]):
+    """Response model for mincut create"""
+    pass
+
+# endregion
+
 
 
 class ValveUnaccessData(Data):

@@ -6,14 +6,17 @@ or (at your option) any later version.
 """
 import json
 from fastapi import APIRouter, Body, Path, Query, HTTPException
+from fastapi.responses import JSONResponse
 from typing import Optional, Union
 from pydantic import ValidationError
 
-from ...models.util_models import CoordinatesModel, APIResponse
+from ...models.util_models import CoordinatesModel, APIResponse, GwErrorResponse
 from ...models.om.mincut_models import (
+    MINCUT_CAUSE_VALUES,
     MincutPlanParams,
     MincutExecParams,
     ValveUnaccessResponse,
+    MincutCreateResponse,
     MincutStartResponse,
     MincutDeleteResponse,
     MincutFilterFieldsModel,
@@ -26,7 +29,16 @@ from ...utils.utils import create_body_dict, create_log, execute_procedure, crea
 from ...dependencies import CommonsDep
 from ..basic.basic import get_list
 
-router = APIRouter(prefix="/om", tags=["OM - Mincut"])
+router = APIRouter(
+    prefix="/om",
+    tags=["OM - Mincut"],
+    responses={
+        500: {
+            "model": GwErrorResponse,
+            "description": "Database function error"
+        }
+    }
+)
 
 
 @router.post(
@@ -34,7 +46,9 @@ router = APIRouter(prefix="/om", tags=["OM - Mincut"])
     description=(
         "This action should be used when an anomaly is detected in field that wasn't planified.\n"
         "In this case there is no mincut created, therefore a new one will be created."
-    )
+    ),
+    response_model=MincutCreateResponse,
+    response_model_exclude_unset=True
 )
 async def create_mincut(
     commons: CommonsDep,
@@ -43,15 +57,9 @@ async def create_mincut(
         title="Coordinates",
         description="Coordinates on which the mincut will be created"
     ),
-    workcatId: int = Body(
-        ...,
-        title="Workcat ID",
-        description="ID of the work associated to the anomaly",
-        examples=[1]
-    ),
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan of the mincut"),
-    user: str = Body(..., title="User", description="User who is doing the action"),
-) -> APIResponse:
+    use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
+):
     log = create_log(__name__)
 
     coordinates_dict = coordinates.model_dump()
@@ -60,13 +68,20 @@ async def create_mincut(
     else:
         plan_dict = {}
 
-    print(plan_dict)
-    # TODO: Add workcatId to the body
-    # TODO: Use the plan fields
+    if plan_dict.get("anl_cause"):
+        plan_dict["anl_cause"] = MINCUT_CAUSE_VALUES.get(plan_dict["anl_cause"])
+
+    extras = {
+        "action": "mincutNetwork",
+        "usePsectors": use_psectors,
+        "coordinates": coordinates_dict,
+        "status": "check",
+        **plan_dict
+    }
     body = create_body_dict(
         device=commons["device"],
         client_extras={"tiled": True},
-        extras={"action": "mincutNetwork", "usePsectors": "False", "coordinates": coordinates_dict, "status": "check"},
+        extras=extras,
         cur_user=commons["user_id"]
     )
 
@@ -78,14 +93,13 @@ async def create_mincut(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    # TODO: change response to a pydantic model
+
     if not result:
-        return create_api_response("Error creating mincut", "Failed")
-
+        raise HTTPException(status_code=500, detail="Database returned null")
     if result.get("status") != "Accepted":
-        return create_api_response("Error creating mincut", "Failed", result=result)
+        return JSONResponse(status_code=500, content=result)
 
-    return create_api_response("Created mincut successfully", "Accepted", result=result)
+    return result
 
 
 @router.patch(

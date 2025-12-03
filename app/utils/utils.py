@@ -11,7 +11,7 @@ import logging
 import json
 
 from typing import Any, Dict, Literal
-from datetime import date
+from datetime import date, datetime
 from fastapi import FastAPI
 
 from ..models.util_models import APIResponse
@@ -84,6 +84,11 @@ def create_body_dict(
     if project_epsg is not None:
         client["epsg"] = project_epsg
 
+    def json_default(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
     json_str = json.dumps({
         "client": client,
         "form": form,
@@ -93,7 +98,7 @@ def create_body_dict(
             "pageInfo": pageInfo,
             **extras
         }
-    })
+    }, default=json_default)
     return f"$${json_str}$$"
 
 
