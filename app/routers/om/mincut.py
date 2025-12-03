@@ -24,7 +24,6 @@ from ...models.om.mincut_models import (
     MincutEndResponse
 )
 from ...models.basic.basic_models import GetListResponse
-from ...models.util_models import GwErrorResponse
 from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
 from ...dependencies import CommonsDep
 from ..basic.basic import get_list

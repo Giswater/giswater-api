@@ -142,12 +142,12 @@ class MincutCreateBody(Body[MincutCreateData]):
     """Body for mincut create response"""
     pass
 
+
 class MincutCreateResponse(BaseAPIResponse[MincutCreateBody]):
     """Response model for mincut create"""
     pass
 
 # endregion
-
 
 
 class ValveUnaccessData(Data):
