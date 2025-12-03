@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional, Dict
-from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version, FilterFieldModel
+from typing import Optional, Dict, Any, List, Union
+from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, Info, Message, Version, FilterFieldModel, GwField
 
 
 # region Input parameters
@@ -146,6 +146,49 @@ class MincutStartBody(Body[MincutStartData]):
 class MincutStartResponse(BaseAPIResponse[MincutStartBody]):
     """Response model for mincut start"""
     pass
+
+
+# region Mincut end response models
+
+
+class MincutEndData(Data):
+    """Mincut end data"""
+    info: dict[str, list[dict[str, Any]]] = Field(..., description="Info")
+    geometry: Union[str, ExtentModel] = Field(..., description="Geometry")
+    mincutId: Optional[int] = Field(None, description="Mincut id")
+    fields: Optional[List[GwField]] = Field(None, description="Fields")
+    mincutState: Optional[int] = Field(None, description="Mincut state")
+    mincutInit: Optional[FeatureCollectionModel] = Field(None, description="Mincut initial")
+    mincutProposedValve: Optional[FeatureCollectionModel] = Field(None, description="Mincut proposed valve")
+    mincutNotProposedValve: Optional[FeatureCollectionModel] = Field(None, description="Mincut not proposed valve")
+    mincutNode: Optional[FeatureCollectionModel] = Field(None, description="Mincut node")
+    mincutConnec: Optional[FeatureCollectionModel] = Field(None, description="Mincut connecs")
+    mincutArc: Optional[FeatureCollectionModel] = Field(None, description="Mincut arcs")
+
+
+class MincutEndManager(BaseModel):
+    """Mincut end manager"""
+    style: dict[str, dict[str, Any]] = Field(..., description="Style configuration for point, line, and polygon")
+
+
+class MincutEndLayerManager(BaseModel):
+    """Mincut end layer manager"""
+    visible: List[dict[str, Any]] = Field(..., description="Visible")
+
+
+class MincutEndBody(Body[MincutEndData]):
+    """Body for mincut end response"""
+    overlapStatus: Optional[str] = Field(None, description="Overlap status")
+    returnManager: Optional[MincutEndManager] = Field(None, description="Return manager")
+    layerManager: Optional[MincutEndLayerManager] = Field(None, description="Layer manager")
+
+
+class MincutEndResponse(BaseAPIResponse[MincutEndBody]):
+    """Response model for mincut end"""
+    pass
+
+
+# endregion
 
 
 # region Mincut cancel response models

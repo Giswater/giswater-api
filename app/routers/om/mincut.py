@@ -17,7 +17,8 @@ from ...models.om.mincut_models import (
     MincutStartResponse,
     MincutDeleteResponse,
     MincutFilterFieldsModel,
-    MincutCancelResponse
+    MincutCancelResponse,
+    MincutEndResponse
 )
 from ...models.basic.basic_models import GetListResponse
 from ...models.util_models import GwErrorResponse
@@ -263,15 +264,34 @@ async def start_mincut(
     description=(
         "This action should be used when the mincut has been executed and the water supply is restored. "
         "The system will end the mincut and the affected zone will be restored."
-    )
+    ),
+    response_model=MincutEndResponse,
+    response_model_exclude_unset=True
 )
 async def end_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
 ):
-    log = create_log(__name__)  # noqa: F841
-    # TODO: Add call to database funtion
-    return create_api_response("Mincut ended successfully", "Accepted")
+    log = create_log(__name__)
+
+    body = create_body_dict(
+        device=commons["device"],
+        extras={
+            "action": "endMincut",
+            "mincutId": mincut_id
+        },
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_setmincut",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return result
 
 
 @router.post(
