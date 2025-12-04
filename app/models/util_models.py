@@ -9,6 +9,21 @@ T = TypeVar('T')
 # region DB models
 
 
+class CoordinatesModel(BaseModel):
+    xcoord: float = Field(..., title="X", description="X coordinate in the specified EPSG system", examples=[419019.0315316747])
+    ycoord: float = Field(..., title="Y", description="Y coordinate in the specified EPSG system", examples=[4576692.928314688])
+    epsg: int = Field(..., title="EPSG", description="EPSG code of the coordinate system", examples=[25831])
+    zoomRatio: float = Field(..., title="Zoom Ratio", description="Zoom ratio of the map", examples=[1000.0])
+
+
+class ExtentModel(BaseModel):
+    """Extent model"""
+    x1: float = Field(..., title="X1", description="Minimum x coordinate", examples=[419058.97611645155])
+    x2: float = Field(..., title="X2", description="Maximum x coordinate", examples=[419097.86115133995])
+    y1: float = Field(..., title="Y1", description="Minimum y coordinate", examples=[4576635.596078073])
+    y2: float = Field(..., title="Y2", description="Maximum y coordinate", examples=[4576643.836554766])
+
+
 class Version(BaseModel):
     """Version model"""
     db: str = Field(..., description="Database version", examples=["4.7.0", "4.5.4"])
@@ -47,9 +62,10 @@ class Form(BaseModel):
 
 class Geometry(BaseModel):
     """Geometry model"""
-    x: float = Field(..., description="X")
-    y: float = Field(..., description="Y")
-    st_astext: str = Field(..., description="ST as text")  # ? camelCase?
+    x: Optional[float] = Field(None, description="X")
+    y: Optional[float] = Field(None, description="Y")
+    st_astext: Optional[str] = Field(None, description="ST as text")  # ? camelCase?
+    bbox: Optional[ExtentModel] = Field(None, description="Bounding box")
 
 
 class Feature(BaseModel):
@@ -209,21 +225,6 @@ class FormResponseBody(BaseModel):
 class APIResponse(BaseAPIResponse[Body[Data]]):
     """Standard API response model (kept for backward compatibility)"""
     pass
-
-
-class CoordinatesModel(BaseModel):
-    xcoord: float = Field(..., title="X", description="X coordinate in the specified EPSG system", examples=[419019.0315316747])
-    ycoord: float = Field(..., title="Y", description="Y coordinate in the specified EPSG system", examples=[4576692.928314688])
-    epsg: int = Field(..., title="EPSG", description="EPSG code of the coordinate system", examples=[25831])
-    zoomRatio: float = Field(..., title="Zoom Ratio", description="Zoom ratio of the map", examples=[1000.0])
-
-
-class ExtentModel(BaseModel):
-    """Extent model"""
-    x1: float = Field(..., title="X1", description="Minimum x coordinate", examples=[419058.97611645155])
-    x2: float = Field(..., title="X2", description="Maximum x coordinate", examples=[419097.86115133995])
-    y1: float = Field(..., title="Y1", description="Minimum y coordinate", examples=[4576635.596078073])
-    y2: float = Field(..., title="Y2", description="Maximum y coordinate", examples=[4576643.836554766])
 
 
 class PageInfoModel(BaseModel):

@@ -17,6 +17,7 @@ from ...models.om.mincut_models import (
     MincutExecParams,
     ValveUnaccessResponse,
     MincutCreateResponse,
+    MincutUpdateResponse,
     MincutStartResponse,
     MincutDeleteResponse,
     MincutFilterFieldsModel,
@@ -103,15 +104,16 @@ async def create_mincut(
 
 @router.patch(
     "/mincuts/{mincut_id}",
-    description="This action should be used when a mincut is already created and it needs to be updated."
+    description="This action should be used when a mincut is already created and it needs to be updated.",
+    response_model=MincutUpdateResponse,
+    response_model_exclude_unset=True
 )
 async def update_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
-    user: str = Body(..., title="User", description="User who is doing the action"),
-) -> APIResponse:
+):
     log = create_log(__name__)
 
     if plan:
@@ -146,14 +148,14 @@ async def update_mincut(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    # TODO: change response to a pydantic model
+
     if not result:
-        return create_api_response("Error updating mincut", "Failed")
+        raise HTTPException(status_code=500, detail="Database returned null")
 
     if result.get("status") != "Accepted":
-        return create_api_response("Error updating mincut", "Failed", result=result)
+        return JSONResponse(status_code=500, content=result)
 
-    return create_api_response("Updated mincut successfully", "Accepted", result=result)
+    return result
 
 
 @router.post(
@@ -290,7 +292,7 @@ async def end_mincut(
     body = create_body_dict(
         device=commons["device"],
         extras={
-            "action": "endMincut",
+            "action": "mincutEnd",
             "mincutId": mincut_id
         },
         cur_user=commons["user_id"]
