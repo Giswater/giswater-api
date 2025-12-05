@@ -6,11 +6,10 @@ or (at your option) any later version.
 """
 import json
 from fastapi import APIRouter, Body, Path, Query, HTTPException
-from fastapi.responses import JSONResponse
-from typing import Optional, Union
+from typing import Optional
 from pydantic import ValidationError
 
-from ...models.util_models import CoordinatesModel, APIResponse, GwErrorResponse
+from ...models.util_models import CoordinatesModel, APIResponse
 from ...models.om.mincut_models import (
     MINCUT_CAUSE_VALUES,
     MincutPlanParams,
@@ -25,19 +24,13 @@ from ...models.om.mincut_models import (
     MincutEndResponse
 )
 from ...models.basic.basic_models import GetListResponse
-from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response
+from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response, handle_procedure_result
 from ...dependencies import CommonsDep
 from ..basic.basic import get_list
 
 router = APIRouter(
     prefix="/om",
-    tags=["OM - Mincut"],
-    responses={
-        500: {
-            "model": GwErrorResponse,
-            "description": "Database function error"
-        }
-    }
+    tags=["OM - Mincut"]
 )
 
 
@@ -94,12 +87,7 @@ async def create_mincut(
         api_version=commons["api_version"]
     )
 
-    if not result:
-        raise HTTPException(status_code=500, detail="Database returned null")
-    if result.get("status") != "Accepted":
-        return JSONResponse(status_code=500, content=result)
-
-    return result
+    return handle_procedure_result(result)
 
 
 @router.patch(
@@ -149,13 +137,7 @@ async def update_mincut(
         api_version=commons["api_version"]
     )
 
-    if not result:
-        raise HTTPException(status_code=500, detail="Database returned null")
-
-    if result.get("status") != "Accepted":
-        return JSONResponse(status_code=500, content=result)
-
-    return result
+    return handle_procedure_result(result)
 
 
 @router.post(
@@ -271,7 +253,7 @@ async def start_mincut(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.post(
@@ -306,7 +288,7 @@ async def end_mincut(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.post(
@@ -358,7 +340,7 @@ async def cancel_mincut(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.delete(
@@ -390,13 +372,14 @@ async def delete_mincut(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.get(
     "/mincuts",
     description="Returns a list of mincuts",
-    response_model=Union[GetListResponse, GwErrorResponse]
+    response_model=GetListResponse,
+    response_model_exclude_unset=True
 )
 async def get_mincuts(
     commons: CommonsDep,

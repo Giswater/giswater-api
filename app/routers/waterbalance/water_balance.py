@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 from fastapi import APIRouter, Query
 from typing import Union
-from ...utils.utils import create_body_dict, execute_procedure, create_log
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...models.util_models import GwErrorResponse
 from ...models.om.waterbalance_models import ListDmasResponse, GetDmaHydrometersResponse, GetDmaParametersResponse
 from ...dependencies import CommonsDep
@@ -38,7 +38,7 @@ async def list_dmas(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -89,7 +89,7 @@ async def get_dma_hydrometers(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.get(

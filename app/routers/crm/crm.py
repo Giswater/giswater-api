@@ -7,8 +7,7 @@ or (at your option) any later version.
 
 from fastapi import APIRouter, Body
 from typing import Union, List
-from ...utils.utils import create_body_dict, execute_procedure, create_log
-from ...models.util_models import GwErrorResponse
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...models.crm.crm_models import (
     HydrometerCreate,
     HydrometerUpdate,
@@ -22,7 +21,7 @@ router = APIRouter(prefix="/crm", tags=["CRM"])
 @router.post(
     "/hydrometers",
     description="Insert hydrometers (single or bulk)",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def insert_hydrometers(
@@ -59,13 +58,13 @@ async def insert_hydrometers(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.patch(
     "/hydrometers/{code}",
     description="Update a single hydrometer by code",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def update_hydrometer(
@@ -101,13 +100,13 @@ async def update_hydrometer(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.patch(
     "/hydrometers",
     description="Update multiple hydrometers in bulk",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def update_hydrometers_bulk(
@@ -140,13 +139,13 @@ async def update_hydrometers_bulk(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.delete(
     "/hydrometers/{code}",
     description="Delete a single hydrometer by code",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def delete_hydrometer(
@@ -173,13 +172,13 @@ async def delete_hydrometer(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.delete(
     "/hydrometers",
     description="Delete multiple hydrometers in bulk",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def delete_hydrometers_bulk(
@@ -212,13 +211,13 @@ async def delete_hydrometers_bulk(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.put(
     "/hydrometers",
     description="Replace all hydrometers. Deletes all existing hydrometers and inserts the provided ones.",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def replace_all_hydrometers(
@@ -255,4 +254,4 @@ async def replace_all_hydrometers(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)

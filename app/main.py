@@ -12,12 +12,14 @@ from fastapi.responses import FileResponse
 from .database import DatabaseManager
 from .keycloak import idp, config
 from .utils import utils
+from .exceptions import ProcedureError, procedure_error_handler
 from .routers.basic import basic
 from .routers.om import mincut
 from .routers.waterbalance import water_balance
 from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 from .routers.routing import routing
 from .routers.crm import crm
+from .models.util_models import GwErrorResponse
 
 TITLE = "Giswater API"
 VERSION = "0.4.0"
@@ -31,8 +33,17 @@ app = FastAPI(
     version=VERSION,
     title=TITLE,
     description=DESCRIPTION,
-    root_path="/api/v1"
+    root_path="/api/v1",
+    responses={
+        500: {
+            "model": GwErrorResponse,
+            "description": "Database function error"
+        }
+    }
 )
+
+# Register exception handlers
+app.add_exception_handler(ProcedureError, procedure_error_handler)
 
 # Add Keycloak Swagger config if enabled
 if idp:

@@ -14,7 +14,7 @@ from ...utils.routing_utils import (
     get_geojson_from_optimized_route,
     get_maneuvers
 )
-from ...utils.utils import create_body_dict, execute_procedure, create_log
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...dependencies import CommonsDep
 from ...models.routing.routing_models import (
     # GetObjectHydraulicOrderResponse,
@@ -300,6 +300,7 @@ async def get_object_parameter_order(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
+    return handle_procedure_result(result)
 
     # Get the network of points
     # network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
@@ -367,4 +368,3 @@ async def get_object_parameter_order(
     #         }
     #     }
     # }
-    return result

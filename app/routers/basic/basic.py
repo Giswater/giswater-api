@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import ValidationError
 from datetime import date
 from typing import Literal, Union, Optional
-from ...utils.utils import create_body_dict, execute_procedure, create_log
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...dependencies import CommonsDep
 from ...models.basic.basic_models import (
     GetInfoFromCoordinatesResponse,
@@ -119,7 +119,7 @@ async def get_info_from_coordinates(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -164,7 +164,7 @@ async def get_selectors(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -203,7 +203,7 @@ async def get_search(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -270,4 +270,4 @@ async def get_list(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    return result
+    return handle_procedure_result(result)

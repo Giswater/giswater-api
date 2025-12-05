@@ -12,9 +12,10 @@ import json
 
 from typing import Any, Dict, Literal
 from datetime import date, datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from ..models.util_models import APIResponse
+from ..exceptions import ProcedureError
 
 
 def load_plugins(app: FastAPI):
@@ -301,3 +302,24 @@ def create_api_response(
         status=status,
         result=result
     )
+
+
+def handle_procedure_result(result: dict | None) -> dict:
+    """
+    Validate procedure result and raise appropriate exception on error.
+
+    Args:
+        result: Result from execute_procedure
+
+    Returns:
+        The result dict if valid
+
+    Raises:
+        HTTPException: If result is None
+        ProcedureError: If result status is not "Accepted"
+    """
+    if not result:
+        raise HTTPException(status_code=500, detail="Database returned null")
+    if result.get("status") != "Accepted":
+        raise ProcedureError(result)
+    return result
