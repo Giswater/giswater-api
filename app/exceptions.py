@@ -17,4 +17,3 @@ class ProcedureError(Exception):
 async def procedure_error_handler(request: Request, exc: ProcedureError):
     # Add your logging here - you have access to request.url, request.headers, etc.
     return JSONResponse(status_code=500, content=exc.result)
-
