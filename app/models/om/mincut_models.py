@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from pydantic_geojson import FeatureCollectionModel
-from typing import Optional, Dict, Any, List, Union, Literal
+from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 
 from ..util_models import (
