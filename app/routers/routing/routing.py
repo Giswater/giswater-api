@@ -4,7 +4,7 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Query, HTTPException
 from typing import Literal, Optional
 import json
 from pydantic import ValidationError
@@ -14,8 +14,8 @@ from ...utils.routing_utils import (
     get_geojson_from_optimized_route,
     get_maneuvers
 )
-from ...utils.utils import create_body_dict, execute_procedure, create_log
-from ...dependencies import get_schema
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
+from ...dependencies import CommonsDep
 from ...models.routing.routing_models import (
     # GetObjectHydraulicOrderResponse,
     OptimalPathParams,
@@ -71,7 +71,7 @@ router = APIRouter(prefix="/routing", tags=["OM - Routing"])
     response_model_exclude_unset=True
 )
 async def get_object_optimal_path_order(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT',
                         'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT',
                         'NETWJOIN', 'PUMP', 'REDUCTION', 'REGISTER', 'SOURCE',
@@ -149,7 +149,7 @@ async def get_object_optimal_path_order(
             mapzone_type = "EXPL"
 
         # Get the network of points
-        json_result, network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
+        json_result, network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, commons["schema"])
         features = json_result["body"]["data"]["features"]
 
         locations_data = [initial_point, *network_points, final_point]
@@ -240,7 +240,7 @@ async def get_object_optimal_path_order(
     response_model_exclude_unset=True
 )
 async def get_object_parameter_order(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     objectType: Literal['EXPANSIONTANK', 'FILTER', 'FLEXUNION', 'HYDRANT',
                         'JUNCTION', 'METER', 'NETELEMENT', 'NETSAMPLEPOINT',
                         'NETWJOIN', 'PUMP', 'REDUCTION', 'REGISTER', 'SOURCE',
@@ -281,16 +281,26 @@ async def get_object_parameter_order(
 
     # Get the features from the database
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "sysType": objectType,
             "mapzoneType": mapzone_type,
             "mapzoneId": mapzoneId,
             "parameter": parameter,
             "order": order
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_getfeatures", body, schema=schema)
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getfeatures",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
     # Get the network of points
     # network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
@@ -358,4 +368,3 @@ async def get_object_parameter_order(
     #         }
     #     }
     # }
-    return result

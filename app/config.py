@@ -1,29 +1,37 @@
 import configparser
 
-# Get from config/app.config
-config_file = "app/config/app.config"
-cp = configparser.ConfigParser()
-cp.read(config_file)
 
-config = cp
+class Config:
+    """Configuration manager that can be instantiated per client."""
 
+    def __init__(self, config_file: str):
+        """
+        Initialize config from a specific config file.
 
-def get_bool(section: str, option: str, default: bool = False) -> bool:
-    try:
-        value = config.get(section, option)
-        if value.lower() in ("true", "t", "yes", "y", "1"):
-            return True
-        else:
-            return False
-    except Exception:
-        print(f"Exception getting option {section=} {option=}")
-        return default
+        Args:
+            config_file: Path to the config file
+        """
+        self.config_file = config_file
+        self.cp = configparser.ConfigParser()
+        self.cp.read(config_file)
 
+    def get_bool(self, section: str, option: str, default: bool = False) -> bool:
+        """Get a boolean value from config."""
+        try:
+            value = self.cp.get(section, option)
+            if value.lower() in ("true", "t", "yes", "y", "1"):
+                return True
+            else:
+                return False
+        except Exception:
+            print(f"Exception getting option {section=} {option=} from {self.config_file}")
+            return default
 
-def get_str(section: str, option: str, default: str | None = None) -> str | None:
-    try:
-        value = config.get(section, option)
-        return value
-    except Exception:
-        print(f"Exception getting option {section=} {option=}")
-        return default
+    def get_str(self, section: str, option: str, default: str | None = None) -> str | None:
+        """Get a string value from config."""
+        try:
+            value = self.cp.get(section, option)
+            return value
+        except Exception:
+            print(f"Exception getting option {section=} {option=} from {self.config_file}")
+            return default

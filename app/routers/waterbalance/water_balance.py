@@ -4,12 +4,12 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query
 from typing import Union
-from ...utils.utils import create_body_dict, execute_procedure, create_log
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...models.util_models import GwErrorResponse
 from ...models.om.waterbalance_models import ListDmasResponse, GetDmaHydrometersResponse, GetDmaParametersResponse
-from ...dependencies import get_schema
+from ...dependencies import CommonsDep
 
 router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
 
@@ -21,14 +21,24 @@ router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
     response_model_exclude_unset=True
 )
 async def list_dmas(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
 ):
     log = create_log(__name__)
 
-    body = create_body_dict()
+    body = create_body_dict(
+        device=commons["device"],
+        cur_user=commons["user_id"]
+    )
 
-    result = execute_procedure(log, "gw_fct_getdmas", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getdmas",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -41,7 +51,7 @@ async def list_dmas(
     response_model_exclude_unset=True
 )
 async def get_dma_hydrometers(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     dma_id: int = Query(
         ...,
         title="DMA ID",
@@ -65,10 +75,21 @@ async def get_dma_hydrometers(
     log = create_log(__name__)
 
     parameters = {"dma_id": dma_id}
-    body = create_body_dict(extras={"parameters": parameters})
+    body = create_body_dict(
+        device=commons["device"],
+        extras={"parameters": parameters},
+        cur_user=commons["user_id"]
+    )
 
-    result = execute_procedure(log, "gw_fct_getdmahydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getdmahydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -82,7 +103,7 @@ async def get_dma_hydrometers(
     response_model_exclude_unset=True
 )
 async def get_dma_parameters(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     dma_id: int = Query(
         ...,
         title="DMA ID",
@@ -90,4 +111,5 @@ async def get_dma_parameters(
         examples=[1]
     ),
 ):
+    log = create_log(__name__)  # noqa: F841
     return {"message": "Fetched DMA parameters successfully"}

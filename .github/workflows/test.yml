@@ -1,6 +1,18 @@
-name: Run FastAPI Tests
+name: 🧪 FastAPI Tests
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - 'master'
+      - 'dev'
+      - 'feature/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - 'master'
+      - 'dev'
+      - 'feature/**'
+      - 'release/**'
 
 jobs:
   fastapi-test:

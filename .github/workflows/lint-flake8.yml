@@ -1,9 +1,21 @@
-name: Code Style Check (flake8)
+name: 🐍 Flake8 Linting
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - 'master'
+      - 'dev'
+      - 'feature/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - 'master'
+      - 'dev'
+      - 'feature/**'
+      - 'release/**'
 
 jobs:
-  flake8:
+  lint-flake8:
     runs-on: ubuntu-latest
 
     steps:

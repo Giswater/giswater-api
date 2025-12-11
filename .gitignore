@@ -10,7 +10,7 @@ __pycache__/
 .pytest_cache/
 
 # Config files
-app/config/app.config
+app/config/**/app.config
 
 # Logs and temp files
 *.log

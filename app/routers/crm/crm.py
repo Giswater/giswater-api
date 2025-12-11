@@ -5,16 +5,15 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Body
 from typing import Union, List
-from ...utils.utils import create_body_dict, execute_procedure, create_log
-from ...models.util_models import GwErrorResponse
+from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...models.crm.crm_models import (
     HydrometerCreate,
     HydrometerUpdate,
     HydrometerResponse
 )
-from ...dependencies import get_schema
+from ...dependencies import CommonsDep
 
 router = APIRouter(prefix="/crm", tags=["CRM"])
 
@@ -22,11 +21,11 @@ router = APIRouter(prefix="/crm", tags=["CRM"])
 @router.post(
     "/hydrometers",
     description="Insert hydrometers (single or bulk)",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def insert_hydrometers(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     hydrometers: Union[HydrometerCreate, List[HydrometerCreate]] = Body(
         ...,
         title="Hydrometers",
@@ -43,25 +42,34 @@ async def insert_hydrometers(
     hydrometers_data = [h.model_dump(mode='json', exclude_unset=True) for h in hydrometers_list]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "INSERT",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_set_hydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_set_hydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.patch(
     "/hydrometers/{code}",
     description="Update a single hydrometer by code",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def update_hydrometer(
+    commons: CommonsDep,
     code: str,
-    schema: str = Depends(get_schema),
     hydrometer: HydrometerUpdate = Body(
         ...,
         title="Hydrometer",
@@ -76,24 +84,33 @@ async def update_hydrometer(
     hydrometer_dict['code'] = code
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "UPDATE",
             "hydrometers": [hydrometer_dict]
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_set_hydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_set_hydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.patch(
     "/hydrometers",
     description="Update multiple hydrometers in bulk",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def update_hydrometers_bulk(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     hydrometers: List[HydrometerUpdate] = Body(
         ...,
         title="Hydrometers",
@@ -106,48 +123,66 @@ async def update_hydrometers_bulk(
     hydrometers_data = [h.model_dump(mode='json', exclude_unset=True) for h in hydrometers]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "UPDATE",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_set_hydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_set_hydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.delete(
     "/hydrometers/{code}",
     description="Delete a single hydrometer by code",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def delete_hydrometer(
+    commons: CommonsDep,
     code: str,
-    schema: str = Depends(get_schema),
 ):
     """Delete a single hydrometer identified by code"""
     log = create_log(__name__)
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "DELETE",
             "hydrometers": [{"code": code}]
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_set_hydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_set_hydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.delete(
     "/hydrometers",
     description="Delete multiple hydrometers in bulk",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def delete_hydrometers_bulk(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     codes: List[str] = Body(
         ...,
         title="Codes",
@@ -160,24 +195,33 @@ async def delete_hydrometers_bulk(
     hydrometers_data = [{"code": code} for code in codes]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "DELETE",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_set_hydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_set_hydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.put(
     "/hydrometers",
     description="Replace all hydrometers. Deletes all existing hydrometers and inserts the provided ones.",
-    response_model=Union[HydrometerResponse, GwErrorResponse],
+    response_model=HydrometerResponse,
     response_model_exclude_unset=True
 )
 async def replace_all_hydrometers(
-    schema: str = Depends(get_schema),
+    commons: CommonsDep,
     hydrometers: List[HydrometerCreate] = Body(
         ...,
         title="Hydrometers",
@@ -194,11 +238,20 @@ async def replace_all_hydrometers(
     hydrometers_data = [h.model_dump(mode='json', exclude_unset=True) for h in hydrometers]
 
     body = create_body_dict(
+        device=commons["device"],
         extras={
             "action": "REPLACE",
             "hydrometers": hydrometers_data
-        }
+        },
+        cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(log, "gw_fct_set_hydrometers", body, schema=schema)
-    return result
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_set_hydrometers",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
