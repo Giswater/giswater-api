@@ -9,22 +9,24 @@ from fastapi import APIRouter, Body, Path, Query, HTTPException
 from typing import Optional
 from pydantic import ValidationError
 
-from ...models.util_models import CoordinatesModel, APIResponse
+from ...models.util_models import CoordinatesModel
 from ...models.om.mincut_models import (
     MINCUT_CAUSE_VALUES,
     MincutPlanParams,
     MincutExecParams,
-    ValveUnaccessResponse,
     MincutCreateResponse,
     MincutUpdateResponse,
+    MincutToggleValveUnaccessResponse,
+    MincutToggleValveStatusResponse,
     MincutStartResponse,
     MincutDeleteResponse,
     MincutFilterFieldsModel,
+    MincutValveFilterFieldsModel,
     MincutCancelResponse,
     MincutEndResponse
 )
 from ...models.basic.basic_models import GetListResponse
-from ...utils.utils import create_body_dict, create_log, execute_procedure, create_api_response, handle_procedure_result
+from ...utils.utils import create_body_dict, create_log, execute_procedure, handle_procedure_result
 from ...dependencies import CommonsDep
 from ..basic.basic import get_list
 
@@ -101,6 +103,7 @@ async def update_mincut(
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to update", examples=[1]),
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
+    use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
     log = create_log(__name__)
 
@@ -116,10 +119,9 @@ async def update_mincut(
 
     body = create_body_dict(
         device=commons["device"],
-        client_extras={"tiled": True},
         feature={"featureType": "", "tableName": "om_mincut", "id": mincut_id},
         extras={"action": "mincutAccept", "mincutClass": 1, "status": "check",
-                "mincutId": mincut_id, "usePsectors": "False",
+                "mincutId": mincut_id, "usePsectors": use_psectors,
                 "fields": {
                     **plan_dict,
                     **exec_dict
@@ -140,30 +142,68 @@ async def update_mincut(
     return handle_procedure_result(result)
 
 
-@router.post(
-    "/mincuts/{mincut_id}/valve-unaccess",
+@router.get(
+    "/mincuts/{mincut_id}/valves",
     description=(
-        "Recalculates the mincut when a defined one is invalid due to an inaccessible or inoperative valve. "
-        "The system excludes the problematic valve and adjusts the cut polygon based on accessible valves."
+        "Gets the list of valves associated to a mincut."
+    ),
+    response_model=GetListResponse,
+    response_model_exclude_unset=True
+)
+async def get_valves(
+    commons: CommonsDep,
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
+    filterFields: Optional[str] = Query(None, description="Filter fields"),
+):
+    # Validate filterFields using the mincut-specific model
+    if filterFields:
+        try:
+            filterFields_dict = json.loads(filterFields)
+            filterFields_dict["result_id"] = mincut_id
+            # Validate using MincutValveFilterFieldsModel
+            MincutValveFilterFieldsModel(data=filterFields_dict)
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}")
+
+    return await get_list(
+        commons=commons,
+        tableName="v_om_mincut_valve",
+        coordinates=None,
+        pageInfo=None,
+        filterFields=filterFields
     )
+
+
+@router.post(
+    "/mincuts/{mincut_id}/valves/{valve_id}/toggle-unaccess",
+    description=(
+        "Toggles the unaccess status of a valve associated to a mincut."
+        "Also recalculates the mincut with the new status of the valve."
+    ),
+    response_model=MincutToggleValveUnaccessResponse,
+    response_model_exclude_unset=True
 )
 async def valve_unaccess(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
-    nodeId: int = Body(
+    valve_id: int = Path(
         ...,
         title="Node ID",
-        description="ID of the node where the unaccessible valve is located",
+        description="ID of the valve to toggle unaccessible",
         examples=[1114]
     ),
-    user: str = Body(..., title="User", description="User who is doing the action"),
-) -> ValveUnaccessResponse | APIResponse:
+    use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
+):
     log = create_log(__name__)
 
     body = create_body_dict(
         device=commons["device"],
-        client_extras={"tiled": True},
-        extras={"action": "mincutValveUnaccess", "nodeId": nodeId, "mincutId": mincut_id, "usePsectors": "False"},
+        extras={
+            "action": "mincutValveUnaccess",
+            "nodeId": valve_id,
+            "mincutId": mincut_id,
+            "usePsectors": use_psectors
+        },
         cur_user=commons["user_id"]
     )
 
@@ -175,15 +215,50 @@ async def valve_unaccess(
         schema=commons["schema"],
         api_version=commons["api_version"]
     )
-    # TODO: change response to a pydantic model
-    if not result:
-        return create_api_response("Error recalculating mincut", "Failed")
+    return handle_procedure_result(result)
 
-    if result.get("status") != "Accepted":
-        return create_api_response("Error recalculating mincut", "Failed", result=result)
 
-    response = ValveUnaccessResponse(**result)
-    return response
+@router.post(
+    "/mincuts/{mincut_id}/valves/{valve_id}/toggle-status",
+    description=(
+        "Updates the status of a valve associated to a mincut."
+    ),
+    response_model=MincutToggleValveStatusResponse,
+    response_model_exclude_unset=True
+)
+async def valve_toggle_status(
+    commons: CommonsDep,
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
+    valve_id: int = Path(
+        ...,
+        title="Valve ID",
+        description="ID of the valve to update",
+        examples=[1114]
+    ),
+    use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
+):
+    log = create_log(__name__)
+
+    body = create_body_dict(
+        device=commons["device"],
+        extras={
+            "action": "mincutChangeValveStatus",
+            "nodeId": valve_id,
+            "mincutId": mincut_id,
+            "usePsectors": use_psectors
+        },
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_setmincut",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.post(
@@ -203,44 +278,23 @@ async def start_mincut(
         description="ID of the mincut to start",
         examples=[1]
     ),
-    # TODO: check if these parameters are needed/wanted
-    # arc_id: int = Body(
-    #     ...,
-    #     title="Arc ID",
-    #     description="ID of the arc to start the mincut",
-    #     examples=[113875]
-    # ),
-    # mincut_type: Literal["Demo", "Test", "Real"] = Body(
-    #     ...,
-    #     title="Mincut Type",
-    #     description="Type of the mincut",
-    #     examples=["Demo"]
-    # ),
-    # forecast_start: str = Body(
-    #     ...,
-    #     title="Forecast Start",
-    #     description="Expected start of the mincut",
-    #     examples=["2025-11-27 00:00:00"]
-    # ),
-    # forecast_end: str = Body(
-    #     ...,
-    #     title="Forecast End",
-    #     description="Expected end of the mincut",
-    #     examples=["2025-11-27 00:00:00"]
-    # ),
+    plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
+    use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
     log = create_log(__name__)
+
+    if plan:
+        plan_dict = plan.model_dump(exclude_unset=True)
+    else:
+        plan_dict = {}
 
     body = create_body_dict(
         device=commons["device"],
         extras={
             "action": "mincutStart",
-            "usePsectors": "False",
+            "usePsectors": use_psectors,
             "mincutId": mincut_id,
-            # "arcId": arc_id,
-            # "dialogMincutType": dialog_mincut_type,
-            # "dialogForecastStart": forecast_start,
-            # "dialogForecastEnd": forecast_end
+            **plan_dict
         },
         cur_user=commons["user_id"]
     )
@@ -268,14 +322,32 @@ async def start_mincut(
 async def end_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to end", examples=[1]),
+    shutoff_required: Optional[bool] = Body(
+        True,
+        title="Shutoff Required",
+        description=(
+            "Whether the mincut required shutting off the water supply to consumers"
+        ),
+        examples=[True]
+    ),
+    exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
+    use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
     log = create_log(__name__)
+
+    if exec:
+        exec_dict = exec.model_dump(exclude_unset=True)
+    else:
+        exec_dict = {}
 
     body = create_body_dict(
         device=commons["device"],
         extras={
             "action": "mincutEnd",
-            "mincutId": mincut_id
+            "mincutId": mincut_id,
+            "shutoffRequired": shutoff_required,
+            "usePsectors": use_psectors,
+            **exec_dict
         },
         cur_user=commons["user_id"]
     )
@@ -289,22 +361,6 @@ async def end_mincut(
         api_version=commons["api_version"]
     )
     return handle_procedure_result(result)
-
-
-@router.post(
-    "/mincuts/{mincut_id}/repair",
-    description=(
-        "Accepts the mincut but performs the repair without interrupting the water supply. "
-        "A silent mincut is generated, allowing work on the network without affecting users."
-    )
-)
-async def repair_mincut(
-    commons: CommonsDep,
-    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to repair", examples=[1]),
-):
-    log = create_log(__name__)  # noqa: F841
-    # TODO: Add call to database funtion
-    return create_api_response("Mincut repaired successfully", "Accepted")
 
 
 @router.post(
