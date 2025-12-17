@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Toggle valve status endpoint
+- Get mincut valves endpoint
+
+### Changed
+
+- Valve unaccess endpoint
+
 ## [0.5.0] - 2025-12-11
 
 ### Added

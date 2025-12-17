@@ -9,8 +9,6 @@ from ..util_models import (
     Data,
     Geometry,
     Info,
-    Message,
-    Version,
     FilterFieldModel,
     GwField,
 )
@@ -186,8 +184,11 @@ class MincutUpdateResponse(BaseAPIResponse[MincutUpdateBody]):
 # endregion
 
 
-class ValveUnaccessData(Data):
-    """Valve unaccess data"""
+# region Mincut toggle valve unaccess response models
+
+
+class MincutToggleValveUnaccessData(Data):
+    """Mincut toggle valve unaccess data"""
     # NOTE: fields are inherited from Data
     info: Optional[Info] = Field(None, description="Info of the data")
     mincutId: int = Field(..., description="Mincut id", examples=[1])
@@ -202,18 +203,50 @@ class ValveUnaccessData(Data):
     geometry: Geometry = Field(..., description="Extent of the mincut")
 
 
-class ValveUnaccessBody(Body[ValveUnaccessData]):
+class MincutToggleValveUnaccessBody(Body[MincutToggleValveUnaccessData]):
+    """Body for mincut toggle valve unaccess response"""
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
+
+
+class MincutToggleValveUnaccessResponse(BaseAPIResponse[MincutToggleValveUnaccessBody]):
+    """Response model for mincut toggle valve unaccess"""
     pass
 
+# endregion
 
-class ValveUnaccessResponse(BaseAPIResponse[ValveUnaccessBody]):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.status = kwargs.get("status", "Failed")
-        self.message: Message = kwargs.get("message", {})
-        self.version: Version = kwargs.get("version", {})
-        self.body: ValveUnaccessBody = kwargs.get("body", {})
+# region Mincut toggle valve status response models
+
+
+class MincutToggleValveStatusData(Data):
+    """Mincut toggle valve status data"""
+    # NOTE: fields are inherited from Data
+    info: Optional[Info] = Field(None, description="Info of the data")
+    mincutId: int = Field(..., description="Mincut id", examples=[1])
+    mincutState: int = Field(..., description="Mincut state", examples=[1])
+    mincutInit: FeatureCollectionModel = Field(..., description="Mincut initial point")
+    mincutProposedValve: FeatureCollectionModel = Field(..., description="Mincut proposed valve")
+    mincutNotProposedValve: FeatureCollectionModel = Field(..., description="Mincut not proposed valve")
+    mincutNode: FeatureCollectionModel = Field(..., description="Mincut node")
+    mincutConnec: FeatureCollectionModel = Field(..., description="Mincut connecs")
+    mincutArc: FeatureCollectionModel = Field(..., description="Mincut arcs")
+    tiled: bool = Field(..., description="Tiled", examples=[True])
+    geometry: Geometry = Field(..., description="Extent of the mincut")
+
+
+class MincutToggleValveStatusBody(Body[MincutToggleValveStatusData]):
+    """Body for mincut toggle valve status response"""
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
+
+
+class MincutToggleValveStatusResponse(BaseAPIResponse[MincutToggleValveStatusBody]):
+    """Response model for mincut toggle valve status"""
+    pass
+
+# endregion
+
 
 # region Mincut start response models
 
@@ -324,5 +357,24 @@ class MincutFilterFieldsModel(BaseModel):
         for key in v.keys():
             parts = [p.strip() for p in key.split(', ')]
             if not all(p in MINCUT_VALID_FIELDS for p in parts):
+                raise ValueError(f"Invalid key: '{key}'")
+        return v
+
+
+MINCUT_VALVE_VALID_FIELDS = frozenset(
+    ["result_id", "work_order", "node_id", "closed", "broken", "unaccess", "proposed", "to_arc"]
+)
+
+
+class MincutValveFilterFieldsModel(BaseModel):
+    """Mincut valve filter fields response"""
+    data: Optional[Dict[str, FilterFieldModel]] = Field(None, description="Data")
+
+    @field_validator('data')
+    @classmethod
+    def validate_keys(cls, v):
+        for key in v.keys():
+            parts = [p.strip() for p in key.split(', ')]
+            if not all(p in MINCUT_VALVE_VALID_FIELDS for p in parts):
                 raise ValueError(f"Invalid key: '{key}'")
         return v
