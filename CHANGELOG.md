@@ -123,7 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/giswater/giswater-api/compare/v0.5.0...dev
+[unreleased]: https://github.com/giswater/giswater-api/compare/v0.5.0...main
 [0.5.0]: https://github.com/giswater/giswater-api/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/giswater/giswater-api/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/giswater/giswater-api/compare/v0.3.3...v0.3.4
