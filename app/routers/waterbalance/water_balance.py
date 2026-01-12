@@ -5,9 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 from fastapi import APIRouter, Query
-from typing import Union
 from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
-from ...models.util_models import GwErrorResponse
 from ...models.om.waterbalance_models import ListDmasResponse, GetDmaHydrometersResponse, GetDmaParametersResponse
 from ...dependencies import CommonsDep
 
@@ -17,7 +15,7 @@ router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
 @router.get(
     "/listdmas",
     description="Returns a collection of DMAs.",
-    response_model=Union[ListDmasResponse, GwErrorResponse],
+    response_model=ListDmasResponse,
     response_model_exclude_unset=True
 )
 async def list_dmas(
@@ -47,7 +45,7 @@ async def list_dmas(
         "Returns a collection of hydrometers within a specific DMA, "
         "providing details on their location, status, and measurement data."
     ),
-    response_model=Union[GetDmaHydrometersResponse, GwErrorResponse],
+    response_model=GetDmaHydrometersResponse,
     response_model_exclude_unset=True
 )
 async def get_dma_hydrometers(
@@ -99,7 +97,7 @@ async def get_dma_hydrometers(
         "Provides consumption data, network information, and other key metrics "
         "for performance analysis over a selected period."
     ),
-    response_model=Union[GetDmaParametersResponse, GwErrorResponse],
+    response_model=GetDmaParametersResponse,
     response_model_exclude_unset=True
 )
 async def get_dma_parameters(

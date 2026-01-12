@@ -9,7 +9,7 @@ import json
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import ValidationError
 from datetime import date
-from typing import Literal, Union, Optional
+from typing import Literal, Optional
 from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...dependencies import CommonsDep
 from ...models.basic.basic_models import (
@@ -19,7 +19,7 @@ from ...models.basic.basic_models import (
     GetSearchResponse,
     GetListResponse
 )
-from ...models.util_models import CoordinatesModel, GwErrorResponse, ExtentModel, PageInfoModel, FilterFieldModel
+from ...models.util_models import CoordinatesModel, ExtentModel, PageInfoModel, FilterFieldModel
 
 router = APIRouter(prefix="/basic", tags=["Basic"])
 
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/basic", tags=["Basic"])
 @router.get(
     "/getfeaturechanges",
     description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.",
-    response_model=Union[GetFeatureChangesResponse, GwErrorResponse],
+    response_model=GetFeatureChangesResponse,
     response_model_exclude_unset=True
 )
 async def get_feature_changes(
@@ -85,7 +85,7 @@ async def get_feature_changes(
 @router.get(
     "/getinfofromcoordinates",
     description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.",
-    response_model=Union[GetInfoFromCoordinatesResponse, GwErrorResponse],
+    response_model=GetInfoFromCoordinatesResponse,
     response_model_exclude_unset=True
 )
 async def get_info_from_coordinates(
@@ -125,7 +125,7 @@ async def get_info_from_coordinates(
 @router.get(
     "/getselectors",
     description="Fetch current selectors",
-    response_model=Union[GetSelectorsResponse, GwErrorResponse],
+    response_model=GetSelectorsResponse,
     response_model_exclude_unset=True
 )
 async def get_selectors(
@@ -170,7 +170,7 @@ async def get_selectors(
 @router.get(
     "/getsearch",
     description="Search features",
-    response_model=Union[GetSearchResponse, GwErrorResponse],
+    response_model=GetSearchResponse,
     response_model_exclude_unset=True
 )
 async def get_search(
@@ -209,7 +209,7 @@ async def get_search(
 @router.get(
     "/getlist",
     description="Fetch a list of features",
-    response_model=Union[GetListResponse, GwErrorResponse],
+    response_model=GetListResponse,
     response_model_exclude_unset=True
 )
 async def get_list(
