@@ -101,10 +101,15 @@ async def get_info_from_coordinates(
         form={"editable": "False"},
         feature={},
         extras={
-            "activeLayer": "v_edit_node",
+            "activeLayer": "ve_node",
             "visibleLayers": [
-                "v_edit_node", "v_edit_connec", "v_edit_arc", "v_edit_link", "v_edit_dimensions", "ext_municipality",
-                "v_ext_streetaxis", "v_ext_plot"
+                "ve_cat_feature_node", "ve_cat_feature_arc", "ve_cat_feature_connec",
+                "ve_cat_feature_gully", "ve_cat_feature_link", "ve_cat_feature_element",
+                "cat_node", "cat_arc", "cat_connec", "cat_gully", "cat_link", "cat_element",
+                "cat_material", "ve_node", "ve_man_frelem", "ve_arc", "ve_connec", "ve_gully",
+                "ve_link", "ve_pol_node", "ve_pol_connec", "ve_pol_gully", "ve_dimensions",
+                "v_ext_municipality", "v_ext_plot", "v_ext_streetaxis", "cat_feature",
+                "sys_feature_type", "v_value_relation"
             ],
             "coordinates": coordinates_dict
         },
