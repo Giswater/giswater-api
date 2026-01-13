@@ -41,7 +41,7 @@ async def common_parameters(
     current_user: OIDCUser = Depends(get_current_user()),
     schema: str = Depends(get_schema),
     device: int = Header(
-        default=4,
+        default=5,
         alias="X-Device",
         description=(
             "Device identifier. "
