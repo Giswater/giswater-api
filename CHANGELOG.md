@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Toggle valve status endpoint
 - Get mincut valves endpoint
+- Get mincut dialog endpoint
 
 ### Changed
 

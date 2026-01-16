@@ -23,7 +23,8 @@ from ...models.om.mincut_models import (
     MincutFilterFieldsModel,
     MincutValveFilterFieldsModel,
     MincutCancelResponse,
-    MincutEndResponse
+    MincutEndResponse,
+    MincutDialogResponse
 )
 from ...models.basic.basic_models import GetListResponse
 from ...utils.utils import create_body_dict, create_log, execute_procedure, handle_procedure_result
@@ -34,6 +35,65 @@ router = APIRouter(
     prefix="/om",
     tags=["OM - Mincut"]
 )
+
+
+@router.get(
+    "/mincuts",
+    description="Returns a list of mincuts",
+    response_model=GetListResponse,
+    response_model_exclude_unset=True
+)
+async def get_mincuts(
+    commons: CommonsDep,
+    filterFields: Optional[str] = Query(None, description="Filter fields"),
+):
+    """Get list of mincuts by calling the generic get_list endpoint with tbl_mincut_manger table"""
+
+    # Validate filterFields using the mincut-specific model
+    if filterFields:
+        try:
+            filterFields_dict = json.loads(filterFields)
+            # Validate using MincutFilterFieldsModel
+            MincutFilterFieldsModel(data=filterFields_dict)
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}")
+
+    return await get_list(
+        commons=commons,
+        tableName="tbl_mincut_manager",
+        coordinates=None,
+        pageInfo=None,
+        filterFields=filterFields
+    )
+
+
+@router.get(
+    "/mincuts/{mincut_id}",
+    description="Returns the dialog data of a mincut",
+    response_model=MincutDialogResponse,
+    response_model_exclude_unset=True
+)
+async def get_mincut_dialog(
+    commons: CommonsDep,
+    mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to fetch", examples=[1]),
+):
+    log = create_log(__name__)
+
+    body = create_body_dict(
+        device=commons["device"],
+        extras={"mincutId": mincut_id},
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getmincut",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
 
 
 @router.post(
@@ -429,33 +489,3 @@ async def delete_mincut(
         api_version=commons["api_version"]
     )
     return handle_procedure_result(result)
-
-
-@router.get(
-    "/mincuts",
-    description="Returns a list of mincuts",
-    response_model=GetListResponse,
-    response_model_exclude_unset=True
-)
-async def get_mincuts(
-    commons: CommonsDep,
-    filterFields: Optional[str] = Query(None, description="Filter fields"),
-):
-    """Get list of mincuts by calling the generic get_list endpoint with tbl_mincut_manger table"""
-
-    # Validate filterFields using the mincut-specific model
-    if filterFields:
-        try:
-            filterFields_dict = json.loads(filterFields)
-            # Validate using MincutFilterFieldsModel
-            MincutFilterFieldsModel(data=filterFields_dict)
-        except (json.JSONDecodeError, ValidationError) as e:
-            raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}")
-
-    return await get_list(
-        commons=commons,
-        tableName="tbl_mincut_manager",
-        coordinates=None,
-        pageInfo=None,
-        filterFields=filterFields
-    )

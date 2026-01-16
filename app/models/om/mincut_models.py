@@ -148,6 +148,42 @@ class MincutCreateResponse(BaseAPIResponse[MincutCreateBody]):
 # endregion
 
 
+# region Mincut dialog response models
+
+
+class MincutDialogData(Data):
+    """Mincut dialog data"""
+    mincutId: int = Field(..., description="Mincut id", examples=[1])
+    mincutState: int = Field(
+        ...,
+        description=(
+            "Mincut state (0: Planified, 1: In Progress, 2: Finished, "
+            "3: Canceled, 4: On Planning, 5: Conflict)"
+        ),
+        examples=[1], ge=0, le=5
+    )
+    info: Optional[Info] = Field(None, description="Information about the process")
+    mincutInit: Optional[FeatureCollectionModel] = Field(None, description="Mincut initial point")
+    mincutProposedValve: Optional[FeatureCollectionModel] = Field(None, description="Mincut proposed valve")
+    mincutNotProposedValve: Optional[FeatureCollectionModel] = Field(None, description="Mincut not proposed valve")
+    mincutNode: Optional[FeatureCollectionModel] = Field(None, description="Mincut node")
+    mincutConnec: Optional[FeatureCollectionModel] = Field(None, description="Mincut connecs")
+    mincutArc: Optional[FeatureCollectionModel] = Field(None, description="Mincut arcs")
+    geometry: Optional[Geometry] = Field(None, description="Extent of the mincut")
+
+
+class MincutDialogBody(Body[MincutDialogData]):
+    """Body for mincut create response"""
+    pass
+
+
+class MincutDialogResponse(BaseAPIResponse[MincutDialogBody]):
+    """Response model for mincut create"""
+    pass
+
+# endregion
+
+
 # region Mincut update response models
 
 
