@@ -4,21 +4,21 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Path
 from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
-from ...models.om.waterbalance_models import ListDmasResponse, GetDmaHydrometersResponse, GetDmaParametersResponse
+from ...models.om.waterbalance_models import GetDmasResponse, GetDmaHydrometersResponse, GetDmaParametersResponse
 from ...dependencies import CommonsDep
 
 router = APIRouter(prefix="/waterbalance", tags=["OM - Water Balance"])
 
 
 @router.get(
-    "/listdmas",
+    "/dmas",
     description="Returns a collection of DMAs.",
-    response_model=ListDmasResponse,
+    response_model=GetDmasResponse,
     response_model_exclude_unset=True
 )
-async def list_dmas(
+async def get_dmas(
     commons: CommonsDep,
 ):
     log = create_log(__name__)
@@ -40,7 +40,7 @@ async def list_dmas(
 
 
 @router.get(
-    "/getdmahydrometers",
+    "/dmas/{dma_id}/hydrometers",
     description=(
         "Returns a collection of hydrometers within a specific DMA, "
         "providing details on their location, status, and measurement data."
@@ -50,7 +50,7 @@ async def list_dmas(
 )
 async def get_dma_hydrometers(
     commons: CommonsDep,
-    dma_id: int = Query(
+    dma_id: int = Path(
         ...,
         title="DMA ID",
         description="The unique identifier of the DMA for which to fetch hydrometers",
@@ -91,7 +91,7 @@ async def get_dma_hydrometers(
 
 
 @router.get(
-    "/getdmaparameters",
+    "/dmas/{dma_id}/parameters",
     description=(
         "Retrieves specific parameters within a DMA, excluding geometry. "
         "Provides consumption data, network information, and other key metrics "
@@ -102,7 +102,7 @@ async def get_dma_hydrometers(
 )
 async def get_dma_parameters(
     commons: CommonsDep,
-    dma_id: int = Query(
+    dma_id: int = Path(
         ...,
         title="DMA ID",
         description="The unique identifier of the DMA for which to fetch parameters",

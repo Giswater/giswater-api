@@ -12,16 +12,16 @@ class Dma(BaseModel):
     active: bool = Field(..., description="Whether the DMA is active")
 
 
-class ListDmasData(BaseModel):
+class GetDmasData(BaseModel):
     dmas: List[Dma] = Field(..., description="List of DMAs")
 
 
-class ListDmasBody(Body[ListDmasData]):
+class GetDmasBody(Body[GetDmasData]):
     form: Optional[Dict] = Field({}, description="Form")
     feature: Optional[Dict] = Field({}, description="Feature")
 
 
-class ListDmasResponse(BaseAPIResponse[ListDmasBody]):
+class GetDmasResponse(BaseAPIResponse[GetDmasBody]):
     pass
 
 
