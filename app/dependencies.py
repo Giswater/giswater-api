@@ -5,11 +5,7 @@ from .keycloak import get_current_user
 
 
 async def get_schema(
-    schema: str = Query(
-        ...,
-        description="Database schema name",
-        example="public"
-    ),
+    schema: str = Query(..., description="Database schema name", example="public"),
     request: Request = None,
 ):
     """
@@ -38,15 +34,13 @@ async def get_schema(
 
 async def common_parameters(
     request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),
+    current_user: OIDCUser = Depends(get_current_user),
     schema: str = Depends(get_schema),
     device: int = Header(
         default=5,
         alias="X-Device",
         description=(
-            "Device identifier. "
-            "Valid values: 1 = Mobile, 2 = Tablet, 3 = Web Desktop, "
-            "4 = QGIS Desktop, 5 = QGIS Web"
+            "Device identifier. Valid values: 1 = Mobile, 2 = Tablet, 3 = Web Desktop, 4 = QGIS Desktop, 5 = QGIS Web"
         ),
         ge=1,
         le=5,

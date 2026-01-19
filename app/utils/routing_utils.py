@@ -23,11 +23,11 @@ def decode(encoded):
             while byte >= 0x20:
                 byte = ord(encoded[i]) - 63
                 i += 1
-                ll[j] |= (byte & 0x1f) << shift
+                ll[j] |= (byte & 0x1F) << shift
                 shift += 5
             ll[j] = previous[j] + (~(ll[j] >> 1) if ll[j] & 1 else (ll[j] >> 1))
             previous[j] = ll[j]
-        decoded.append([float('%.6f' % (ll[1] * inv)), float('%.6f' % (ll[0] * inv))])
+        decoded.append([float("%.6f" % (ll[1] * inv)), float("%.6f" % (ll[0] * inv))])
     return decoded
 
 
@@ -38,19 +38,11 @@ def get_geojson_from_route(route, mode):
 
     geojson_feature = {
         "type": "Feature",
-        "geometry": {
-            "type": "LineString",
-            "coordinates": route
-        },
-        "properties": {
-            "mode": mode
-        }
+        "geometry": {"type": "LineString", "coordinates": route},
+        "properties": {"mode": mode},
     }
 
-    return {
-        "type": "FeatureCollection",
-        "features": [geojson_feature]
-    }
+    return {"type": "FeatureCollection", "features": [geojson_feature]}
 
 
 def get_geojson_from_optimized_route(trip_data, mode):
@@ -80,10 +72,7 @@ def get_geojson_from_optimized_route(trip_data, mode):
     ]
 
     if not trip_data or "legs" not in trip_data:
-        return {
-            "type": "FeatureCollection",
-            "features": []
-        }
+        return {"type": "FeatureCollection", "features": []}
 
     for i, leg in enumerate(trip_data["legs"]):
         try:
@@ -100,20 +89,22 @@ def get_geojson_from_optimized_route(trip_data, mode):
                 "distance": leg.get("summary", {}).get("length"),
                 "duration": leg.get("summary", {}).get("time"),
                 "from_index": leg.get("from_index"),
-                "to_index": leg.get("to_index")
+                "to_index": leg.get("to_index"),
             }
 
             # Add SimpleStyle properties
             color_index = i % len(colors)
-            leg_properties.update({
-                "stroke": colors[color_index],
-                "stroke-width": 3,
-                "stroke-opacity": 0.8,
-                "fill": colors[color_index],
-                "fill-opacity": 0.1,
-                "title": f"Leg {i}",
-                "description": f"Distance: {leg.get('summary', {}).get('length', 'N/A')} km, Duration: {leg.get('summary', {}).get('time', 'N/A')} s"  # noqa: E501
-            })
+            leg_properties.update(
+                {
+                    "stroke": colors[color_index],
+                    "stroke-width": 3,
+                    "stroke-opacity": 0.8,
+                    "fill": colors[color_index],
+                    "fill-opacity": 0.1,
+                    "title": f"Leg {i}",
+                    "description": f"Distance: {leg.get('summary', {}).get('length', 'N/A')} km, Duration: {leg.get('summary', {}).get('time', 'N/A')} s",  # noqa: E501
+                }
+            )
 
             # Add any additional leg-specific properties
             if "maneuvers" in leg:
@@ -121,11 +112,8 @@ def get_geojson_from_optimized_route(trip_data, mode):
 
             geojson_feature = {
                 "type": "Feature",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": shape
-                },
-                "properties": leg_properties
+                "geometry": {"type": "LineString", "coordinates": shape},
+                "properties": leg_properties,
             }
 
             features.append(geojson_feature)
@@ -134,10 +122,7 @@ def get_geojson_from_optimized_route(trip_data, mode):
             print(f"Error processing leg {i}: {e}")
             continue
 
-    return {
-        "type": "FeatureCollection",
-        "features": features
-    }
+    return {"type": "FeatureCollection", "features": features}
 
 
 def get_valhalla_route(input_parameters):
@@ -145,8 +130,8 @@ def get_valhalla_route(input_parameters):
     Get the route from Valhalla API
     """
     base_url = "https://valhalla1.openstreetmap.de/route"
-    json_string = json.dumps(input_parameters).replace(' ', '')
-    encoded_json = quote(json_string, safe='[],:')
+    json_string = json.dumps(input_parameters).replace(" ", "")
+    encoded_json = quote(json_string, safe="[],:")
     url = f"{base_url}?json={encoded_json}"
     response = requests.get(url)
     if response.status_code != 200:
@@ -166,8 +151,8 @@ def get_valhalla_optimized_route(input_parameters):
     Get the optimized route from Valhalla API
     """
     base_url = "https://valhalla1.openstreetmap.de/optimized_route"
-    json_string = json.dumps(input_parameters).replace(' ', '')
-    encoded_json = quote(json_string, safe='[],:')
+    json_string = json.dumps(input_parameters).replace(" ", "")
+    encoded_json = quote(json_string, safe="[],:")
     url = f"{base_url}?json={encoded_json}"
     response = requests.get(url)
     if response.status_code != 200:
@@ -198,9 +183,7 @@ def get_network_points(object_type, mapzone_type, mapzone_id, log, schema) -> Tu
     points = []
 
     # Get the network points from the database
-    body = create_body_dict(
-        extras={"sysType": object_type, "mapzoneType": mapzone_type, "mapzoneId": mapzone_id}
-    )
+    body = create_body_dict(extras={"sysType": object_type, "mapzoneType": mapzone_type, "mapzoneId": mapzone_id})
 
     result = execute_procedure(log, "gw_fct_getfeatures", body, schema=schema)
     if not result:
@@ -209,11 +192,8 @@ def get_network_points(object_type, mapzone_type, mapzone_id, log, schema) -> Tu
     points_data = result["body"]["data"]["features"]
     for point in points_data:
         point_coordinates = point["coordinates"]
-        points.append(Location(
-            x=point_coordinates['x'],
-            y=point_coordinates['y'],
-            epsg=point_coordinates['epsg'],
-            street=None
-        ))
+        points.append(
+            Location(x=point_coordinates["x"], y=point_coordinates["y"], epsg=point_coordinates["epsg"], street=None)
+        )
 
     return result, points

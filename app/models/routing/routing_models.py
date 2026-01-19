@@ -8,8 +8,13 @@ from pyproj import Transformer
 
 class Location(BaseModel):
     """Location model for routing"""
-    x: float = Field(..., title="X coordinate", description="X coordinate in the specified EPSG system", examples=[418777.3])  # noqa: E501
-    y: float = Field(..., title="Y coordinate", description="Y coordinate in the specified EPSG system", examples=[4576692.9])  # noqa: E501
+
+    x: float = Field(
+        ..., title="X coordinate", description="X coordinate in the specified EPSG system", examples=[418777.3]
+    )  # noqa: E501
+    y: float = Field(
+        ..., title="Y coordinate", description="Y coordinate in the specified EPSG system", examples=[4576692.9]
+    )  # noqa: E501
     street: Optional[str] = Field(None, title="Street", description="Street name", examples=["Appleton"])
     epsg: int = Field(4326, title="EPSG", description="EPSG code of the coordinate system", examples=[4326, 25831])
 
@@ -30,7 +35,7 @@ class Location(BaseModel):
         transformer = Transformer.from_crs(from_epsg, to_epsg, always_xy=True)
         return transformer.transform(x, y)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_coordinates(self) -> Self:
         """Validate that coordinates are appropriate for the EPSG system"""
         if self.epsg == 4326:
@@ -44,43 +49,30 @@ class Location(BaseModel):
     def to_dict(self) -> Dict[str, float]:
         """Convert to dictionary format expected by Valhalla API, transforming to EPSG:4326 if needed"""
         if self.epsg == 4326:
-            return {
-                "lon": self.x,
-                "lat": self.y
-            }
+            return {"lon": self.x, "lat": self.y}
 
         # Transform to EPSG:4326
         transformed_x, transformed_y = self._transform_coordinates(self.x, self.y, self.epsg, 4326)
-        return {
-            "lon": transformed_x,
-            "lat": transformed_y
-        }
+        return {"lon": transformed_x, "lat": transformed_y}
 
 
 class OptimalPathParams(BaseModel):
     """Optimal path parameters model"""
+
     locations: List[Location] = Field(
-        default=...,
-        title="Locations",
-        description="List of locations to route between",
-        min_length=2
+        default=..., title="Locations", description="List of locations to route between", min_length=2
     )
     costing: Literal["auto", "pedestrian", "bicycle"] = Field(
-        "auto",
-        title="Costing",
-        description="Mode of transport for the route",
-        examples=["auto"]
+        "auto", title="Costing", description="Mode of transport for the route", examples=["auto"]
     )
     units: Literal["miles", "kilometers"] = Field(
-        "kilometers",
-        title="Units",
-        description="Units for distance measurements",
-        examples=["kilometers"]
+        "kilometers", title="Units", description="Units for distance measurements", examples=["kilometers"]
     )
 
 
 class ObjectFeature(BaseModel):
     """Get object parameter order feature"""
+
     assetId: Optional[str] = Field(None, description="Asset ID")
     macroSector: int = Field(..., description="Macro sector")
     aresepId: Optional[str] = Field(None, description="Aresép ID")
@@ -91,16 +83,19 @@ class ObjectFeature(BaseModel):
 
 class ObjectNode(ObjectFeature):
     """Get object parameter order node"""
+
     nodeId: int = Field(..., description="Node ID")
 
 
 class ObjectArc(ObjectFeature):
     """Get object parameter order arc"""
+
     arcId: int = Field(..., description="Arc ID")
 
 
 class GetObjectHydraulicOrderData(Data):
     """Get object hydraulic order data"""
+
     # NOTE: fields are inherited from Data
     hydraulicOrder: int = Field(..., description="Hydraulic order")
     objectId: int = Field(..., description="Object ID")
@@ -118,6 +113,7 @@ class GetObjectHydraulicOrderResponse(BaseAPIResponse[GetObjectHydraulicOrderBod
 
 class Maneuver(BaseModel):
     """Maneuver model (Valhalla API schema)"""
+
     type: Optional[int] = Field(None, description="Maneuver type")
     instruction: Optional[str] = Field(None, description="Instruction")
     verbal_transition_alert_instruction: Optional[str] = Field(None, description="Verbal transition alert instruction")
@@ -146,18 +142,32 @@ class Maneuver(BaseModel):
     travel_type: Optional[
         Literal[
             # drive
-            "car", "motorcycle", "motor_scooter", "truck", "bus",
+            "car",
+            "motorcycle",
+            "motor_scooter",
+            "truck",
+            "bus",
             # pedestrian
-            "foot", "wheelchair",
+            "foot",
+            "wheelchair",
             # bicycle
-            "road", "hybrid", "cross", "mountain",
+            "road",
+            "hybrid",
+            "cross",
+            "mountain",
             # transit
-            "tram", "metro", "rail", "ferry", "cable_car", "gondola", "funicular"
+            "tram",
+            "metro",
+            "rail",
+            "ferry",
+            "cable_car",
+            "gondola",
+            "funicular",
         ]
     ] = Field(None, description="Travel type")
-    bss_maneuver_type: Optional[
-        Literal["NoneAction", "RentBikeAtBikeShare", "ReturnBikeAtBikeShare"]
-    ] = Field(None, description="BSS maneuver type")
+    bss_maneuver_type: Optional[Literal["NoneAction", "RentBikeAtBikeShare", "ReturnBikeAtBikeShare"]] = Field(
+        None, description="BSS maneuver type"
+    )
     bearing_before: Optional[float] = Field(None, description="Bearing before")
     bearing_after: Optional[float] = Field(None, description="Bearing after")
     lanes: Optional[List[dict]] = Field(None, description="Lanes")
@@ -165,6 +175,7 @@ class Maneuver(BaseModel):
 
 class GetObjectOptimalPathOrderData(Data):
     """Get object optimal path order data"""
+
     fields: None = Field(None, description="Fields")
     path: Optional[FeatureCollectionModel] = Field(None, description="Path")
     distance: Optional[float] = Field(None, description="Distance")
@@ -184,6 +195,7 @@ class GetObjectOptimalPathOrderResponse(BaseAPIResponse[GetObjectOptimalPathOrde
 
 class GetObjectParameterOrderData(Data):
     """Get object parameter order data"""
+
     fields: None = Field(None, description="Fields")
     features: List[Union[ObjectNode, ObjectArc]] = Field(..., description="Features")
 

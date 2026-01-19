@@ -44,15 +44,15 @@ def load_plugins(app: FastAPI):
 
 def create_body_dict(
     project_epsg=None,
-    client_extras={},
-    form={},
-    feature={},
-    filter_fields={},
-    pageInfo={},
-    extras={},
+    client_extras=None,
+    form=None,
+    feature=None,
+    filter_fields=None,
+    page_info=None,
+    extras=None,
     cur_user: str | None = "anonymous",
     device: int = 4,
-    lang: str = "es_ES"
+    lang: str = "es_ES",
 ) -> str:
     """
     Create request body dictionary for database functions.
@@ -71,15 +71,12 @@ def create_body_dict(
         Formatted JSON string
     """
     info_type = 1
-    if cur_user == 'anonymous':
+    if cur_user == "anonymous":
         cur_user = None
 
-    client = {
-        "device": device,
-        "lang": lang,
-        "cur_user": cur_user,
-        **client_extras
-    }
+    _manage_body_params(client_extras, form, feature, filter_fields, page_info, extras)
+
+    client = {"device": device, "lang": lang, "cur_user": cur_user, **client_extras}
     if info_type is not None:
         client["infoType"] = info_type
     if project_epsg is not None:
@@ -90,21 +87,35 @@ def create_body_dict(
             return obj.isoformat()
         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-    json_str = json.dumps({
-        "client": client,
-        "form": form,
-        "feature": feature,
-        "data": {
-            "filterFields": filter_fields,
-            "pageInfo": pageInfo,
-            **extras
-        }
-    }, default=json_default)
+    json_str = json.dumps(
+        {
+            "client": client,
+            "form": form,
+            "feature": feature,
+            "data": {"filterFields": filter_fields, "pageInfo": page_info, **extras},
+        },
+        default=json_default,
+    )
     return f"$${json_str}$$"
 
 
+def _manage_body_params(client_extras, form, feature, filter_fields, page_info, extras):
+    if client_extras is None:
+        client_extras = {}
+    if form is None:
+        form = {}
+    if feature is None:
+        feature = {}
+    if filter_fields is None:
+        filter_fields = {}
+    if page_info is None:
+        page_info = {}
+    if extras is None:
+        extras = {}
+
+
 def create_response(db_result=None, form_xml=None, status=None, message=None):
-    """ Create and return a json response to send to the client """
+    """Create and return a json response to send to the client"""
 
     response = {"status": "Failed", "message": {}, "version": {}, "body": {}}
 
@@ -134,7 +145,7 @@ def create_response(db_result=None, form_xml=None, status=None, message=None):
     return response
 
 
-def execute_procedure(
+def execute_procedure(  # noqa: C901
     log,
     db_manager,
     function_name,
@@ -143,7 +154,7 @@ def execute_procedure(
     needs_write=False,
     schema=None,
     user: str | None = "anonymous",
-    api_version="0.5.0"
+    api_version="0.5.0",
 ):
     """
     Manage execution of database function.
@@ -190,7 +201,7 @@ def execute_procedure(
             return create_response(status=False, message="No connection to database")
         result = dict()
         print(f"SERVER EXECUTION: {sql}\n")
-        if user == 'anonymous':
+        if user == "anonymous":
             identity = None
         else:
             identity = user
@@ -208,19 +219,19 @@ def execute_procedure(
             # Rollback on error
             conn.rollback()
             db_version = None
-            if result and 'version' in result:
-                db_version = result['version']
+            if result and "version" in result:
+                db_version = result["version"]
             result = {
                 "status": "Failed",
                 "message": {"level": 3, "text": str(e)},
                 "version": {"api": api_version},
-                "body": {}
+                "body": {},
             }
             if db_version:
                 result["version"]["db"] = db_version
             response_msg = str(e)
 
-        if not result or result.get('status') == "Failed":
+        if not result or result.get("status") == "Failed":
             log.warning(f"{execution_msg}|||{response_msg}")
         else:
             log.info(f"{execution_msg}|||{response_msg}")
@@ -229,7 +240,7 @@ def execute_procedure(
             print(f"SERVER RESPONSE: {json.dumps(result)}\n")
 
         if result and "version" in result:
-            result["version"] = {"db": result['version'], "api": api_version}
+            result["version"] = {"db": result["version"], "api": api_version}
 
         return result
 
@@ -276,15 +287,15 @@ def create_log(class_name):
 
 
 # Removes previous handlers on root Logger
-def remove_handlers(log=logging.getLogger()):
+def remove_handlers(log=None):
+    if log is None:
+        log = logging.getLogger()
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
 
 
 def create_api_response(
-    message: str,
-    status: Literal["Accepted", "Failed"],
-    result: Dict[str, Any] | Any | None = None
+    message: str, status: Literal["Accepted", "Failed"], result: Dict[str, Any] | Any | None = None
 ) -> APIResponse:
     """
     Creates a standardized API response.
@@ -297,11 +308,7 @@ def create_api_response(
     Returns:
         APIResponse containing the standardized response
     """
-    return APIResponse(
-        message=message,
-        status=status,
-        result=result
-    )
+    return APIResponse(message=message, status=status, result=result)
 
 
 def handle_procedure_result(result: dict | None) -> dict:
