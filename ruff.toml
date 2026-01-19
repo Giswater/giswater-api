@@ -1,0 +1,38 @@
+exclude = [
+    "__pycache__",
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".idea",
+]
+line-length = 120
+
+[lint]
+select = ["E2", "E3", "E4", "E7", "E9", "N8", "C90", "F", "B", "Q"]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.flake8-bugbear]
+# FastAPI uses these in function defaults for dependency injection.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Form",
+    "fastapi.File",
+    "Depends",
+    "Query",
+    "Path",
+    "Body",
+    "Header",
+    "Form",
+    "File",
+]
+
+[lint.per-file-ignores]
+# Pydantic models use camelCase for JSON serialization.
+"app/models/*.py" = ["N815"]
+"app/models/**/*.py" = ["N815"]

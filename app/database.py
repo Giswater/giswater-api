@@ -38,9 +38,9 @@ class DatabaseManager:
         """Initialize the connection pool."""
         try:
             self.connection_pool = psycopg2.pool.SimpleConnectionPool(
-                1,   # Minimum number of connections
+                1,  # Minimum number of connections
                 10,  # Maximum number of connections
-                self.database_url
+                self.database_url,
             )
             print(f"Initialized connection pool for {self.dbname}")
         except Exception as e:
@@ -92,13 +92,11 @@ class DatabaseManager:
             try:
                 with conn.cursor() as cursor:
                     cursor.execute(
-                        "SELECT schema_name FROM information_schema.schemata "
-                        "WHERE schema_name = %s",
-                        (schema,)
+                        "SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (schema,)
                     )
                     return cursor.fetchone() is not None
             except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+                raise HTTPException(status_code=500, detail=str(e)) from e
 
     def close(self):
         """Close the connection pool."""

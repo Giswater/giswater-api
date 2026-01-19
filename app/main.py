@@ -4,6 +4,7 @@ The program is free software: you can redistribute it and/or modify it under the
 General Public License as published by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 """
+
 import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -34,12 +35,7 @@ app = FastAPI(
     title=TITLE,
     description=DESCRIPTION,
     root_path="/api/v1",
-    responses={
-        500: {
-            "model": GwErrorResponse,
-            "description": "Database function error"
-        }
-    }
+    responses={500: {"model": GwErrorResponse, "description": "Database function error"}},
 )
 
 # Register exception handlers
@@ -80,12 +76,7 @@ utils.load_plugins(app)
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {
-        "status": "Accepted",
-        "message": f"{TITLE} is running.",
-        "version": VERSION,
-        "description": DESCRIPTION
-    }
+    return {"status": "Accepted", "message": f"{TITLE} is running.", "version": VERSION, "description": DESCRIPTION}
 
 
 @app.get("/health")
@@ -99,7 +90,7 @@ async def health():
 
     return {
         "status": "healthy" if healthy else "degraded",
-        "timestamp": __import__('datetime').datetime.now().isoformat()
+        "timestamp": __import__("datetime").datetime.now().isoformat(),
     }
 
 

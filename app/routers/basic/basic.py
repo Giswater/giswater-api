@@ -18,7 +18,7 @@ from ...models.basic.basic_models import (
     GetSelectorsResponse,
     GetFeatureChangesResponse,
     GetSearchResponse,
-    GetListResponse
+    GetListResponse,
 )
 from ...models.util_models import CoordinatesModel, ExtentModel, PageInfoModel, FilterFieldModel
 
@@ -29,26 +29,22 @@ router = APIRouter(prefix="/basic", tags=["Basic"])
     "/getfeaturechanges",
     description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.",
     response_model=GetFeatureChangesResponse,
-    response_model_exclude_unset=True
+    response_model_exclude_unset=True,
 )
 async def get_feature_changes(
     commons: CommonsDep,
     feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
-        ...,
-        alias="featureType",
-        title="Feature Type",
-        description="Type of feature to fetch"
+        ..., alias="featureType", title="Feature Type", description="Type of feature to fetch"
     ),
     action: Literal["INSERT", "UPDATE"] = Query(
-        ...,
-        title="Action",
-        description="Indicate wether to fetch inserts or updates"
+        ..., title="Action", description="Indicate wether to fetch inserts or updates"
     ),
-    lastFeeding: date = Query(
+    last_feeding: date = Query(
         ...,
+        alias="lastFeeding",
         title="Last Feeding",
         description="Last feeding date of the feature",
-        example="2024-11-11"
+        example="2024-11-11",
     ),
 ):
     log = create_log(__name__)
@@ -56,11 +52,8 @@ async def get_feature_changes(
     body = create_body_dict(
         device=commons["device"],
         feature={"feature_type": feature_type},
-        extras={
-            "action": action,
-            "lastFeeding": lastFeeding.strftime("%Y-%m-%d")
-        },
-        cur_user=commons["user_id"]
+        extras={"action": action, "lastFeeding": last_feeding.strftime("%Y-%m-%d")},
+        cur_user=commons["user_id"],
     )
     result = execute_procedure(
         log,
@@ -69,16 +62,14 @@ async def get_feature_changes(
         body,
         schema=commons["schema"],
         api_version=commons["api_version"],
-        user=commons["user_id"]
+        user=commons["user_id"],
     )
     if not result:
         return {
             "status": "Failed",
             "message": {"level": 4, "text": "No feature changes found"},
             "version": {"api": commons["api_version"]},
-            "body": {
-                "feature": []
-            }
+            "body": {"feature": []},
         }
     return result
 
@@ -87,11 +78,10 @@ async def get_feature_changes(
     "/getinfofromcoordinates",
     description="Get feature information from coordinates",
     response_model=GetInfoFromCoordinatesResponse,
-    response_model_exclude_unset=True
+    response_model_exclude_unset=True,
 )
 async def get_info_from_coordinates(
-    commons: CommonsDep,
-    coordinates: CoordinatesModel = Query(..., description="Coordinates of the info")
+    commons: CommonsDep, coordinates: CoordinatesModel = Query(..., description="Coordinates of the info")
 ):
     log = create_log(__name__)
 
@@ -104,17 +94,39 @@ async def get_info_from_coordinates(
         extras={
             "activeLayer": "ve_node",
             "visibleLayers": [
-                "ve_cat_feature_node", "ve_cat_feature_arc", "ve_cat_feature_connec",
-                "ve_cat_feature_gully", "ve_cat_feature_link", "ve_cat_feature_element",
-                "cat_node", "cat_arc", "cat_connec", "cat_gully", "cat_link", "cat_element",
-                "cat_material", "ve_node", "ve_man_frelem", "ve_arc", "ve_connec", "ve_gully",
-                "ve_link", "ve_pol_node", "ve_pol_connec", "ve_pol_gully", "ve_dimensions",
-                "v_ext_municipality", "v_ext_plot", "v_ext_streetaxis", "cat_feature",
-                "sys_feature_type", "v_value_relation"
+                "ve_cat_feature_node",
+                "ve_cat_feature_arc",
+                "ve_cat_feature_connec",
+                "ve_cat_feature_gully",
+                "ve_cat_feature_link",
+                "ve_cat_feature_element",
+                "cat_node",
+                "cat_arc",
+                "cat_connec",
+                "cat_gully",
+                "cat_link",
+                "cat_element",
+                "cat_material",
+                "ve_node",
+                "ve_man_frelem",
+                "ve_arc",
+                "ve_connec",
+                "ve_gully",
+                "ve_link",
+                "ve_pol_node",
+                "ve_pol_connec",
+                "ve_pol_gully",
+                "ve_dimensions",
+                "v_ext_municipality",
+                "v_ext_plot",
+                "v_ext_streetaxis",
+                "cat_feature",
+                "sys_feature_type",
+                "v_value_relation",
             ],
-            "coordinates": coordinates_dict
+            "coordinates": coordinates_dict,
         },
-        cur_user=commons["user_id"]
+        cur_user=commons["user_id"],
     )
 
     result = execute_procedure(
@@ -123,7 +135,7 @@ async def get_info_from_coordinates(
         "gw_fct_getinfofromcoordinates",
         body,
         schema=commons["schema"],
-        api_version=commons["api_version"]
+        api_version=commons["api_version"],
     )
     return handle_procedure_result(result)
 
@@ -132,36 +144,26 @@ async def get_info_from_coordinates(
     "/getfeaturesfrompolygon",
     description="Get features from polygon",
     response_model=GetFeaturesFromPolygonResponse,
-    response_model_exclude_unset=True
+    response_model_exclude_unset=True,
 )
 async def get_features_from_polygon(
     commons: CommonsDep,
     feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
-        ...,
-        alias="featureType",
-        title="Feature Type",
-        description="Type of feature to fetch"
+        ..., alias="featureType", title="Feature Type", description="Type of feature to fetch"
     ),
     polygon_geom: str = Query(
         ...,
         alias="polygonGeom",
         title="Polygon Geometry",
         description="Geometry of the polygon in WKT format",
-        example="MULTIPOLYGON (((419617.361558083 4576465.809154497, 419618.8569710209 4576468.246374115, 419622.2276227002 4576466.157956117, 419620.73944153683 4576463.628078675, 419617.361558083 4576465.809154497)))"  # noqa: E501
-    )
+        example="MULTIPOLYGON (((419617.361558083 4576465.809154497, 419618.8569710209 4576468.246374115, 419622.2276227002 4576466.157956117, 419620.73944153683 4576463.628078675, 419617.361558083 4576465.809154497)))",  # noqa: E501
+    ),
 ):
     log = create_log(__name__)
 
-    parameters = {
-        "featureType": feature_type,
-        "polygonGeom": polygon_geom
-    }
+    parameters = {"featureType": feature_type, "polygonGeom": polygon_geom}
     body = create_body_dict(
-        device=commons["device"],
-        form={},
-        feature={},
-        extras={"parameters": parameters},
-        cur_user=commons["user_id"]
+        device=commons["device"], form={}, feature={}, extras={"parameters": parameters}, cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
@@ -170,7 +172,7 @@ async def get_features_from_polygon(
         "gw_fct_getfeaturesfrompolygon",
         body,
         schema=commons["schema"],
-        api_version=commons["api_version"]
+        api_version=commons["api_version"],
     )
     return handle_procedure_result(result)
 
@@ -179,34 +181,28 @@ async def get_features_from_polygon(
     "/getselectors",
     description="Fetch current selectors",
     response_model=GetSelectorsResponse,
-    response_model_exclude_unset=True
+    response_model_exclude_unset=True,
 )
 async def get_selectors(
     commons: CommonsDep,
-    selectorType: Literal["selector_basic", "selector_mincut", "selector_netscenario"] = Query(
-        "selector_basic",
-        title="Selector type",
-        description="Type of selector to fetch"
+    selector_type: Literal["selector_basic", "selector_mincut", "selector_netscenario"] = Query(
+        "selector_basic", alias="selectorType", title="Selector type", description="Type of selector to fetch"
     ),
-    filterText: str = Query(
-        "",
-        title="Filter text",
-        description="Filter text to apply to the selector"
+    filter_text: str = Query(
+        "", alias="filterText", title="Filter text", description="Filter text to apply to the selector"
     ),
-    currentTab: Optional[str] = Query(
-        None,
-        title="Current tab",
-        description="Current tab to fetch"
-    )
+    current_tab: Optional[str] = Query(
+        None, alias="currentTab", title="Current tab", description="Current tab to fetch"
+    ),
 ):
     log = create_log(__name__)
 
     body = create_body_dict(
         device=commons["device"],
-        form={"currentTab": currentTab},
+        form={"currentTab": current_tab},
         feature={},
-        extras={"selectorType": selectorType, "filterText": filterText},
-        cur_user=commons["user_id"]
+        extras={"selectorType": selector_type, "filterText": filter_text},
+        cur_user=commons["user_id"],
     )
 
     result = execute_procedure(
@@ -215,37 +211,24 @@ async def get_selectors(
         "gw_fct_getselectors",
         body,
         schema=commons["schema"],
-        api_version=commons["api_version"]
+        api_version=commons["api_version"],
     )
     return handle_procedure_result(result)
 
 
 @router.get(
-    "/getsearch",
-    description="Search features",
-    response_model=GetSearchResponse,
-    response_model_exclude_unset=True
+    "/getsearch", description="Search features", response_model=GetSearchResponse, response_model_exclude_unset=True
 )
 async def get_search(
     commons: CommonsDep,
-    searchText: str = Query(
-        "",
-        title="Search text",
-        description="Text to search for"
-    )
+    search_text: str = Query("", alias="searchText", title="Search text", description="Text to search for"),
 ):
     log = create_log(__name__)
 
-    parameters = {
-        "searchText": searchText
-    }
+    parameters = {"searchText": search_text}
 
     body = create_body_dict(
-        device=commons["device"],
-        form={},
-        feature={},
-        extras={"parameters": parameters},
-        cur_user=commons["user_id"]
+        device=commons["device"], form={}, feature={}, extras={"parameters": parameters}, cur_user=commons["user_id"]
     )
 
     result = execute_procedure(
@@ -254,7 +237,7 @@ async def get_search(
         "gw_fct_getsearch",
         body,
         schema=commons["schema"],
-        api_version=commons["api_version"]
+        api_version=commons["api_version"],
     )
     return handle_procedure_result(result)
 
@@ -263,19 +246,22 @@ async def get_search(
     "/getlist",
     description="Fetch a list of features",
     response_model=GetListResponse,
-    response_model_exclude_unset=True
+    response_model_exclude_unset=True,
 )
 async def get_list(
     commons: CommonsDep,
-    tableName: str = Query(
+    table_name: str = Query(
         ...,
+        alias="tableName",
         title="Table Name",
         description="Name of the table or view to query",
-        examples=["ve_arc_pipe", "om_visit_x_arc"]
+        examples=["ve_arc_pipe", "om_visit_x_arc"],
     ),
     coordinates: Optional[str] = Query(None, description="JSON string of coordinates (ExtentModel)"),
-    pageInfo: Optional[str] = Query(None, description="JSON string of page info (PageInfoModel)"),
-    filterFields: Optional[str] = Query(None, description="JSON string of filter fields (Dict[str, FilterFieldModel])"),
+    page_info: Optional[str] = Query(None, alias="pageInfo", description="JSON string of page info (PageInfoModel)"),
+    filter_fields: Optional[str] = Query(
+        None, alias="filterFields", description="JSON string of filter fields (Dict[str, FilterFieldModel])"
+    ),
 ):
     """Get list"""
     log = create_log(__name__)
@@ -285,42 +271,36 @@ async def get_list(
         coordinates_data = None
         if coordinates:
             coords_obj = ExtentModel(**json.loads(coordinates))
-            coordinates_data = coords_obj.model_dump(mode='json', exclude_unset=True)
+            coordinates_data = coords_obj.model_dump(mode="json", exclude_unset=True)
 
         page_info_data = None
-        if pageInfo:
-            page_obj = PageInfoModel(**json.loads(pageInfo))
-            page_info_data = page_obj.model_dump(mode='json', exclude_unset=True)
+        if page_info:
+            page_obj = PageInfoModel(**json.loads(page_info))
+            page_info_data = page_obj.model_dump(mode="json", exclude_unset=True)
 
-        filterFields_data = None
-        if filterFields:
-            filterFields = json.loads(filterFields)
-            filterFields_data = {
-                k: FilterFieldModel(**v).model_dump(mode='json', exclude_unset=True) for k, v in filterFields.items()
+        filter_fields_data = None
+        if filter_fields:
+            filter_fields_raw = json.loads(filter_fields)
+            filter_fields_data = {
+                k: FilterFieldModel(**v).model_dump(mode="json", exclude_unset=True)
+                for k, v in filter_fields_raw.items()
             }
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
-    data = {
-        "tableName": tableName
-    }
+    data = {"tableName": table_name}
     if coordinates:
         data["canvasExtend"] = coordinates_data
 
     # Build the body
     body = create_body_dict(
         extras=data,
-        filter_fields=filterFields_data if filterFields_data else {},
-        pageInfo=page_info_data if page_info_data else {},
-        cur_user=commons["user_id"]
+        filter_fields=filter_fields_data if filter_fields_data else {},
+        page_info=page_info_data if page_info_data else {},
+        cur_user=commons["user_id"],
     )
 
     result = execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getlist",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"]
+        log, commons["db_manager"], "gw_fct_getlist", body, schema=commons["schema"], api_version=commons["api_version"]
     )
     return handle_procedure_result(result)
