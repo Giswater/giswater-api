@@ -148,7 +148,7 @@ async def get_info_from_coordinates(
 )
 async def get_features_from_polygon(
     commons: CommonsDep,
-    feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
+    feature_type: Literal["ARC", "NODE", "CONNEC", "GULLY", "ALL"] = Query(
         ..., alias="featureType", title="Feature Type", description="Type of feature to fetch"
     ),
     polygon_geom: str = Query(
@@ -156,7 +156,7 @@ async def get_features_from_polygon(
         alias="polygonGeom",
         title="Polygon Geometry",
         description="Geometry of the polygon in WKT format",
-        example="MULTIPOLYGON (((419617.361558083 4576465.809154497, 419618.8569710209 4576468.246374115, 419622.2276227002 4576466.157956117, 419620.73944153683 4576463.628078675, 419617.361558083 4576465.809154497)))",  # noqa: E501
+        example="MULTIPOLYGON (((419419.13867777254 4576466.499338785, 419429.1574217372 4576487.650020488, 419537.69381468766 4576466.221040341, 419497.8971372725 4576396.368131032, 419419.13867777254 4576404.438785893, 419419.13867777254 4576466.499338785)))",  # noqa: E501
     ),
 ):
     log = create_log(__name__)
