@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Toggle valve status endpoint
 - Get mincut valves endpoint
 - Get mincut dialog endpoint
+- Get features from polygon endpoint
 
 ### Changed
 
 - Valve unaccess endpoint
+- Message level allowed values
 
 ## [0.5.0] - 2025-12-11
 

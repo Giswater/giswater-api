@@ -78,6 +78,21 @@ class GetInfoFromCoordinatesResponse(BaseAPIResponse[GetInfoFromCoordinatesBody]
     pass
 
 
+class GetFeaturesFromPolygonData(Data):
+    """Get features from polygon data"""
+    featureType: Literal["arc", "node", "connec", "gully"] = Field(..., description="Feature type")
+    featureIds: Optional[List[int]] = Field(None, description="Feature IDs")
+
+
+class GetFeaturesFromPolygonBody(Body[GetFeaturesFromPolygonData]):
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
+
+
+class GetFeaturesFromPolygonResponse(BaseAPIResponse[GetFeaturesFromPolygonBody]):
+    pass
+
+
 class GetSelectorsData(Data):
     """Get selectors data"""
     # NOTE: fields are inherited from Data

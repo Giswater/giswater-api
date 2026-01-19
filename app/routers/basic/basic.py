@@ -14,6 +14,7 @@ from ...utils.utils import create_body_dict, execute_procedure, create_log, hand
 from ...dependencies import CommonsDep
 from ...models.basic.basic_models import (
     GetInfoFromCoordinatesResponse,
+    GetFeaturesFromPolygonResponse,
     GetSelectorsResponse,
     GetFeatureChangesResponse,
     GetSearchResponse,
@@ -84,7 +85,7 @@ async def get_feature_changes(
 
 @router.get(
     "/getinfofromcoordinates",
-    description="Fetch GIS features that have been modified since the date specified in the lastFeeding parameter.",
+    description="Get feature information from coordinates",
     response_model=GetInfoFromCoordinatesResponse,
     response_model_exclude_unset=True
 )
@@ -120,6 +121,53 @@ async def get_info_from_coordinates(
         log,
         commons["db_manager"],
         "gw_fct_getinfofromcoordinates",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"]
+    )
+    return handle_procedure_result(result)
+
+
+@router.get(
+    "/getfeaturesfrompolygon",
+    description="Get features from polygon",
+    response_model=GetFeaturesFromPolygonResponse,
+    response_model_exclude_unset=True
+)
+async def get_features_from_polygon(
+    commons: CommonsDep,
+    feature_type: Literal["FEATURE", "ARC", "NODE", "CONNEC", "GULLY", "ELEMENT"] = Query(
+        ...,
+        alias="featureType",
+        title="Feature Type",
+        description="Type of feature to fetch"
+    ),
+    polygon_geom: str = Query(
+        ...,
+        alias="polygonGeom",
+        title="Polygon Geometry",
+        description="Geometry of the polygon in WKT format",
+        example="MULTIPOLYGON (((419617.361558083 4576465.809154497, 419618.8569710209 4576468.246374115, 419622.2276227002 4576466.157956117, 419620.73944153683 4576463.628078675, 419617.361558083 4576465.809154497)))"  # noqa: E501
+    )
+):
+    log = create_log(__name__)
+
+    parameters = {
+        "featureType": feature_type,
+        "polygonGeom": polygon_geom
+    }
+    body = create_body_dict(
+        device=commons["device"],
+        form={},
+        feature={},
+        extras={"parameters": parameters},
+        cur_user=commons["user_id"]
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getfeaturesfrompolygon",
         body,
         schema=commons["schema"],
         api_version=commons["api_version"]
