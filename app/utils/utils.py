@@ -74,7 +74,9 @@ def create_body_dict(
     if cur_user == "anonymous":
         cur_user = None
 
-    _manage_body_params(client_extras, form, feature, filter_fields, page_info, extras)
+    client_extras, form, feature, filter_fields, page_info, extras = _manage_body_params(
+        client_extras, form, feature, filter_fields, page_info, extras
+    )
 
     client = {"device": device, "lang": lang, "cur_user": cur_user, **client_extras}
     if info_type is not None:
@@ -112,6 +114,7 @@ def _manage_body_params(client_extras, form, feature, filter_fields, page_info, 
         page_info = {}
     if extras is None:
         extras = {}
+    return client_extras, form, feature, filter_fields, page_info, extras
 
 
 def create_response(db_result=None, form_xml=None, status=None, message=None):

@@ -34,7 +34,7 @@ async def get_schema(
 
 async def common_parameters(
     request: Request,
-    current_user: OIDCUser = Depends(get_current_user),
+    current_user: OIDCUser = Depends(get_current_user()),  # noqa: B008
     schema: str = Depends(get_schema),
     device: int = Header(
         default=5,
