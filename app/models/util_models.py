@@ -32,7 +32,7 @@ class Version(BaseModel):
 
 class Message(BaseModel):
     """Message model"""
-    level: Optional[int] = Field(None, description="Level of the message", ge=1, le=4)
+    level: Optional[int] = Field(None, description="Level of the message", ge=0, le=4)
     text: Optional[str] = Field(None, description="Message of the response")
 
 
