@@ -1,3 +1,10 @@
+"""
+Copyright © 2026 by BGEO. All rights reserved.
+The program is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version.
+"""
+
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import date
@@ -6,8 +13,10 @@ from ..util_models import BaseAPIResponse, Body
 
 # Input models
 
+
 class HydrometerBase(BaseModel):
     """Base hydrometer model with all fields"""
+
     code: str = Field(..., description="Hydrometer code (from CRM)")
     hydroNumber: Optional[str] = Field(None, description="Hydrometer number")
     connecId: Optional[int] = Field(None, description="Connec ID (linked to connec_id)")
@@ -25,11 +34,13 @@ class HydrometerBase(BaseModel):
 
 class HydrometerCreate(HydrometerBase):
     """Model for creating hydrometers - code is required"""
+
     pass
 
 
 class HydrometerUpdate(BaseModel):
     """Model for updating hydrometers - all fields optional except code"""
+
     code: str = Field(..., description="Hydrometer code (identifier)")
     hydroNumber: Optional[str] = Field(None, description="Hydrometer number")
     connecId: Optional[int] = Field(None, description="Connec ID (linked to connec_id)")
@@ -47,18 +58,22 @@ class HydrometerUpdate(BaseModel):
 
 # Response models
 
+
 class HydrometerData(BaseModel):
     """Data returned from hydrometer operations"""
+
     hydrometers: Optional[List[Dict[str, Any]]] = Field(None, description="List of hydrometers affected")
     count: Optional[int] = Field(None, description="Number of hydrometers affected")
 
 
 class HydrometerBody(Body[HydrometerData]):
     """Body for hydrometer response"""
+
     form: Optional[Dict] = Field({}, description="Form")
     feature: Optional[Dict] = Field({}, description="Feature")
 
 
 class HydrometerResponse(BaseAPIResponse[HydrometerBody]):
     """Response model for hydrometer operations"""
+
     pass

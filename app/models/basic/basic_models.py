@@ -1,3 +1,10 @@
+"""
+Copyright © 2026 by BGEO. All rights reserved.
+The program is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version.
+"""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, Any, List, Dict, Literal, Union
@@ -13,6 +20,7 @@ from ..util_models import BaseAPIResponse, Body, Data, ExtentModel, UserValue, F
 
 class GetFeatureChangesFeature(BaseModel):
     """Get feature changes feature model"""
+
     featureClass: str = Field(..., description="Feature class")
     macroSector: int = Field(..., description="Macro sector")
     assetId: Optional[str] = Field(None, description="Asset ID")
@@ -25,34 +33,41 @@ class GetFeatureChangesFeature(BaseModel):
 
 class GetFeatureChangesArc(GetFeatureChangesFeature):
     """Get feature changes arc model"""
+
     arcId: int = Field(..., description="Arc ID")
 
 
 class GetFeatureChangesNode(GetFeatureChangesFeature):
     """Get feature changes node model"""
+
     nodeId: int = Field(..., description="Node ID")
 
 
 class GetFeatureChangesConnec(GetFeatureChangesFeature):
     """Get feature changes connec model"""
+
     connecId: int = Field(..., description="Connec ID")
     customerCode: Optional[str] = Field(None, description="Customer code")
 
 
 class GetFeatureChangesGully(GetFeatureChangesFeature):
     """Get feature changes gully model"""
+
     gullyId: int = Field(..., description="Gully ID")
 
 
 class GetFeatureChangesData(BaseModel):
     """Get feature changes data"""
-    features: List[Union[
-        GetFeatureChangesArc,
-        GetFeatureChangesNode,
-        GetFeatureChangesConnec,
-        GetFeatureChangesGully,
-        GetFeatureChangesFeature
-    ]] = Field(..., description="Features")
+
+    features: List[
+        Union[
+            GetFeatureChangesArc,
+            GetFeatureChangesNode,
+            GetFeatureChangesConnec,
+            GetFeatureChangesGully,
+            GetFeatureChangesFeature,
+        ]
+    ] = Field(..., description="Features")
 
 
 class GetFeatureChangesBody(Body[GetFeatureChangesData]):
@@ -66,6 +81,7 @@ class GetFeatureChangesResponse(BaseAPIResponse[GetFeatureChangesBody]):
 
 class GetInfoFromCoordinatesData(Data):
     """Get info from coordinates data"""
+
     # NOTE: fields are inherited from Data
     parentFields: List[str] = Field(..., description="Parent fields")
 
@@ -80,6 +96,7 @@ class GetInfoFromCoordinatesResponse(BaseAPIResponse[GetInfoFromCoordinatesBody]
 
 class GetFeaturesFromPolygonData(Data):
     """Get features from polygon data"""
+
     featureType: Literal["arc", "node", "connec", "gully"] = Field(..., description="Feature type")
     featureIds: Optional[List[int]] = Field(None, description="Feature IDs")
 
@@ -95,6 +112,7 @@ class GetFeaturesFromPolygonResponse(BaseAPIResponse[GetFeaturesFromPolygonBody]
 
 class GetSelectorsData(Data):
     """Get selectors data"""
+
     # NOTE: fields are inherited from Data
     userValues: Optional[List[UserValue]] = Field(None, description="User values")
     geometry: Union[ExtentModel, Dict[str, Any], None] = Field(None, description="Geometry")
@@ -102,11 +120,13 @@ class GetSelectorsData(Data):
 
 class FormStyle(BaseModel):
     """Form style model"""
+
     rowsColor: Optional[bool] = Field(None, description="Whether the selectors rows are colored or not")
 
 
 class SelectorFormTab(FormTab):
     """Selector form tab model"""
+
     tableName: str = Field(..., description="Table name")
     selectorType: str = Field(..., description="Selector type")
     manageAll: bool = Field(..., description="Manage all")
@@ -117,6 +137,7 @@ class SelectorFormTab(FormTab):
 
 class SelectorForm(Form):
     """Selector form model"""
+
     formTabs: Optional[List[SelectorFormTab]] = Field(None, description="Form tabs")
     style: Optional[FormStyle] = Field(None, description="Form style")
 
@@ -132,6 +153,7 @@ class GetSelectorsResponse(BaseAPIResponse[GetSelectorsBody]):
 
 class SearchResultValue(BaseModel):
     """Search result value model"""
+
     key: str = Field(..., description="Key")
     value: Any = Field(..., description="Value")
     displayName: str = Field(..., description="Display name")
@@ -139,6 +161,7 @@ class SearchResultValue(BaseModel):
 
 class SearchResult(BaseModel):
     """Search result model"""
+
     section: str = Field(..., description="Section")
     alias: str = Field(..., description="Alias")
     execFunc: Optional[str] = Field(None, description="Exec function")
@@ -148,6 +171,7 @@ class SearchResult(BaseModel):
 
 class GetSearchData(BaseModel):
     """Get search data"""
+
     searchResults: List[SearchResult] = Field(..., description="Search results")
 
 
@@ -165,6 +189,7 @@ class GetSearchResponse(BaseAPIResponse[GetSearchBody]):
 
 class GetListData(Data):
     """Get list data"""
+
     type: Optional[str] = Field(None, description="Type of the list")
     fields: Optional[List[Dict]] = Field(None, description="Items of the list")
     addparam: Optional[Dict] = Field(None, description="Additional parameters of the table")
@@ -173,47 +198,55 @@ class GetListData(Data):
 
 class ColumnFilterModeOptions(BaseModel):
     """Column filter mode options"""
+
     filterMode: Optional[str] = Field(None, description="Filter mode")
 
 
 class DisplayColumnDefOptions(BaseModel):
     """Display column definition options"""
+
     size: Optional[int] = Field(None, description="Column size")
     enableResizing: Optional[bool] = Field(None, description="Enable column resizing")
 
 
 class MuiTablePaperProps(BaseModel):
     """Material UI table paper props"""
+
     elevation: Optional[int] = Field(None, description="Paper elevation")
     sx: Optional[Dict[str, Any]] = Field(None, description="Custom styles")
 
 
 class MuiTableProps(BaseModel):
     """Material UI table props"""
+
     sx: Optional[Dict[str, Any]] = Field(None, description="Custom styles")
     size: Optional[Literal["small", "medium"]] = Field(None, description="Table size")
 
 
 class MuiTableHeadCellProps(BaseModel):
     """Material UI table head cell props"""
+
     sx: Optional[Dict[str, Any]] = Field(None, description="Custom styles")
     align: Optional[Literal["left", "center", "right"]] = Field(None, description="Cell alignment")
 
 
 class MuiTableBodyCellProps(BaseModel):
     """Material UI table body cell props"""
+
     sx: Optional[Dict[str, Any]] = Field(None, description="Custom styles")
     align: Optional[Literal["left", "center", "right"]] = Field(None, description="Cell alignment")
 
 
 class MuiSearchTextFieldProps(BaseModel):
     """Material UI search text field props"""
+
     placeholder: Optional[str] = Field(None, description="Search placeholder text")
     variant: Optional[Literal["standard", "outlined", "filled"]] = Field(None, description="Text field variant")
 
 
 class InitialState(BaseModel):
     """Initial table state"""
+
     columnVisibility: Optional[Dict[str, bool]] = Field(None, description="Column visibility state")
     density: Optional[Literal["compact", "comfortable", "spacious"]] = Field(None, description="Table density")
     showGlobalFilter: Optional[bool] = Field(None, description="Show global filter")
@@ -224,6 +257,7 @@ class InitialState(BaseModel):
 
 class GetListTable(BaseModel):
     """Get list table model - Material React Table options"""
+
     # Core options
     enableColumnActions: Optional[bool] = Field(None, description="Enable column actions menu")
     enableColumnFilters: Optional[bool] = Field(None, description="Enable column filtering")
@@ -268,14 +302,12 @@ class GetListTable(BaseModel):
     positionGlobalFilter: Optional[Literal["left", "right"]] = Field(None, description="Position of global filter")
     positionPagination: Optional[Literal["top", "bottom", "both"]] = Field(None, description="Position of pagination")
     positionToolbarAlertBanner: Optional[Literal["top", "bottom", "none"]] = Field(
-        None,
-        description="Position of toolbar alert banner"
+        None, description="Position of toolbar alert banner"
     )
 
     # Behavior options
     editDisplayMode: Optional[Literal["modal", "row", "cell", "table", "custom"]] = Field(
-        None,
-        description="Edit display mode"
+        None, description="Edit display mode"
     )
     selectAllMode: Optional[Literal["all", "page"]] = Field(None, description="Select all mode")
     rowNumberDisplayMode: Optional[Literal["original", "static"]] = Field(None, description="Row number display mode")
@@ -283,25 +315,20 @@ class GetListTable(BaseModel):
     # Styling and customization
     defaultColumn: Optional[Dict[str, Any]] = Field(None, description="Default column options")
     displayColumnDefOptions: Optional[Dict[str, DisplayColumnDefOptions]] = Field(
-        None,
-        description="Display column definition options"
+        None, description="Display column definition options"
     )
     muiTablePaperProps: Optional[Union[MuiTablePaperProps, Dict[str, Any]]] = Field(
-        None,
-        description="Material UI table paper props"
+        None, description="Material UI table paper props"
     )
     muiTableProps: Optional[Union[MuiTableProps, Dict[str, Any]]] = Field(None, description="Material UI table props")
     muiTableHeadCellProps: Optional[Union[MuiTableHeadCellProps, Dict[str, Any]]] = Field(
-        None,
-        description="Material UI table head cell props"
+        None, description="Material UI table head cell props"
     )
     muiTableBodyCellProps: Optional[Union[MuiTableBodyCellProps, Dict[str, Any]]] = Field(
-        None,
-        description="Material UI table body cell props"
+        None, description="Material UI table body cell props"
     )
     muiSearchTextFieldProps: Optional[Union[MuiSearchTextFieldProps, Dict[str, Any]]] = Field(
-        None,
-        description="Material UI search text field props"
+        None, description="Material UI search text field props"
     )
 
     # State management
@@ -313,8 +340,7 @@ class GetListTable(BaseModel):
 
     # Additional configuration
     columnFilterDisplayMode: Optional[Literal["subheader", "popover"]] = Field(
-        None,
-        description="Column filter display mode"
+        None, description="Column filter display mode"
     )
     createDisplayMode: Optional[Literal["modal", "row", "custom"]] = Field(None, description="Create display mode")
     manualFiltering: Optional[bool] = Field(None, description="Manual filtering (server-side)")
@@ -328,6 +354,7 @@ class GetListTable(BaseModel):
 
 class GetListHeader(BaseModel):
     """Get list header model"""
+
     accessorKey: str = Field(..., description="Accessor key")
     editable: Optional[bool] = Field(None, description="Editable")
     enableClickToCopy: Optional[bool] = Field(None, description="Enable click to copy")
@@ -345,6 +372,7 @@ class GetListHeader(BaseModel):
 
 class GetListForm(BaseModel):
     """Get list form model"""
+
     table: Optional[GetListTable] = Field(None, description="Table")
     headers: Optional[List[GetListHeader]] = Field(None, description="Headers")
 
@@ -356,6 +384,7 @@ class GetListBody(Body[GetListData]):
 
 class GetListResponse(BaseAPIResponse[GetListBody]):
     pass
+
 
 # endregion Get list
 
