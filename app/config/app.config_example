@@ -1,5 +1,6 @@
 [api]
 basic=True
+profile=True
 mincut=True
 water_balance=True
 routing=True

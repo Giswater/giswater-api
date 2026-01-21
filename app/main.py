@@ -16,6 +16,7 @@ from .utils import utils
 from .exceptions import ProcedureError, procedure_error_handler
 from .routers.basic import basic
 from .routers.om import mincut
+from .routers.om import profile
 from .routers.waterbalance import water_balance
 from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 from .routers.routing import routing
@@ -55,6 +56,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Include routers conditionally based on config
 if config.get_bool("api", "basic"):
     app.include_router(basic.router)
+if config.get_bool("api", "profile"):
+    app.include_router(profile.router)
 if config.get_bool("api", "mincut"):
     app.include_router(mincut.router)
 if config.get_bool("api", "water_balance"):
