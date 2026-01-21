@@ -5,33 +5,19 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import os
 from fastapi_keycloak import FastAPIKeycloak, OIDCUser
-from .config import Config
-
-# Load config
-config_path = os.environ.get("CONFIG_PATH", "app/config/app.config")
-config = Config(config_path)
+from .config import settings
 
 # Initialize Keycloak
 idp = None
-if config.get_bool("keycloak", "enabled"):
-    realm = config.get_str("keycloak", "realm")
-    url = config.get_str("keycloak", "url")
-    client_id = config.get_str("keycloak", "client_id")
-    client_secret = config.get_str("keycloak", "client_secret")
-    admin_client_secret = config.get_str("keycloak", "admin_client_secret")
-    callback_uri = config.get_str("keycloak", "callback_uri")
-    if not realm or not url or not client_id or not client_secret or not admin_client_secret or not callback_uri:
-        raise ValueError("Keycloak configuration is incomplete")
-
+if settings.keycloak_enabled:
     idp = FastAPIKeycloak(
-        server_url=url,
-        client_id=client_id,
-        client_secret=client_secret,
-        admin_client_secret=admin_client_secret,
-        realm=realm,
-        callback_uri=callback_uri,
+        server_url=settings.keycloak_url,
+        client_id=settings.keycloak_client_id,
+        client_secret=settings.keycloak_client_secret,
+        admin_client_secret=settings.keycloak_admin_client_secret,
+        realm=settings.keycloak_realm,
+        callback_uri=settings.keycloak_callback_uri,
     )
 
 

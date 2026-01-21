@@ -1,12 +1,12 @@
 services:
   app:
     build: .
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     volumes:
       - .:/app
-    environment:
-      - ENV=development
     networks:
       api-network:
         ipv4_address: 172.21.1.50

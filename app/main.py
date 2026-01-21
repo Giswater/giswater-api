@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from .database import DatabaseManager
-from .keycloak import idp, config
+from .keycloak import idp
+from .config import settings
 from .utils import utils
 from .exceptions import ProcedureError, procedure_error_handler
 from .routers.basic import basic
@@ -28,7 +29,7 @@ VERSION = "0.5.0"
 DESCRIPTION = "API for interacting with a Giswater database."
 
 # Database manager
-db_manager = DatabaseManager(config)
+db_manager = DatabaseManager()
 
 # Create FastAPI app
 app = FastAPI(
@@ -47,29 +48,29 @@ if idp:
     idp.add_swagger_config(app)
 
 # Store in app.state for access in routes
-app.state.config = config
+app.state.settings = settings
 app.state.db_manager = db_manager
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include routers conditionally based on config
-if config.get_bool("api", "basic"):
+if settings.api_basic:
     app.include_router(basic.router)
-if config.get_bool("api", "profile"):
+if settings.api_profile:
     app.include_router(profile.router)
-if config.get_bool("api", "mincut"):
+if settings.api_mincut:
     app.include_router(mincut.router)
-if config.get_bool("api", "water_balance"):
+if settings.api_water_balance:
     app.include_router(water_balance.router)
-if config.get_bool("api", "routing"):
+if settings.api_routing:
     app.include_router(routing.router)
-if config.get_bool("api", "crm"):
+if settings.api_crm:
     app.include_router(crm.router)
-if config.get_bool("hydraulic_engine", "enabled"):
-    if config.get_bool("hydraulic_engine", "ud"):
+if settings.hydraulic_engine_enabled:
+    if settings.hydraulic_engine_ud:
         app.include_router(hydraulic_engine_ud.router)
-    if config.get_bool("hydraulic_engine", "ws"):
+    if settings.hydraulic_engine_ws:
         app.include_router(hydraulic_engine_ws.router)
 
 # Load plugins

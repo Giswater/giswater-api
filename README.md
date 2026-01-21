@@ -7,8 +7,7 @@ A lightweight, modular FastAPI application with **Swagger UI**, **Docker support
 ```
 giswater-api/
 │── app/
-│   │── config/              # Configuration files
-│   │   └── app.config       # Main config (copy from app.config_example)
+│   │── .env.example         # Environment variable template
 │   │
 │   │── models/              # Pydantic models (organized by module)
 │   │   │── basic/           # Basic module models
@@ -75,54 +74,52 @@ uvicorn app.main:app --reload
 
 ## ⚙️ Configuration
 
-Copy the example config and customize:
+Copy the env template and customize:
 
 ```bash
-cp app/config/app.config_example app/config/app.config
+cp .env.example .env
 ```
 
-### Config Sections
+### Environment Variables
 
-**[api]** - Enable/disable API modules:
-```ini
-[api]
-basic=True
-mincut=True
-water_balance=True
-routing=True
-crm=True
+**API toggles** (enable/disable modules):
+```
+API_BASIC=true
+API_PROFILE=true
+API_MINCUT=true
+API_WATER_BALANCE=true
+API_ROUTING=true
+API_CRM=true
 ```
 
-**[database]** - PostgreSQL connection:
-```ini
-[database]
-host=localhost
-port=5432
-db=giswater_db
-user=postgres
-password=postgres
-schema=ws
+**Database**:
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=giswater_db
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_SCHEMA=ws
+# DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
 
-**[hydraulic_engine]** - EPA integration:
-```ini
-[hydraulic_engine]
-enabled=True
-ws=True    # EPANET (water supply)
-ud=True    # SWMM (urban drainage)
-url=localhost
+**Hydraulic engine** (EPA integration):
+```
+HYDRAULIC_ENGINE_ENABLED=true
+HYDRAULIC_ENGINE_WS=true
+HYDRAULIC_ENGINE_UD=true
+HYDRAULIC_ENGINE_URL=localhost
 ```
 
-**[keycloak]** - OAuth2/OIDC authentication (optional):
-```ini
-[keycloak]
-enabled=False
-realm=your-realm
-url=https://keycloak.example.com
-client_id=giswater-api
-client_secret=your-secret
-admin_client_secret=your-admin-secret
-callback_uri=http://localhost:8000/callback
+**Keycloak** (optional):
+```
+KEYCLOAK_ENABLED=false
+KEYCLOAK_URL=https://keycloak.example.com
+KEYCLOAK_REALM=your-realm
+KEYCLOAK_CLIENT_ID=giswater-api
+KEYCLOAK_CLIENT_SECRET=your-secret
+KEYCLOAK_ADMIN_CLIENT_SECRET=your-admin-secret
+KEYCLOAK_CALLBACK_URI=http://localhost:8000/callback
 ```
 
 ---
@@ -166,21 +163,18 @@ docker build -t giswater-api .
 docker run -d -p 8000:8000 giswater-api
 ```
 
-### **With Custom Config Path**
+### **With Env File**
 
 ```bash
 docker run -d -p 8000:8000 \
-  -e CONFIG_PATH=app/config/app.config \
+  --env-file .env \
   -v /var/log/giswater-api:/app/logs \
   giswater-api
 ```
 
 ### **Environment Variables**
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CONFIG_PATH` | `app/config/app.config` | Path to configuration file |
-| `ENV` | `production` | Environment (development/production) |
+Set the variables listed in the Configuration section (or via `--env-file`).
 
 ---
 

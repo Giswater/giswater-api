@@ -11,32 +11,29 @@ from contextlib import contextmanager
 from time import sleep
 from fastapi import HTTPException
 
-from .config import Config
+from .config import settings
 
 
 class DatabaseManager:
-    """Manages database connections for a specific client configuration."""
+    """Manages database connections using env configuration."""
 
-    def __init__(self, config: Config):
-        """
-        Initialize database manager with a specific config.
-
-        Args:
-            config: Config instance for this database
-        """
-        self.config = config
+    def __init__(self):
+        """Initialize database manager with env-backed settings."""
         self.connection_pool = None
 
-        # Get database settings from config
-        self.host = config.get_str("database", "host")
-        self.port = config.get_str("database", "port")
-        self.dbname = config.get_str("database", "db")
-        self.user = config.get_str("database", "user")
-        self.password = config.get_str("database", "password")
-        self.default_schema = config.get_str("database", "schema")
+        # Get database settings from env
+        self.host = settings.db_host
+        self.port = settings.db_port
+        self.dbname = settings.db_name
+        self.user = settings.db_user
+        self.password = settings.db_password
+        self.default_schema = settings.db_schema
 
-        # Database connection string
-        self.database_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
+        # Database connection string (allow override)
+        if settings.database_url:
+            self.database_url = settings.database_url
+        else:
+            self.database_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
 
         # Initialize connection pool
         self.init_conn_pool()
