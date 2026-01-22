@@ -12,7 +12,7 @@ from .keycloak import get_current_user
 
 
 async def get_schema(
-    schema: str = Query(..., description="Database schema name", example="public"),
+    schema: str = Query(..., description="Database schema name", examples=["public"]),
     request: Request = None,
 ):
     """

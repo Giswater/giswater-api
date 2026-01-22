@@ -44,7 +44,7 @@ async def get_feature_changes(
         alias="lastFeeding",
         title="Last Feeding",
         description="Last feeding date of the feature",
-        example="2024-11-11",
+        examples=["2024-11-11"],
     ),
 ):
     log = create_log(__name__)
@@ -156,7 +156,9 @@ async def get_features_from_polygon(
         alias="polygonGeom",
         title="Polygon Geometry",
         description="Geometry of the polygon in WKT format",
-        example="MULTIPOLYGON (((419419.13867777254 4576466.499338785, 419429.1574217372 4576487.650020488, 419537.69381468766 4576466.221040341, 419497.8971372725 4576396.368131032, 419419.13867777254 4576404.438785893, 419419.13867777254 4576466.499338785)))",  # noqa: E501
+        examples=[
+            "MULTIPOLYGON (((419419.13867777254 4576466.499338785, 419429.1574217372 4576487.650020488, 419537.69381468766 4576466.221040341, 419497.8971372725 4576396.368131032, 419419.13867777254 4576404.438785893, 419419.13867777254 4576466.499338785)))"
+        ],  # noqa: E501
     ),
 ):
     log = create_log(__name__)
