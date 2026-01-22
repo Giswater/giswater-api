@@ -19,6 +19,7 @@ from ...models.basic.basic_models import (
     GetFeatureChangesResponse,
     GetSearchResponse,
     GetListResponse,
+    GetArcAuditValuesResponse,
 )
 from ...models.util_models import CoordinatesModel, ExtentModel, PageInfoModel, FilterFieldModel
 
@@ -240,6 +241,52 @@ async def get_search(
         body,
         schema=commons["schema"],
         api_version=commons["api_version"],
+    )
+    return handle_procedure_result(result)
+
+
+@router.get(
+    "/getarcauditvalues",
+    description="Fetch arc audit values",
+    response_model=GetArcAuditValuesResponse,
+    response_model_exclude_unset=True,
+)
+async def get_arc_audit_values(
+    commons: CommonsDep,
+    start_date: date = Query(
+        ...,
+        alias="startDate",
+        title="Start Date",
+        description="Start date for audit events",
+        examples=["2026-01-01"],
+    ),
+    end_date: date = Query(
+        ...,
+        alias="endDate",
+        title="End Date",
+        description="End date for audit events",
+        examples=["2026-01-31"],
+    ),
+):
+    log = create_log(__name__)
+
+    parameters = {"startDate": start_date.strftime("%Y-%m-%d"), "endDate": end_date.strftime("%Y-%m-%d")}
+    body = create_body_dict(
+        device=commons["device"],
+        form={},
+        feature={},
+        extras={"parameters": parameters},
+        cur_user=commons["user_id"],
+    )
+
+    result = execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_getarcauditvalues",
+        body,
+        schema=commons["schema"],
+        api_version=commons["api_version"],
+        user=commons["user_id"],
     )
     return handle_procedure_result(result)
 

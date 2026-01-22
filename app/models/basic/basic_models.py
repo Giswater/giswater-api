@@ -184,6 +184,35 @@ class GetSearchResponse(BaseAPIResponse[GetSearchBody]):
     pass
 
 
+# region Get arc audit values
+
+
+class ArcAuditStat(BaseModel):
+    """Arc audit stats model"""
+
+    actionType: str = Field(..., description="Action type")
+    count: int = Field(..., description="Number of events")
+
+
+class GetArcAuditValuesData(BaseModel):
+    """Get arc audit values data"""
+
+    stats: Optional[Union[List[ArcAuditStat], Dict[str, Any]]] = Field(None, description="Audit stats")
+    events: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = Field(None, description="Audit events")
+
+
+class GetArcAuditValuesBody(Body[GetArcAuditValuesData]):
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
+
+
+class GetArcAuditValuesResponse(BaseAPIResponse[GetArcAuditValuesBody]):
+    pass
+
+
+# endregion Get arc audit values
+
+
 # region Get list
 
 
