@@ -6,13 +6,14 @@ or (at your option) any later version.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from pydantic_geojson import FeatureCollectionModel
 from typing import Optional, Dict, Any, List
 
 from ..util_models import (
     BaseAPIResponse,
     Body,
     Data,
+    LayeredFeatureCollectionModel,
+    ReturnManagerModel,
 )
 
 
@@ -170,12 +171,6 @@ class ArcModel(BaseModel):
     omunit_id: int = Field(..., description="OM unit id")
 
 
-class LayeredFeatureCollectionModel(FeatureCollectionModel):
-    """FeatureCollection with optional layer name"""
-
-    layerName: Optional[str] = Field(None, description="Layer name")
-
-
 class StyleValueModel(BaseModel):
     """Style value model"""
 
@@ -202,20 +197,6 @@ class LineStyleModel(BaseModel):
     transparency: float = Field(..., description="Transparency")
     width: float = Field(..., description="Width")
     values: List[StyleValueModel] = Field(..., description="Style values")
-
-
-class ReturnManagerStyleModel(BaseModel):
-    """Return manager style model"""
-
-    point: Optional[PointStyleModel] = Field(None, description="Point style")
-    line: Optional[LineStyleModel] = Field(None, description="Line style")
-    polygon: Optional[Dict[str, Any]] = Field(None, description="Polygon style")
-
-
-class ReturnManagerModel(BaseModel):
-    """Return manager model"""
-
-    style: ReturnManagerStyleModel = Field(..., description="Styles")
 
 
 class ProfileData(Data):

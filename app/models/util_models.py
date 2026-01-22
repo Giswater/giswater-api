@@ -7,13 +7,20 @@ or (at your option) any later version.
 
 # flake8: noqa: E501
 from pydantic import BaseModel, Field
-from typing import Literal, Optional, List, Generic, TypeVar, Any
+from pydantic_geojson import FeatureCollectionModel
+from typing import Literal, Optional, List, Generic, TypeVar, Any, Dict
 
 
 # Define a TypeVar for the body type
 T = TypeVar("T")
 
 # region DB models
+
+
+class LayeredFeatureCollectionModel(FeatureCollectionModel):
+    """FeatureCollection with optional layer name"""
+
+    layerName: Optional[str] = Field(None, description="Layer name")
 
 
 class CoordinatesModel(BaseModel):
@@ -220,6 +227,20 @@ class Data(BaseModel):
     """Data model"""
 
     fields: Optional[List[GwField]] = Field(None, description="Fields of the data")
+
+
+class ReturnManagerStyle(BaseModel):
+    """Return manager styles"""
+
+    point: Optional[Dict[str, Any]] = Field(None, description="Point style")
+    line: Optional[Dict[str, Any]] = Field(None, description="Line style")
+    polygon: Optional[Dict[str, Any]] = Field(None, description="Polygon style")
+
+
+class ReturnManagerModel(BaseModel):
+    """Return manager model"""
+
+    style: ReturnManagerStyle = Field(..., description="Styles")
 
 
 class Body(BaseModel, Generic[T]):

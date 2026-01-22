@@ -29,6 +29,7 @@ class Settings:
     # API toggles
     api_basic: bool = _get_bool("API_BASIC", True)
     api_profile: bool = _get_bool("API_PROFILE", True)
+    api_flow: bool = _get_bool("API_FLOW", True)
     api_mincut: bool = _get_bool("API_MINCUT", True)
     api_water_balance: bool = _get_bool("API_WATER_BALANCE", True)
     api_routing: bool = _get_bool("API_ROUTING", True)

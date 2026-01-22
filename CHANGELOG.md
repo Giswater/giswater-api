@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Get mincut valves endpoint
 - Get mincut dialog endpoint
 - Get features from polygon endpoint
+- Profile endpoint
+- Flow endpoint
 
 ### Changed
 
