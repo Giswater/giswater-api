@@ -3,16 +3,11 @@ name: 🧪 FastAPI Tests
 on:
   push:
     branches:
-      - 'master'
-      - 'dev'
-      - 'feature/**'
-      - 'release/**'
+      - 'main'
   pull_request:
     branches:
-      - 'master'
-      - 'dev'
-      - 'feature/**'
-      - 'release/**'
+      - 'main'
+  workflow_dispatch:
 
 jobs:
   fastapi-test:
