@@ -56,7 +56,7 @@ async def get_feature_changes(
         extras={"action": action, "lastFeeding": last_feeding.strftime("%Y-%m-%d")},
         cur_user=commons["user_id"],
     )
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_featurechanges",
@@ -130,7 +130,7 @@ async def get_info_from_coordinates(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getinfofromcoordinates",
@@ -169,7 +169,7 @@ async def get_features_from_polygon(
         device=commons["device"], form={}, feature={}, extras={"parameters": parameters}, cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getfeaturesfrompolygon",
@@ -208,7 +208,7 @@ async def get_selectors(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getselectors",
@@ -234,7 +234,7 @@ async def get_search(
         device=commons["device"], form={}, feature={}, extras={"parameters": parameters}, cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getsearch",
@@ -279,7 +279,7 @@ async def get_arc_audit_values(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getarcauditvalues",
@@ -349,7 +349,7 @@ async def get_list(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log, commons["db_manager"], "gw_fct_getlist", body, schema=commons["schema"], api_version=commons["api_version"]
     )
     return handle_procedure_result(result)

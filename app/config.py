@@ -24,6 +24,26 @@ def _get_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in ("true", "t", "yes", "y", "1", "on")
 
 
+def _get_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _get_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     # API toggles
@@ -43,6 +63,11 @@ class Settings:
     db_password: str | None = _get_env("DB_PASSWORD", "postgres")
     db_schema: str | None = _get_env("DB_SCHEMA", "public")
     database_url: str | None = _get_env("DATABASE_URL")
+    db_pool_min_size: int = _get_int("DB_POOL_MIN_SIZE", 2)
+    db_pool_max_size: int = _get_int("DB_POOL_MAX_SIZE", 20)
+    db_pool_timeout: float = _get_float("DB_POOL_TIMEOUT", 30.0)
+    db_pool_max_waiting: int = _get_int("DB_POOL_MAX_WAITING", 0)
+    db_pool_max_idle: float = _get_float("DB_POOL_MAX_IDLE", 300.0)
 
     # Hydraulic engine
     hydraulic_engine_enabled: bool = _get_bool("HYDRAULIC_ENGINE_ENABLED", True)

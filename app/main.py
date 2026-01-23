@@ -50,6 +50,18 @@ if idp:
 app.state.settings = settings
 app.state.db_manager = db_manager
 
+
+# Initialize/close async pool on app lifecycle
+@app.on_event("startup")
+async def startup() -> None:
+    await db_manager.init_conn_pool()
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    await db_manager.close()
+
+
 # Serve static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -88,7 +100,7 @@ async def root():
 async def health():
     """Health check endpoint."""
     try:
-        with db_manager.get_db() as conn:
+        async with db_manager.get_db() as conn:
             healthy = conn is not None
     except Exception:
         healthy = False

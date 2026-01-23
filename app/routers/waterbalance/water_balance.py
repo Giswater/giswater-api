@@ -26,7 +26,7 @@ async def get_dmas(
 
     body = create_body_dict(device=commons["device"], cur_user=commons["user_id"])
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log, commons["db_manager"], "gw_fct_getdmas", body, schema=commons["schema"], api_version=commons["api_version"]
     )
     return handle_procedure_result(result)
@@ -65,7 +65,7 @@ async def get_dma_hydrometers(
     parameters = {"dma_id": dma_id}
     body = create_body_dict(device=commons["device"], extras={"parameters": parameters}, cur_user=commons["user_id"])
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getdmahydrometers",
