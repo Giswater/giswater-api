@@ -22,19 +22,19 @@ from tests.helpers import skip_if_unhealthy
     ],
 )
 def test_get_info_from_coordinates_ws(xcoord: float, ycoord: float, zoom_ratio: int):
-    client = TestClient(app)
-    skip_if_unhealthy(client)
+    with TestClient(app) as client:
+        skip_if_unhealthy(client)
 
-    response = client.get(
-        "/basic/getinfofromcoordinates",
-        params={"xcoord": xcoord, "ycoord": ycoord, "epsg": 25831, "zoomRatio": zoom_ratio},
-    )
+        response = client.get(
+            "/basic/getinfofromcoordinates",
+            params={"xcoord": xcoord, "ycoord": ycoord, "epsg": 25831, "zoomRatio": zoom_ratio},
+        )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "Accepted"
-    assert "version" in data
-    assert "body" in data
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+        assert "version" in data
+        assert "body" in data
 
 
 @pytest.mark.ud
@@ -47,16 +47,16 @@ def test_get_info_from_coordinates_ws(xcoord: float, ycoord: float, zoom_ratio: 
     ],
 )
 def test_get_info_from_coordinates_ud(xcoord: float, ycoord: float, zoom_ratio: int):
-    client = TestClient(app)
-    skip_if_unhealthy(client)
+    with TestClient(app) as client:
+        skip_if_unhealthy(client)
 
-    response = client.get(
-        "/basic/getinfofromcoordinates",
-        params={"xcoord": xcoord, "ycoord": ycoord, "epsg": 25831, "zoomRatio": zoom_ratio},
-    )
+        response = client.get(
+            "/basic/getinfofromcoordinates",
+            params={"xcoord": xcoord, "ycoord": ycoord, "epsg": 25831, "zoomRatio": zoom_ratio},
+        )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "Accepted"
-    assert "version" in data
-    assert "body" in data
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+        assert "version" in data
+        assert "body" in data

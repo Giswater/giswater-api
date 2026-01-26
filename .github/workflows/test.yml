@@ -19,10 +19,10 @@ jobs:
         include:
           - docker_tag: main-pg17-ud
             skip_marker: ws
-            db_schema: ud
+            db_schema: ud_40
           - docker_tag: main-pg17-ws
             skip_marker: ud
-            db_schema: ws
+            db_schema: ws_40
     services:
       db:
         image: ghcr.io/giswater/gw-db:${{ matrix.docker_tag }}
