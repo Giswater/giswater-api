@@ -11,7 +11,32 @@ on:
 
 jobs:
   fastapi-test:
+    name: FastAPI tests (${{ matrix.docker_tag }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - docker_tag: main-pg17-ud
+            skip_marker: ws
+            db_schema: ud
+          - docker_tag: main-pg17-ws
+            skip_marker: ud
+            db_schema: ws
+    services:
+      db:
+        image: ghcr.io/giswater/gw-db:${{ matrix.docker_tag }}
+        env:
+          POSTGRES_DB: gw_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d gw_db"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout repository
@@ -28,4 +53,11 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run tests with pytest
-        run: pytest -v
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: gw_db
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_SCHEMA: ${{ matrix.db_schema }}
+        run: pytest -v -m "not ${{ matrix.skip_marker }}"
