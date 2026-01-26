@@ -30,7 +30,7 @@ async def get_schema(
     """
     if request and hasattr(request.app.state, "db_manager"):
         db_manager = request.app.state.db_manager
-        if not db_manager.validate_schema(schema):
+        if not await db_manager.validate_schema(schema):
             raise HTTPException(
                 status_code=404,
                 detail=f"Schema '{schema}' not found",
@@ -60,7 +60,7 @@ async def common_parameters(
     ),
 ):
     db_manager = request.app.state.db_manager
-    if not db_manager.validate_schema(schema):
+    if not await db_manager.validate_schema(schema):
         raise HTTPException(status_code=404, detail=f"Schema '{schema}' not found")
     return {
         "request": request,

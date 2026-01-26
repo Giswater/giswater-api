@@ -58,7 +58,7 @@ async def flow(
     if direction == "downstream":
         procedure = "gw_fct_graphanalytics_downstream"
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         procedure,

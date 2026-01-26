@@ -148,7 +148,7 @@ def create_response(db_result=None, form_xml=None, status=None, message=None):
     return response
 
 
-def execute_procedure(  # noqa: C901
+async def execute_procedure(  # noqa: C901
     log,
     db_manager,
     function_name,
@@ -184,7 +184,7 @@ def execute_procedure(  # noqa: C901
         return create_response(status=False, message="Schema not found")
 
     # Validate schema exists
-    if not db_manager.validate_schema(schema_name):
+    if not await db_manager.validate_schema(schema_name):
         log.warning(f"Schema '{schema_name}' not found")
         remove_handlers()
         return create_response(status=False, message=f"Schema '{schema_name}' not found")
@@ -197,7 +197,7 @@ def execute_procedure(  # noqa: C901
     execution_msg = sql
     response_msg = ""
 
-    with db_manager.get_db() as conn:
+    async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
             remove_handlers()
@@ -209,18 +209,18 @@ def execute_procedure(  # noqa: C901
         else:
             identity = user
         try:
-            with conn.cursor() as cursor:
+            async with conn.cursor() as cursor:
                 if set_role and identity:
-                    cursor.execute(f"SET ROLE '{identity}';")
-                cursor.execute(sql)
-                result = cursor.fetchone()
+                    await cursor.execute(f"SET ROLE '{identity}';")
+                await cursor.execute(sql)
+                result = await cursor.fetchone()
                 result = result[0] if result else None
                 # Manual commit after successful execution
-                conn.commit()
+                await conn.commit()
             response_msg = json.dumps(result)
         except Exception as e:
             # Rollback on error
-            conn.rollback()
+            await conn.rollback()
             db_version = None
             if result and "version" in result:
                 db_version = result["version"]

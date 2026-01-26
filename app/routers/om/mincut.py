@@ -79,7 +79,7 @@ async def get_mincut_dialog(
 
     body = create_body_dict(device=commons["device"], extras={"mincutId": mincut_id}, cur_user=commons["user_id"])
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getmincut",
@@ -129,7 +129,7 @@ async def create_mincut(
         device=commons["device"], client_extras={"tiled": True}, extras=extras, cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -180,7 +180,7 @@ async def update_mincut(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -250,7 +250,7 @@ async def valve_unaccess(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -286,7 +286,7 @@ async def valve_toggle_status(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -325,7 +325,7 @@ async def start_mincut(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -376,7 +376,7 @@ async def end_mincut(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -407,7 +407,7 @@ async def cancel_mincut(
         device=commons["device"], extras={"action": "mincutCancel", "mincutId": mincut_id}, cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",
@@ -434,7 +434,7 @@ async def delete_mincut(
         device=commons["device"], extras={"action": "mincutDelete", "mincutId": mincut_id}, cur_user=commons["user_id"]
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_setmincut",

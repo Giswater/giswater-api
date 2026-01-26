@@ -199,8 +199,13 @@ async def get_object_optimal_path_order(
             mapzone_type_value = "EXPL"
 
         # Get the network of points
-        json_result, network_points = get_network_points(
-            object_type, mapzone_type_value, mapzone_id, log, commons["schema"]
+        json_result, network_points = await get_network_points(
+            object_type,
+            mapzone_type_value,
+            mapzone_id,
+            log,
+            commons["db_manager"],
+            commons["schema"],
         )
         features = json_result["body"]["data"]["features"]
 
@@ -331,7 +336,7 @@ async def get_object_parameter_order(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getfeatures",

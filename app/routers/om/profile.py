@@ -46,7 +46,7 @@ async def create_profile(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_getprofilevalues",

@@ -41,7 +41,7 @@ async def insert_hydrometers(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_set_hydrometers",
@@ -78,7 +78,7 @@ async def update_hydrometer(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_set_hydrometers",
@@ -112,7 +112,7 @@ async def update_hydrometers_bulk(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_set_hydrometers",
@@ -142,7 +142,7 @@ async def delete_hydrometer(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_set_hydrometers",
@@ -174,7 +174,7 @@ async def delete_hydrometers_bulk(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_set_hydrometers",
@@ -214,7 +214,7 @@ async def replace_all_hydrometers(
         cur_user=commons["user_id"],
     )
 
-    result = execute_procedure(
+    result = await execute_procedure(
         log,
         commons["db_manager"],
         "gw_fct_set_hydrometers",

@@ -5,10 +5,9 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import psycopg2
-import psycopg2.pool
-from contextlib import contextmanager
-from time import sleep
+import asyncio
+from contextlib import asynccontextmanager
+from psycopg_pool import AsyncConnectionPool
 from fastapi import HTTPException
 
 from .config import settings
@@ -33,51 +32,52 @@ class DatabaseManager:
         if settings.database_url:
             self.database_url = settings.database_url
         else:
-            self.database_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
+            self.database_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}?application_name=giswater-api"
 
-        # Initialize connection pool
-        self.init_conn_pool()
+        # Pool is initialized on startup to avoid blocking at import time
 
-    def init_conn_pool(self):
-        """Initialize the connection pool."""
+    async def init_conn_pool(self):
+        """Initialize the async connection pool."""
         try:
-            self.connection_pool = psycopg2.pool.SimpleConnectionPool(
-                1,  # Minimum number of connections
-                10,  # Maximum number of connections
+            self.connection_pool = AsyncConnectionPool(
                 self.database_url,
+                min_size=settings.db_pool_min_size,
+                max_size=settings.db_pool_max_size,
+                timeout=settings.db_pool_timeout,
+                max_waiting=settings.db_pool_max_waiting,
+                max_idle=settings.db_pool_max_idle,
+                open=False,
             )
+            await self.connection_pool.open()
             print(f"Initialized connection pool for {self.dbname}")
         except Exception as e:
             print(f"Failed to initialize connection pool for {self.dbname}: {e}")
             self.connection_pool = None
 
-    @contextmanager
-    def get_db(self):
+    @asynccontextmanager
+    async def get_db(self):
         """
         Get a database connection from the pool.
 
         Yields:
-            psycopg2 connection or None if connection fails
+            psycopg connection or None if connection fails
         """
         max_tries = 2
         n_try = 0
         while self.connection_pool is None and n_try < max_tries:
-            self.init_conn_pool()
+            await self.init_conn_pool()
             n_try += 1
             if self.connection_pool is None:
-                sleep(5)
+                await asyncio.sleep(5)
 
         if self.connection_pool is None:
             yield None
             return
 
-        conn = self.connection_pool.getconn()
-        try:
+        async with self.connection_pool.connection() as conn:
             yield conn
-        finally:
-            self.connection_pool.putconn(conn)
 
-    def validate_schema(self, schema: str) -> bool:
+    async def validate_schema(self, schema: str) -> bool:
         """
         Validate if a schema exists in the database.
 
@@ -90,20 +90,20 @@ class DatabaseManager:
         Raises:
             HTTPException: If database connection fails or query error occurs
         """
-        with self.get_db() as conn:
+        async with self.get_db() as conn:
             if conn is None:
                 raise HTTPException(status_code=500, detail="Database connection failed")
             try:
-                with conn.cursor() as cursor:
-                    cursor.execute(
+                async with conn.cursor() as cursor:
+                    await cursor.execute(
                         "SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (schema,)
                     )
-                    return cursor.fetchone() is not None
+                    return await cursor.fetchone() is not None
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e)) from e
 
-    def close(self):
+    async def close(self):
         """Close the connection pool."""
         if self.connection_pool:
-            self.connection_pool.closeall()
+            await self.connection_pool.close()
             print(f"Closed connection pool for {self.dbname}")
