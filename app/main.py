@@ -6,6 +6,7 @@ or (at your option) any later version.
 """
 
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -30,6 +31,16 @@ DESCRIPTION = "API for interacting with a Giswater database."
 # Database manager
 db_manager = DatabaseManager()
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await db_manager.init_conn_pool()
+    try:
+        yield
+    finally:
+        await db_manager.close()
+
+
 # Create FastAPI app
 app = FastAPI(
     version=VERSION,
@@ -37,6 +48,7 @@ app = FastAPI(
     description=DESCRIPTION,
     root_path="/api/v1",
     responses={500: {"model": GwErrorResponse, "description": "Database function error"}},
+    lifespan=lifespan,
 )
 
 # Register exception handlers
@@ -49,17 +61,6 @@ if idp:
 # Store in app.state for access in routes
 app.state.settings = settings
 app.state.db_manager = db_manager
-
-
-# Initialize/close async pool on app lifecycle
-@app.on_event("startup")
-async def startup() -> None:
-    await db_manager.init_conn_pool()
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    await db_manager.close()
 
 
 # Serve static files

@@ -48,8 +48,11 @@ class DatabaseManager:
                 max_idle=settings.db_pool_max_idle,
                 open=False,
             )
-            await self.connection_pool.open()
+            await asyncio.wait_for(self.connection_pool.open(), timeout=settings.db_connect_timeout)
             print(f"Initialized connection pool for {self.dbname}")
+        except asyncio.TimeoutError:
+            print(f"Timed out initializing connection pool for {self.dbname}")
+            self.connection_pool = None
         except Exception as e:
             print(f"Failed to initialize connection pool for {self.dbname}: {e}")
             self.connection_pool = None

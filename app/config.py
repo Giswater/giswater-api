@@ -68,6 +68,7 @@ class Settings:
     db_pool_timeout: float = _get_float("DB_POOL_TIMEOUT", 30.0)
     db_pool_max_waiting: int = _get_int("DB_POOL_MAX_WAITING", 0)
     db_pool_max_idle: float = _get_float("DB_POOL_MAX_IDLE", 300.0)
+    db_connect_timeout: float = _get_float("DB_CONNECT_TIMEOUT", 5.0)
 
     # Hydraulic engine
     hydraulic_engine_enabled: bool = _get_bool("HYDRAULIC_ENGINE_ENABLED", True)
