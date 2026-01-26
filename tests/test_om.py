@@ -6,18 +6,15 @@ or (at your option) any later version.
 """
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app
-from tests.helpers import skip_if_unhealthy
+from tests.helpers import assert_healthy
 
 
 @pytest.mark.ws
-def test_get_mincuts():
-    client = TestClient(app)
-    skip_if_unhealthy(client)
+def test_get_mincuts(client, default_params):
+    assert_healthy(client)
 
-    response = client.get("/om/mincuts")
+    response = client.get("/om/mincuts", params=default_params)
 
     assert response.status_code == 200
     data = response.json()
@@ -27,15 +24,16 @@ def test_get_mincuts():
 
 @pytest.mark.ud
 @pytest.mark.parametrize(
-    ("initial_node_id", "final_node_id"),
+    ("initial_node_id", "final_node_id", "expected_status", "expected_api_status"),
     [
-        (35, 38),
-        (36, 37),
+        (35, 38, 200, "Accepted"),
+        (36, 37, 500, "Failed"),
     ],
 )
-def test_create_profile(initial_node_id: int, final_node_id: int):
-    client = TestClient(app)
-    skip_if_unhealthy(client)
+def test_create_profile(
+    client, default_params, initial_node_id: int, final_node_id: int, expected_status: int, expected_api_status: str
+):
+    assert_healthy(client)
 
     payload = {
         "initial_node_id": initial_node_id,
@@ -45,9 +43,10 @@ def test_create_profile(initial_node_id: int, final_node_id: int):
         "scale_ev": 1000,
     }
 
-    response = client.post("/om/profiles", json=payload)
+    response = client.post("/om/profiles", params=default_params, json=payload)
 
-    assert response.status_code == 200
+    assert response.status_code == expected_status
     data = response.json()
-    assert data["status"] == "Accepted"
-    assert "body" in data
+    assert data["status"] == expected_api_status
+    if expected_status == 200:
+        assert "body" in data

@@ -6,10 +6,7 @@ or (at your option) any later version.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
-from app.main import app
-from tests.helpers import skip_if_unhealthy
+from tests.helpers import assert_healthy
 
 
 @pytest.mark.ws
@@ -21,20 +18,25 @@ from tests.helpers import skip_if_unhealthy
         (418294.927, 4577779.925, 1000),
     ],
 )
-def test_get_info_from_coordinates_ws(xcoord: float, ycoord: float, zoom_ratio: int):
-    with TestClient(app) as client:
-        skip_if_unhealthy(client)
+def test_get_info_from_coordinates_ws(client, default_params, xcoord: float, ycoord: float, zoom_ratio: int):
+    assert_healthy(client)
 
-        response = client.get(
-            "/basic/getinfofromcoordinates",
-            params={"xcoord": xcoord, "ycoord": ycoord, "epsg": 25831, "zoomRatio": zoom_ratio},
-        )
+    response = client.get(
+        "/basic/getinfofromcoordinates",
+        params={
+            **default_params,
+            "xcoord": xcoord,
+            "ycoord": ycoord,
+            "epsg": 25831,
+            "zoomRatio": zoom_ratio,
+        },
+    )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
-        assert "version" in data
-        assert "body" in data
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "version" in data
+    assert "body" in data
 
 
 @pytest.mark.ud
@@ -46,17 +48,22 @@ def test_get_info_from_coordinates_ws(xcoord: float, ycoord: float, zoom_ratio: 
         (418308.548, 4577923.667, 1000),
     ],
 )
-def test_get_info_from_coordinates_ud(xcoord: float, ycoord: float, zoom_ratio: int):
-    with TestClient(app) as client:
-        skip_if_unhealthy(client)
+def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, ycoord: float, zoom_ratio: int):
+    assert_healthy(client)
 
-        response = client.get(
-            "/basic/getinfofromcoordinates",
-            params={"xcoord": xcoord, "ycoord": ycoord, "epsg": 25831, "zoomRatio": zoom_ratio},
-        )
+    response = client.get(
+        "/basic/getinfofromcoordinates",
+        params={
+            **default_params,
+            "xcoord": xcoord,
+            "ycoord": ycoord,
+            "epsg": 25831,
+            "zoomRatio": zoom_ratio,
+        },
+    )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
-        assert "version" in data
-        assert "body" in data
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "version" in data
+    assert "body" in data

@@ -5,11 +5,9 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
-def skip_if_unhealthy(client: TestClient) -> None:
+def assert_healthy(client: TestClient) -> None:
     health = client.get("/health").json()
-    if health.get("status") != "healthy":
-        pytest.skip("Database is not reachable for integration test.")
+    assert health.get("status") == "healthy", f"Database is not reachable: {health}"

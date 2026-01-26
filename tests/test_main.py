@@ -5,14 +5,9 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi.testclient import TestClient
 
-from app.main import app
-
-
-def test_get_status():
-    with TestClient(app) as client:
-        response = client.get("/")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
+def test_get_status(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
