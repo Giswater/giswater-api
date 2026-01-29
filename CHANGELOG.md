@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-01-29
+
 ### Added
 
 - Toggle valve status endpoint
@@ -15,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Get features from polygon endpoint
 - Profile endpoint
 - Flow endpoint
+- Get arc audit values endpoint
 
 ### Changed
 
@@ -130,7 +133,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/giswater/giswater-api/compare/v0.5.0...main
+[unreleased]: https://github.com/giswater/giswater-api/compare/v0.6.0...main
+[0.6.0]: https://github.com/giswater/giswater-api/compare/v0.5.0...0.6.0
 [0.5.0]: https://github.com/giswater/giswater-api/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/giswater/giswater-api/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/giswater/giswater-api/compare/v0.3.3...v0.3.4
