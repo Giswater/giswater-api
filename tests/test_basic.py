@@ -69,8 +69,6 @@ def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, yco
     assert "body" in data
 
 
-@pytest.mark.ws
-@pytest.mark.ud
 @pytest.mark.parametrize(
     ("feature_type", "action", "last_feeding"),
     [
