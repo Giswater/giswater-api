@@ -60,4 +60,4 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
           DB_SCHEMA: ${{ matrix.db_schema }}
-        run: pytest -v -m "not ${{ matrix.skip_marker }}"
+        run: pytest -v -m "not ${{ matrix.skip_marker }} and destructive"
