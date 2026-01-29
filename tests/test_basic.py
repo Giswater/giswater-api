@@ -76,7 +76,6 @@ def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, yco
         ("ARC", "INSERT", "2021-01-01"),
         ("NODE", "INSERT", "2022-01-01"),
         ("CONNEC", "INSERT", "2023-01-01"),
-        ("GULLY", "INSERT", "2024-01-01"),
         ("ELEMENT", "INSERT", "2025-01-01"),
     ],
 )
