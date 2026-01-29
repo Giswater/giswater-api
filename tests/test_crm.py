@@ -5,6 +5,8 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+import pytest
+
 from uuid import uuid4
 
 from tests.helpers import assert_healthy
@@ -113,7 +115,7 @@ def test_delete_hydrometers_bulk(client, default_params):
     payload = [_hydrometer_payload(code) for code in codes]
     _insert_hydrometers(client, default_params, payload)
 
-    response = client.delete("/crm/hydrometers", params=default_params, json=codes)
+    response = client.request("DELETE", "/crm/hydrometers", params=default_params, json=codes)
 
     assert response.status_code == 200
     data = response.json()
@@ -122,6 +124,7 @@ def test_delete_hydrometers_bulk(client, default_params):
     assert "body" in data
 
 
+@pytest.mark.destructive
 def test_replace_all_hydrometers(client, default_params):
     assert_healthy(client)
 
