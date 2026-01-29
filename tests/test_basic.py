@@ -67,3 +67,38 @@ def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, yco
     assert data["status"] == "Accepted"
     assert "version" in data
     assert "body" in data
+
+
+@pytest.mark.ws
+@pytest.mark.ud
+@pytest.mark.parametrize(
+    ("feature_type", "action", "last_feeding"),
+    [
+        ("FEATURE", "INSERT", "2020-01-01"),
+        ("ARC", "INSERT", "2021-01-01"),
+        ("NODE", "INSERT", "2022-01-01"),
+        ("CONNEC", "INSERT", "2023-01-01"),
+        ("GULLY", "INSERT", "2024-01-01"),
+        ("ELEMENT", "INSERT", "2025-01-01"),
+    ],
+)
+def test_get_feature_changes(client, default_params, feature_type, action, last_feeding):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getfeaturechanges",
+        params={
+            **default_params,
+            "featureType": feature_type,
+            "action": action,
+            "lastFeeding": last_feeding,
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "version" in data
+    assert "body" in data
+    assert "data" in data["body"]
+    assert "features" in data["body"]["data"]
