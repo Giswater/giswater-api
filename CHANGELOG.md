@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- DMA flowmeters & connecs endpoints
 - Tests
 
 ## [0.6.0] - 2026-01-29

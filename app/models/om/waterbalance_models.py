@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from ..util_models import BaseAPIResponse, Body
 
 
@@ -17,6 +17,7 @@ class Dma(BaseModel):
     macroDmaId: Optional[int] = Field(None, description="Macro DMA ID")
     description: Optional[str] = Field(None, description="DMA description")
     active: bool = Field(..., description="Whether the DMA is active")
+    geometry: Optional[str] = Field(None, description="DMA geometry")
 
 
 class GetDmasData(BaseModel):
@@ -78,6 +79,19 @@ class GetDmaHydrometersBody(Body[GetDmaHydrometersData]):
 
 
 class GetDmaHydrometersResponse(BaseAPIResponse[GetDmaHydrometersBody]):
+    pass
+
+
+class GetDmaFlowmetersData(BaseModel):
+    flowmeters: List[Dict[str, Any]] = Field(default_factory=list, description="List of flowmeters")
+
+
+class GetDmaFlowmetersBody(Body[GetDmaFlowmetersData]):
+    form: Optional[Dict] = Field({}, description="Form")
+    feature: Optional[Dict] = Field({}, description="Feature")
+
+
+class GetDmaFlowmetersResponse(BaseAPIResponse[GetDmaFlowmetersBody]):
     pass
 
 
