@@ -13,6 +13,8 @@ import json
 from typing import Any, Dict, Literal
 from datetime import date, datetime
 from fastapi import FastAPI, HTTPException
+from psycopg import sql
+from psycopg.rows import dict_row
 
 from ..models.util_models import APIResponse
 from ..exceptions import ProcedureError
@@ -246,6 +248,92 @@ async def execute_procedure(  # noqa: C901
             result["version"] = {"db": result["version"], "api": api_version}
 
         return result
+
+
+async def execute_sql_select(
+    log,
+    db_manager,
+    table_name: str,
+    columns: list[str] | None = None,
+    where_clause: str | None = None,
+    parameters: tuple | None = None,
+    set_role: bool = True,
+    schema: str | None = None,
+    user: str | None = "anonymous",
+):
+    """
+    Execute a SELECT query on a table and return rows as dicts.
+    """
+    schema_name = schema or db_manager.default_schema
+    if schema_name is None:
+        log.warning("Schema is None")
+        raise HTTPException(status_code=500, detail="Schema not found")
+
+    if not await db_manager.validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_name}' not found")
+
+    if columns:
+        column_sql = sql.SQL(", ").join(sql.Identifier(col) for col in columns)
+    else:
+        column_sql = sql.SQL("*")
+
+    query = sql.SQL("SELECT {} FROM {}.{}").format(column_sql, sql.Identifier(schema_name), sql.Identifier(table_name))
+    if where_clause:
+        query = sql.SQL("{} WHERE {}").format(query, sql.SQL(where_clause))
+
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor(row_factory=dict_row) as cursor:
+                identity = None if user == "anonymous" else user
+                if set_role and identity:
+                    await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
+                if parameters is None:
+                    await cursor.execute(query)
+                else:
+                    await cursor.execute(query, parameters)
+                rows = await cursor.fetchall()
+            await conn.commit()
+        except Exception as e:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+    return rows
+
+
+async def get_db_version(log, db_manager, schema: str | None = None) -> str | None:
+    """
+    Return latest giswater version from sys_version.
+    """
+    schema_name = schema or db_manager.default_schema
+    if schema_name is None:
+        log.warning("Schema is None")
+        raise HTTPException(status_code=500, detail="Schema not found")
+
+    if not await db_manager.validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_name}' not found")
+
+    query = sql.SQL("SELECT giswater FROM {}.sys_version ORDER BY id DESC LIMIT 1").format(sql.Identifier(schema_name))
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query)
+                row = await cursor.fetchone()
+            await conn.commit()
+        except Exception as e:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+    if not row:
+        return None
+    return row[0]
 
 
 # Create log pointer
