@@ -210,6 +210,7 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 | `/basic/getfeaturesfrompolygon`   | GET    | Fetch GIS features inside a polygon                                         |
 | `/basic/getselectors`             | GET    | Fetch current selectors                                                     |
 | `/basic/getsearch`                | GET    | Search features                                                             |
+| `/basic/getarcauditvalues`        | GET    | Fetch arc audit values                                                      |
 | `/basic/getlist`                  | GET    | Generic list query with paging and filters                                  |
 
 ### CRM Module
@@ -251,13 +252,15 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 | --------------------------------- | ------ | --------------------------------------------------------------------------- |
 | `/om/flow`                        | POST   | Calculate upstream/downstream flow trace                                    |
 
-### OM - Water Balance
+### OM - District Metered Areas
 
 | Endpoint                                         | Method | Description                                                                 |
 | ----------------------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/waterbalance/dmas`                            | GET    | Returns collection of DMAs                                                  |
-| `/waterbalance/dmas/{dma_id}/hydrometers`       | GET    | Retrieve DMA hydrometers data with location, status, and measurements       |
-| `/waterbalance/dmas/{dma_id}/parameters`        | GET    | Retrieves DMA parameters for performance analysis                           |
+| `/om/dmas`                                      | GET    | Returns collection of DMAs                                                  |
+| `/om/dmas/{dma_id}/hydrometers`                 | GET    | Retrieve DMA hydrometers data with location, status, and measurements       |
+| `/om/dmas/{dma_id}/parameters`                  | GET    | Retrieves DMA parameters for performance analysis                           |
+| `/om/dmas/{dma_id}/flowmeters`                  | GET    | Retrieve DMA flowmeters data with location, status, and flow                |
+| `/om/dmas/{dma_id}/connecs`                     | GET    | Retrieve DMA connecs data from ve_connec                                    |
 
 ### EPA - Hydraulic Engine (UD)
 
@@ -312,7 +315,7 @@ giswater-api/
 │   │   │── basic/           # Basic module models
 │   │   │── crm/             # CRM module models
 │   │   │── epa/             # EPA hydraulic engine models
-│   │   │── om/              # OM (mincut, waterbalance) models
+│   │   │── om/              # OM (mincut, dma) models
 │   │   │── routing/         # Routing module models
 │   │   └── util_models.py   # Shared utility models
 │   │
@@ -320,9 +323,8 @@ giswater-api/
 │   │   │── basic/           # GIS feature queries
 │   │   │── crm/             # Hydrometer CRUD
 │   │   │── epa/             # SWMM & EPANET integration
-│   │   │── om/              # Mincut operations
+│   │   │── om/              # OM operations (mincut, profile, flow, dma)
 │   │   │── routing/         # Optimal path routing
-│   │   └── waterbalance/    # DMA water balance
 │   │
 │   │── utils/               # Utilities and helpers
 │   │   │── utils.py         # General utilities

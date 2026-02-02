@@ -17,8 +17,7 @@ from .config import settings
 from .utils import utils
 from .exceptions import ProcedureError, procedure_error_handler
 from .routers.basic import basic
-from .routers.om import mincut, profile, flow
-from .routers.waterbalance import water_balance
+from .routers.om import mincut, profile, flow, dma
 from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 from .routers.routing import routing
 from .routers.crm import crm
@@ -76,7 +75,7 @@ if settings.api_flow:
 if settings.api_mincut:
     app.include_router(mincut.router)
 if settings.api_water_balance:
-    app.include_router(water_balance.router)
+    app.include_router(dma.router)
 if settings.api_routing:
     app.include_router(routing.router)
 if settings.api_crm:
