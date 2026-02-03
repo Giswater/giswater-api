@@ -60,4 +60,13 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
           DB_SCHEMA: ${{ matrix.db_schema }}
+
+          API_BASIC: true
+          API_PROFILE: true
+          API_FLOW: true
+          API_MINCUT: true
+          API_WATER_BALANCE: true
+          API_MAPZONES: true
+          API_ROUTING: true
+          API_CRM: true
         run: pytest -v -m "not ${{ matrix.skip_marker }} or destructive"
