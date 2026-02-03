@@ -47,13 +47,14 @@ def _get_float(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     # API toggles
-    api_basic: bool = _get_bool("API_BASIC", True)
-    api_profile: bool = _get_bool("API_PROFILE", True)
-    api_flow: bool = _get_bool("API_FLOW", True)
-    api_mincut: bool = _get_bool("API_MINCUT", True)
-    api_water_balance: bool = _get_bool("API_WATER_BALANCE", True)
-    api_routing: bool = _get_bool("API_ROUTING", True)
-    api_crm: bool = _get_bool("API_CRM", True)
+    api_basic: bool = _get_bool("API_BASIC", False)
+    api_profile: bool = _get_bool("API_PROFILE", False)
+    api_flow: bool = _get_bool("API_FLOW", False)
+    api_mincut: bool = _get_bool("API_MINCUT", False)
+    api_water_balance: bool = _get_bool("API_WATER_BALANCE", False)
+    api_mapzones: bool = _get_bool("API_MAPZONES", False)
+    api_routing: bool = _get_bool("API_ROUTING", False)
+    api_crm: bool = _get_bool("API_CRM", False)
 
     # Database
     db_host: str | None = _get_env("DB_HOST", "localhost")
@@ -71,9 +72,9 @@ class Settings:
     db_connect_timeout: float = _get_float("DB_CONNECT_TIMEOUT", 5.0)
 
     # Hydraulic engine
-    hydraulic_engine_enabled: bool = _get_bool("HYDRAULIC_ENGINE_ENABLED", True)
-    hydraulic_engine_ws: bool = _get_bool("HYDRAULIC_ENGINE_WS", True)
-    hydraulic_engine_ud: bool = _get_bool("HYDRAULIC_ENGINE_UD", True)
+    hydraulic_engine_enabled: bool = _get_bool("HYDRAULIC_ENGINE_ENABLED", False)
+    hydraulic_engine_ws: bool = _get_bool("HYDRAULIC_ENGINE_WS", False)
+    hydraulic_engine_ud: bool = _get_bool("HYDRAULIC_ENGINE_UD", False)
     hydraulic_engine_url: str | None = _get_env("HYDRAULIC_ENGINE_URL")
 
     # Keycloak

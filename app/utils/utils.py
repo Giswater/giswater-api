@@ -304,6 +304,56 @@ async def execute_sql_select(
     return rows
 
 
+async def execute_sql(
+    log,
+    db_manager,
+    sql_query: str,
+    parameters: tuple | None = None,
+    set_role: bool = True,
+    schema: str | None = None,
+    user: str | None = "anonymous",
+):
+    """
+    Execute a raw SQL query and return rows as dicts.
+    Use {schema} in raw_sql for schema-qualified identifiers.
+    """
+    schema_name = schema or db_manager.default_schema
+    if schema_name is None:
+        log.warning("Schema is None")
+        raise HTTPException(status_code=500, detail="Schema not found")
+
+    if not await db_manager.validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_name}' not found")
+
+    try:
+        query = sql.SQL(sql_query).format(schema=sql.Identifier(schema_name))  # type: ignore
+    except Exception as e:
+        log.error(f"Failed to create SQL query: {e}")
+        raise HTTPException(status_code=500, detail=f"Invalid SQL query or parameters: {e}") from e
+
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor(row_factory=dict_row) as cursor:
+                identity = None if user == "anonymous" else user
+                if set_role and identity:
+                    await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
+                if parameters is None:
+                    await cursor.execute(query)
+                else:
+                    await cursor.execute(query, parameters)
+                rows = await cursor.fetchall()
+            await conn.commit()
+        except Exception as e:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+    return rows
+
+
 async def get_db_version(log, db_manager, schema: str | None = None) -> str | None:
     """
     Return latest giswater version from sys_version.

@@ -86,7 +86,7 @@ cp .env.example .env
 API_BASIC=true
 API_PROFILE=true
 API_MINCUT=true
-API_WATER_BALANCE=true
+API_MAPZONES=true
 API_ROUTING=true
 API_CRM=true
 ```
@@ -257,10 +257,24 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 | Endpoint                                         | Method | Description                                                                 |
 | ----------------------------------------------- | ------ | --------------------------------------------------------------------------- |
 | `/om/dmas`                                      | GET    | Returns collection of DMAs                                                  |
+| `/om/macrodmas`                                 | GET    | Returns collection of macro DMAs                                            |
 | `/om/dmas/{dma_id}/hydrometers`                 | GET    | Retrieve DMA hydrometers data with location, status, and measurements       |
 | `/om/dmas/{dma_id}/parameters`                  | GET    | Retrieves DMA parameters for performance analysis                           |
 | `/om/dmas/{dma_id}/flowmeters`                  | GET    | Retrieve DMA flowmeters data with location, status, and flow                |
 | `/om/dmas/{dma_id}/connecs`                     | GET    | Retrieve DMA connecs data from ve_connec                                    |
+
+### OM - Mapzones
+
+| Endpoint                                         | Method | Description                                                                 |
+| ----------------------------------------------- | ------ | --------------------------------------------------------------------------- |
+| `/om/macrosectors`                               | GET    | Returns collection of macrosectors                                          |
+| `/om/sectors`                                    | GET    | Returns collection of sectors                                               |
+| `/om/presszones`                                 | GET    | Returns collection of presszones                                            |
+| `/om/macrodqas`                                  | GET    | Returns collection of macro DQAs                                            |
+| `/om/dqas`                                       | GET    | Returns collection of DQAs                                                  |
+| `/om/macroomzones`                               | GET    | Returns collection of macro OM zones                                        |
+| `/om/omzones`                                    | GET    | Returns collection of OM zones                                              |
+| `/om/omunits`                                    | GET    | Returns collection of OM units                                              |
 
 ### EPA - Hydraulic Engine (UD)
 
@@ -315,7 +329,7 @@ giswater-api/
 │   │   │── basic/           # Basic module models
 │   │   │── crm/             # CRM module models
 │   │   │── epa/             # EPA hydraulic engine models
-│   │   │── om/              # OM (mincut, dma) models
+│   │   │── om/              # OM (mincut, dma, mapzones) models
 │   │   │── routing/         # Routing module models
 │   │   └── util_models.py   # Shared utility models
 │   │
@@ -323,7 +337,7 @@ giswater-api/
 │   │   │── basic/           # GIS feature queries
 │   │   │── crm/             # Hydrometer CRUD
 │   │   │── epa/             # SWMM & EPANET integration
-│   │   │── om/              # OM operations (mincut, profile, flow, dma)
+│   │   │── om/              # OM operations (mincut, profile, flow, dma, mapzones)
 │   │   │── routing/         # Optimal path routing
 │   │
 │   │── utils/               # Utilities and helpers

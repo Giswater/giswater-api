@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import date, datetime
 from ..util_models import BaseAPIResponse, Body
 
@@ -233,19 +233,6 @@ class GetDmaConnecsBody(Body[GetDmaConnecsData]):
 
 
 class GetDmaConnecsResponse(BaseAPIResponse[GetDmaConnecsBody]):
-    pass
-
-
-class GetDmaFlowmetersData(BaseModel):
-    flowmeters: List[Dict[str, Any]] = Field(default_factory=list, description="List of flowmeters")
-
-
-class GetDmaFlowmetersBody(Body[GetDmaFlowmetersData]):
-    form: Optional[Dict] = Field({}, description="Form")
-    feature: Optional[Dict] = Field({}, description="Feature")
-
-
-class GetDmaFlowmetersResponse(BaseAPIResponse[GetDmaFlowmetersBody]):
     pass
 
 

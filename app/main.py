@@ -17,7 +17,8 @@ from .config import settings
 from .utils import utils
 from .exceptions import ProcedureError, procedure_error_handler
 from .routers.basic import basic
-from .routers.om import mincut, profile, flow, dma
+from .routers.om import mincut, profile, flow, waterbalance
+from .routers.om.mapzones import dma, sector, presszone, dqa, omzone, omunit
 from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 from .routers.routing import routing
 from .routers.crm import crm
@@ -75,7 +76,14 @@ if settings.api_flow:
 if settings.api_mincut:
     app.include_router(mincut.router)
 if settings.api_water_balance:
+    app.include_router(waterbalance.router)
+if settings.api_mapzones:
     app.include_router(dma.router)
+    app.include_router(sector.router)
+    app.include_router(presszone.router)
+    app.include_router(dqa.router)
+    app.include_router(omzone.router)
+    app.include_router(omunit.router)
 if settings.api_routing:
     app.include_router(routing.router)
 if settings.api_crm:

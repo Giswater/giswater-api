@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 
 from fastapi import APIRouter, Path
-from ...utils.utils import (
+from ....utils.utils import (
     create_body_dict,
     execute_procedure,
     create_log,
@@ -14,14 +14,14 @@ from ...utils.utils import (
     execute_sql_select,
     get_db_version,
 )
-from ...models.om.dma_models import (
+from ....models.om.dma_models import (
     GetDmasResponse,
     GetDmaHydrometersResponse,
     GetDmaParametersResponse,
-    GetDmaFlowmetersResponse,
     GetDmaConnecsResponse,
 )
-from ...dependencies import CommonsDep
+from ....models.om.mapzone_models import GetMacrodmasResponse
+from ....dependencies import CommonsDep
 
 router = APIRouter(prefix="/om", tags=["OM - District Metered Areas"])
 
@@ -43,6 +43,36 @@ async def get_dmas(
         log, commons["db_manager"], "gw_fct_getdmas", body, schema=commons["schema"], api_version=commons["api_version"]
     )
     return handle_procedure_result(result)
+
+
+@router.get(
+    "/macrodmas",
+    description="Returns a collection of macrodmas.",
+    response_model=GetMacrodmasResponse,
+    response_model_exclude_unset=True,
+)
+async def get_macrodmas(
+    commons: CommonsDep,
+):
+    log = create_log(__name__)
+
+    macrodmas = await execute_sql_select(
+        log,
+        commons["db_manager"],
+        table_name="macrodma",
+        columns=None,
+        schema=commons["schema"],
+        user=commons["user_id"],
+    )
+
+    db_version = await get_db_version(log, commons["db_manager"])
+
+    return {
+        "status": "Accepted",
+        "message": {"level": 3, "text": "Fetched macrodmas successfully"},
+        "version": {"api": commons["api_version"], "db": db_version},
+        "body": {"form": {}, "feature": {}, "data": {"macrodmas": macrodmas}},
+    }
 
 
 @router.get(
@@ -107,58 +137,6 @@ async def get_dma_parameters(
 ):
     log = create_log(__name__)  # noqa: F841
     return {"message": "Fetched DMA parameters successfully"}
-
-
-@router.get(
-    "/dmas/{dma_id}/flowmeters",
-    description=(
-        "Returns a collection of flowmeters within a specific DMA, "
-        "providing details on their location, status, and flow data."
-    ),
-    response_model=GetDmaFlowmetersResponse,
-    response_model_exclude_unset=True,
-)
-async def get_dma_flowmeters(
-    commons: CommonsDep,
-    dma_id: int = Path(
-        ..., title="DMA ID", description="The unique identifier of the DMA for which to fetch flowmeters", examples=[1]
-    ),
-    # TODO: Add limit and offset
-    # limit: int = Query(
-    #     ...,
-    #     title="Limit",
-    #     description="The maximum number of flowmeters to fetch",
-    #     examples=[100]
-    # ),
-    # offset: int = Query(
-    #     ...,
-    #     title="Offset",
-    #     description="The number of flowmeters to skip",
-    #     examples=[0, 100, 200]
-    # ),
-):
-    log = create_log(__name__)
-
-    table_name = "om_waterbalance_dma_graph"
-    flowmeters = await execute_sql_select(
-        log,
-        commons["db_manager"],
-        table_name=table_name,
-        columns=["node_id", "flow_sign"],
-        where_clause="dma_id = %s",
-        parameters=(dma_id,),
-        schema=commons["schema"],
-        user=commons["user_id"],
-    )
-
-    db_version = await get_db_version(log, commons["db_manager"])
-
-    return {
-        "status": "Accepted",
-        "message": {"level": 3, "text": "Fetched DMA flowmeters successfully"},
-        "version": {"api": commons["api_version"], "db": db_version},
-        "body": {"form": {}, "feature": {}, "data": {"flowmeters": flowmeters}},
-    }
 
 
 @router.get(
