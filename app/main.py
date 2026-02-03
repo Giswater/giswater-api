@@ -19,7 +19,6 @@ from .exceptions import ProcedureError, procedure_error_handler
 from .routers.basic import basic
 from .routers.om import mincut, profile, flow, waterbalance
 from .routers.om.mapzones import dma, sector, presszone, dqa, omzone, omunit
-from .routers.epa import hydraulic_engine_ud, hydraulic_engine_ws
 from .routers.routing import routing
 from .routers.crm import crm
 from .models.util_models import GwErrorResponse
@@ -88,12 +87,6 @@ if settings.api_routing:
     app.include_router(routing.router)
 if settings.api_crm:
     app.include_router(crm.router)
-if settings.hydraulic_engine_enabled:
-    if settings.hydraulic_engine_ud:
-        app.include_router(hydraulic_engine_ud.router)
-    if settings.hydraulic_engine_ws:
-        app.include_router(hydraulic_engine_ws.router)
-
 # Load plugins
 utils.load_plugins(app)
 

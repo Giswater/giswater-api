@@ -29,12 +29,12 @@ Giswater API exposes a clean HTTP surface to query and operate a Giswater databa
 
 **How it works**
 - Each route validates input with Pydantic models, builds a standard payload, and calls Postgres procedures in the Giswater schema.
-- Modules are toggled via environment variables, so you only expose the domains you need (Basic, OM, CRM, Routing, Water Balance, EPA).
+- Modules are toggled via environment variables, so you only expose the domains you need (Basic, OM, CRM, Routing, Water Balance).
 - Optional Keycloak authentication protects routes while keeping Swagger/OpenAPI usable.
 
 **Why it is useful**
 - Centralizes complex GIS/business logic behind stable HTTP endpoints.
-- Supports automated workflows (field operations, routing, hydraulic analysis) without QGIS client coupling.
+- Supports automated workflows (field operations, routing) without QGIS client coupling.
 - Keeps API surface modular and controllable per deployment.
 
 **How to use it**
@@ -100,14 +100,6 @@ DB_USER=postgres
 DB_PASSWORD=postgres
 DB_SCHEMA=ws
 # DATABASE_URL=postgresql://user:pass@host:5432/dbname
-```
-
-**Hydraulic engine** (EPA integration):
-```
-HYDRAULIC_ENGINE_ENABLED=true
-HYDRAULIC_ENGINE_WS=true
-HYDRAULIC_ENGINE_UD=true
-HYDRAULIC_ENGINE_URL=localhost
 ```
 
 **Keycloak** (optional):
@@ -276,38 +268,6 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 | `/om/omzones`                                    | GET    | Returns collection of OM zones                                              |
 | `/om/omunits`                                    | GET    | Returns collection of OM units                                              |
 
-### EPA - Hydraulic Engine (UD)
-
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/epa/ud/getswmmfile`             | GET    | Get SWMM file data                                                          |
-| `/epa/ud/setswmmfile`             | POST   | Modify SWMM file attributes                                                 |
-| `/epa/ud/setnodevalue`            | PUT    | Modify node value in SWMM model                                             |
-| `/epa/ud/setlinkvalue`            | PUT    | Modify link value in SWMM model                                             |
-| `/epa/ud/setpumpvalue`            | PUT    | Modify pump value in SWMM model                                             |
-| `/epa/ud/setoverflowvalue`        | PUT    | Modify overflow value in SWMM model                                         |
-| `/epa/ud/setswmmresult`           | POST   | Set SWMM simulation result data                                             |
-| `/epa/ud/setsolvetime`            | POST   | Set solve time for SWMM simulation                                          |
-| `/epa/ud/setcontrolvalue`         | PUT    | Modify control value in SWMM model                                          |
-
-### EPA - Hydraulic Engine (WS)
-
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/epa/ws/getepafile`              | GET    | Get EPA file data                                                           |
-| `/epa/ws/setepafile`              | POST   | Modify EPA file attributes                                                  |
-| `/epa/ws/sethydrantreachability`  | PUT    | Set hydrant reachability in EPANET model                                    |
-| `/epa/ws/setreservoirvalue`       | PUT    | Update reservoir value in EPANET model                                      |
-| `/epa/ws/setlinkvalue`            | PUT    | Update link value in EPANET model                                           |
-| `/epa/ws/setvalvevalue`           | PUT    | Modify valve value in EPANET model                                          |
-| `/epa/ws/settankvalue`            | PUT    | Modify tank value in EPANET model                                           |
-| `/epa/ws/setpumpvalue`            | PUT    | Modify pump value in EPANET model                                           |
-| `/epa/ws/setjunctionvalue`        | PUT    | Modify junction value in EPANET model                                       |
-| `/epa/ws/setpatternvalue`         | PUT    | Modify pattern value in EPANET model                                        |
-| `/epa/ws/setcontrolsvalue`        | PUT    | Modify controls value in EPANET model                                       |
-| `/epa/ws/setsolveh`               | POST   | Run pressure & flow simulation in EPANET                                    |
-| `/epa/ws/setsolveq`               | POST   | Run water quality simulation in EPANET                                      |
-
 ### OM - Routing
 
 | Endpoint                             | Method | Description                                                              |
@@ -328,7 +288,6 @@ giswater-api/
 │   │── models/              # Pydantic models (organized by module)
 │   │   │── basic/           # Basic module models
 │   │   │── crm/             # CRM module models
-│   │   │── epa/             # EPA hydraulic engine models
 │   │   │── om/              # OM (mincut, dma, mapzones) models
 │   │   │── routing/         # Routing module models
 │   │   └── util_models.py   # Shared utility models
@@ -336,7 +295,6 @@ giswater-api/
 │   │── routers/             # API endpoints (organized by module)
 │   │   │── basic/           # GIS feature queries
 │   │   │── crm/             # Hydrometer CRUD
-│   │   │── epa/             # SWMM & EPANET integration
 │   │   │── om/              # OM operations (mincut, profile, flow, dma, mapzones)
 │   │   │── routing/         # Optimal path routing
 │   │

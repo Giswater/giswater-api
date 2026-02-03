@@ -71,12 +71,6 @@ class Settings:
     db_pool_max_idle: float = _get_float("DB_POOL_MAX_IDLE", 300.0)
     db_connect_timeout: float = _get_float("DB_CONNECT_TIMEOUT", 5.0)
 
-    # Hydraulic engine
-    hydraulic_engine_enabled: bool = _get_bool("HYDRAULIC_ENGINE_ENABLED", False)
-    hydraulic_engine_ws: bool = _get_bool("HYDRAULIC_ENGINE_WS", False)
-    hydraulic_engine_ud: bool = _get_bool("HYDRAULIC_ENGINE_UD", False)
-    hydraulic_engine_url: str | None = _get_env("HYDRAULIC_ENGINE_URL")
-
     # Keycloak
     keycloak_enabled: bool = _get_bool("KEYCLOAK_ENABLED", False)
     keycloak_url: str | None = _get_env("KEYCLOAK_URL")
