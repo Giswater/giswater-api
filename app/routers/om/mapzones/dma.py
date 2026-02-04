@@ -65,7 +65,7 @@ async def get_macrodmas(
         user=commons["user_id"],
     )
 
-    db_version = await get_db_version(log, commons["db_manager"])
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
     return {
         "status": "Accepted",
@@ -302,7 +302,7 @@ async def get_dma_connecs(
         user=commons["user_id"],
     )
 
-    db_version = await get_db_version(log, commons["db_manager"])
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
     return {
         "status": "Accepted",

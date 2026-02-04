@@ -104,7 +104,7 @@ async def get_waterbalance(
         user=commons["user_id"],
     )
 
-    db_version = await get_db_version(log, commons["db_manager"])
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
     return {
         "status": "Accepted",

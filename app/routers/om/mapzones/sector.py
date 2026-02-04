@@ -32,7 +32,7 @@ async def get_macrosectors(commons: CommonsDep):
         user=commons["user_id"],
     )
 
-    db_version = await get_db_version(log, commons["db_manager"])
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
     return {
         "status": "Accepted",
@@ -60,7 +60,7 @@ async def get_sectors(commons: CommonsDep):
         user=commons["user_id"],
     )
 
-    db_version = await get_db_version(log, commons["db_manager"])
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
     return {
         "status": "Accepted",
