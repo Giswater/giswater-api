@@ -6,53 +6,106 @@ or (at your option) any later version.
 """
 
 from typing import List, Optional, Dict
-
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 from ..util_models import BaseAPIResponse, Body
 
 
 class BaseMapzone(BaseModel):
-    placeholder_field: Optional[str] = Field(None, description="Placeholder field for mapzone columns")
-
-    class Config:
-        extra = "allow"
+    code: Optional[str] = Field(None, description="Unique code for the mapzone")
+    name: Optional[str] = Field(None, description="Name of the mapzone")
+    descript: Optional[str] = Field(None, description="Description of the mapzone")
+    expl_id: Optional[List[int]] = Field(None, description="List of exploitation IDs")
+    muni_id: Optional[List[int]] = Field(None, description="List of municipality IDs")
+    addparam: Optional[Dict] = Field(None, description="Additional parameters for the mapzone")
+    stylesheet: Optional[Dict] = Field(None, description="Stylesheet properties")
+    link: Optional[str] = Field(None, description="Link associated with the mapzone")
+    active: Optional[bool] = Field(None, description="Is the mapzone active?")
+    lock_level: Optional[int] = Field(None, description="Lock level of the mapzone")
+    the_geom: Optional[str] = Field(None, description="Geometry")
+    created_at: Optional[datetime] = Field(None, description="Creation timestamp")
+    created_by: Optional[str] = Field(None, description="User who created the record")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    updated_by: Optional[str] = Field(None, description="User who last updated the record")
 
 
 class Macrosector(BaseMapzone):
-    pass
+    macrosector_id: int = Field(..., description="Macrosector ID")
 
 
 class Sector(BaseMapzone):
-    pass
+    sector_id: int = Field(..., description="Sector ID")
+    graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
+    avg_press: Optional[float] = Field(None, description="Average pressure")
+    pattern_id: Optional[int] = Field(None, description="Pattern ID")
+    sector_type: Optional[str] = Field(None, description="Sector type")
+    macrosector_id: Optional[int] = Field(None, description="Macrosector ID")
+    parent_id: Optional[int] = Field(None, description="Parent ID")
 
 
 class Presszone(BaseMapzone):
-    pass
+    presszone_id: int = Field(..., description="Presszone ID")
+    sector_id: Optional[int] = Field(None, description="Sector ID")
+    presszone_type: Optional[str] = Field(None, description="Presszone type")
+    avg_press: Optional[float] = Field(None, description="Average pressure")
+    graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
+    head: Optional[float] = Field(None, description="Head")
 
 
 class Macrodma(BaseMapzone):
-    pass
+    macrodma_id: int = Field(..., description="Macro DMA ID")
+    sector_id: Optional[int] = Field(None, description="Sector ID")
 
 
 class Macrodqa(BaseMapzone):
-    pass
+    macrodqa_id: int = Field(..., description="Macro DQA ID")
+    sector_id: Optional[int] = Field(None, description="Sector ID")
 
 
 class Dqa(BaseMapzone):
-    pass
+    dqa_id: int = Field(..., description="DQA ID")
+    sector_id: Optional[int] = Field(None, description="Sector ID")
+    graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
+    avg_press: Optional[float] = Field(None, description="Average pressure")
+    pattern_id: Optional[int] = Field(None, description="Pattern ID")
+    dqa_type: Optional[str] = Field(None, description="DQA type")
+    macrodqa_id: Optional[int] = Field(None, description="Macrodqa ID")
 
 
 class Macroomzone(BaseMapzone):
-    pass
+    macroomzone_id: int = Field(..., description="Macro roomzone ID")
+    sector_id: Optional[int] = Field(None, description="Sector ID")
 
 
 class Omzone(BaseMapzone):
-    pass
+    omzone_id: int = Field(..., description="OM zone ID")
+    sector_id: Optional[int] = Field(None, description="Sector ID")
+    graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
+    omzone_type: Optional[str] = Field(None, description="OM zone type")
+    macroomzone_id: Optional[int] = Field(None, description="Macroomzone ID")
 
 
-class Omunit(BaseMapzone):
-    pass
+class OmunitBase(BaseModel):
+    expl_id: Optional[List[int]] = Field(None, description="List of exploitation IDs")
+    muni_id: Optional[List[int]] = Field(None, description="List of municipality IDs")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
+    node_1: Optional[int] = Field(None, description="Node 1 ID")
+    node_2: Optional[int] = Field(None, description="Node 2 ID")
+    is_way_in: Optional[bool] = Field(None, description="Is the way in?")
+    is_way_out: Optional[bool] = Field(None, description="Is the way out?")
+    the_geom: Optional[str] = Field(None, description="Geometry")
+    order_number: Optional[int] = Field(None, description="Order number")
+
+
+class Omunit(OmunitBase):
+    omunit_id: int = Field(..., description="OM unit ID")
+    macroomunit_id: Optional[int] = Field(None, description="Macro OM unit ID")
+
+
+class MacroOmunit(OmunitBase):
+    macroomunit_id: int = Field(..., description="Macro OM unit ID")
+    catchment_node: Optional[int] = Field(None, description="Catchment node ID")
 
 
 class GetMacrosectorsData(BaseModel):
