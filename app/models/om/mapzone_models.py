@@ -38,7 +38,7 @@ class Sector(BaseMapzone):
     sector_id: int = Field(..., description="Sector ID")
     graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
     avg_press: Optional[float] = Field(None, description="Average pressure")
-    pattern_id: Optional[int] = Field(None, description="Pattern ID")
+    pattern_id: Optional[str] = Field(None, description="Pattern ID")
     sector_type: Optional[str] = Field(None, description="Sector type")
     macrosector_id: Optional[int] = Field(None, description="Macrosector ID")
     parent_id: Optional[int] = Field(None, description="Parent ID")
@@ -68,7 +68,7 @@ class Dqa(BaseMapzone):
     sector_id: Optional[int] = Field(None, description="Sector ID")
     graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
     avg_press: Optional[float] = Field(None, description="Average pressure")
-    pattern_id: Optional[int] = Field(None, description="Pattern ID")
+    pattern_id: Optional[str] = Field(None, description="Pattern ID")
     dqa_type: Optional[str] = Field(None, description="DQA type")
     macrodqa_id: Optional[int] = Field(None, description="Macrodqa ID")
 
