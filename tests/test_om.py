@@ -51,3 +51,43 @@ def test_create_profile(
     assert data["status"] == expected_api_status
     if expected_status == 200:
         assert "body" in data
+
+
+@pytest.mark.ud
+@pytest.mark.parametrize(
+    ("direction", "node_id"),
+    [
+        ("upstream", 35),
+        ("downstream", 35),
+    ],
+)
+def test_flow_success(client, default_params, direction: str, node_id: int):
+    assert_healthy(client)
+
+    payload = {"direction": direction, "node_id": node_id}
+    response = client.post("/om/flow", params=default_params, json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+@pytest.mark.ud
+def test_flow_fails_without_node_or_coordinates(client, default_params):
+    assert_healthy(client)
+
+    response = client.post("/om/flow", params=default_params, json={"direction": "upstream"})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Either node ID or coordinates must be provided"
+
+
+@pytest.mark.ud
+def test_flow_fails_with_invalid_direction(client, default_params):
+    assert_healthy(client)
+
+    response = client.post("/om/flow", params=default_params, json={"direction": "sideways", "node_id": 35})
+
+    assert response.status_code == 422
+    assert "detail" in response.json()
