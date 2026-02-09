@@ -99,3 +99,99 @@ def test_get_feature_changes(client, default_params, feature_type, action, last_
     assert "body" in data
     assert "data" in data["body"]
     assert "features" in data["body"]["data"]
+
+
+def test_get_features_from_polygon(client, default_params):
+    assert_healthy(client)
+
+    polygon = (
+        "MULTIPOLYGON (((419419.13867777254 4576466.499338785, "
+        "419429.1574217372 4576487.650020488, "
+        "419537.69381468766 4576466.221040341, "
+        "419497.8971372725 4576396.368131032, "
+        "419419.13867777254 4576404.438785893, "
+        "419419.13867777254 4576466.499338785)))"
+    )
+
+    response = client.get(
+        "/basic/getfeaturesfrompolygon",
+        params={
+            **default_params,
+            "featureType": "NODE",
+            "polygonGeom": polygon,
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+def test_get_selectors(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getselectors",
+        params={
+            **default_params,
+            "selectorType": "selector_basic",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+def test_get_search(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getsearch",
+        params={
+            **default_params,
+            "searchText": "test",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+def test_get_arc_audit_values(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getarcauditvalues",
+        params={
+            **default_params,
+            "startDate": "2020-01-01",
+            "endDate": "2026-01-31",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+def test_get_list(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getlist",
+        params={
+            **default_params,
+            "tableName": "ve_arc_pipe",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data

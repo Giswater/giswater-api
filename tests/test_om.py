@@ -91,3 +91,190 @@ def test_flow_fails_with_invalid_direction(client, default_params):
 
     assert response.status_code == 422
     assert "detail" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# Mincut lifecycle helpers
+# ---------------------------------------------------------------------------
+
+_MINCUT_COORDINATES = {
+    "xcoord": 419487.25,
+    "ycoord": 4576484.26,
+    "epsg": 25831,
+    "zoomRatio": 1000,
+}
+
+
+def _create_mincut(client, default_params) -> int:
+    """Create a mincut and return its ID."""
+    payload = {
+        "coordinates": _MINCUT_COORDINATES,
+        "plan": {
+            "mincut_type": "Demo",
+            "anl_cause": "Accidental",
+            "anl_descript": "Test mincut",
+        },
+        "use_psectors": False,
+    }
+    response = client.post("/om/mincuts", params=default_params, json=payload)
+    assert response.status_code == 200, f"Failed to create mincut: {response.text}"
+    data = response.json()
+    assert data["status"] == "Accepted"
+    # Extract the mincut_id from the response
+    mincut_id = data["body"]["data"]["mincutId"]
+    return mincut_id
+
+
+def _delete_mincut(client, default_params, mincut_id: int):
+    """Delete a mincut (cleanup helper)."""
+    response = client.delete(f"/om/mincuts/{mincut_id}", params=default_params)
+    assert response.status_code == 200, f"Failed to delete mincut {mincut_id}: {response.text}"
+
+
+# ---------------------------------------------------------------------------
+# Mincut lifecycle test
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.ws
+@pytest.mark.destructive
+def test_mincut_lifecycle(client, default_params):
+    """Full lifecycle: create -> get dialog -> update -> get valves -> start -> end -> delete."""
+    assert_healthy(client)
+
+    # 1. Create
+    mincut_id = _create_mincut(client, default_params)
+
+    try:
+        # 2. Get dialog
+        response = client.get(f"/om/mincuts/{mincut_id}", params=default_params)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+        assert "body" in data
+
+        # 3. Update
+        update_payload = {
+            "plan": {"anl_descript": "Updated test mincut"},
+            "use_psectors": False,
+        }
+        response = client.patch(f"/om/mincuts/{mincut_id}", params=default_params, json=update_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+
+        # 4. Get valves
+        response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+
+        # 5. Start
+        start_payload = {"use_psectors": False}
+        response = client.post(f"/om/mincuts/{mincut_id}/start", params=default_params, json=start_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+
+        # 6. End
+        end_payload = {"shutoff_required": True, "use_psectors": False}
+        response = client.post(f"/om/mincuts/{mincut_id}/end", params=default_params, json=end_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+    finally:
+        # 7. Delete (always clean up)
+        _delete_mincut(client, default_params, mincut_id)
+
+
+@pytest.mark.ws
+@pytest.mark.destructive
+def test_mincut_cancel(client, default_params):
+    """Create a mincut, cancel it, then delete it."""
+    assert_healthy(client)
+
+    mincut_id = _create_mincut(client, default_params)
+    try:
+        response = client.post(f"/om/mincuts/{mincut_id}/cancel", params=default_params)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+    finally:
+        _delete_mincut(client, default_params, mincut_id)
+
+
+@pytest.mark.ws
+@pytest.mark.destructive
+def test_valve_toggle_unaccess(client, default_params):
+    """Create a mincut, get valves, toggle unaccess on the first valve found."""
+    assert_healthy(client)
+
+    mincut_id = _create_mincut(client, default_params)
+    try:
+        # Get valves to find a valve_id
+        response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+        assert response.status_code == 200
+        data = response.json()
+        features = data.get("body", {}).get("data", {}).get("features", [])
+        if not features:
+            pytest.skip("No valves found for this mincut, cannot test toggle-unaccess")
+
+        valve_id = features[0]["node_id"]
+        toggle_payload = {"use_psectors": False}
+        response = client.post(
+            f"/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-unaccess",
+            params=default_params,
+            json=toggle_payload,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+    finally:
+        _delete_mincut(client, default_params, mincut_id)
+
+
+@pytest.mark.ws
+@pytest.mark.destructive
+def test_valve_toggle_status(client, default_params):
+    """Create a mincut, get valves, toggle status on the first valve found."""
+    assert_healthy(client)
+
+    mincut_id = _create_mincut(client, default_params)
+    try:
+        # Get valves to find a valve_id
+        response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+        assert response.status_code == 200
+        data = response.json()
+        features = data.get("body", {}).get("data", {}).get("features", [])
+        if not features:
+            pytest.skip("No valves found for this mincut, cannot test toggle-status")
+
+        valve_id = features[0]["node_id"]
+        toggle_payload = {"use_psectors": False}
+        response = client.post(
+            f"/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-status",
+            params=default_params,
+            json=toggle_payload,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "Accepted"
+    finally:
+        _delete_mincut(client, default_params, mincut_id)
+
+
+# ---------------------------------------------------------------------------
+# Water Balance
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.ws
+def test_get_waterbalance(client, default_params):
+    assert_healthy(client)
+
+    response = client.get("/om/waterbalance", params=default_params)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
