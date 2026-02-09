@@ -5,15 +5,18 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+import secrets
 from typing import Annotated, Literal
 from fastapi import Depends, Query, Header, Request, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi_keycloak import OIDCUser
-from .keycloak import get_current_user
+from .config import settings
+from .keycloak import idp, get_current_user
 
 
 async def get_schema(
+    request: Request,
     schema: str = Query(..., description="Database schema name", examples=["public"]),
-    request: Request = None,
 ):
     """
     Dependency to get and validate schema parameter.
@@ -28,7 +31,7 @@ async def get_schema(
     Raises:
         HTTPException: If schema is not found
     """
-    if request and hasattr(request.app.state, "db_manager"):
+    if hasattr(request.app.state, "db_manager"):
         db_manager = request.app.state.db_manager
         if not await db_manager.validate_schema(schema):
             raise HTTPException(
@@ -74,3 +77,30 @@ async def common_parameters(
 
 
 CommonsDep = Annotated[dict, Depends(common_parameters)]
+
+
+def verify_log_admin():
+    """
+    Returns the appropriate auth dependency for the /logs endpoint.
+    Keycloak on  → requires 'log-admin' role.
+    Keycloak off → falls back to HTTP Basic with env credentials.
+    """
+    if idp:
+        return idp.get_current_user(required_roles=["log-admin"])
+
+    _security = HTTPBasic()
+
+    async def _check_basic(request: Request, credentials: HTTPBasicCredentials = Depends(_security)):
+        if not settings.log_admin_password:
+            raise HTTPException(status_code=403, detail="Log admin access not configured")
+        correct_user = secrets.compare_digest(credentials.username, settings.log_admin_user)
+        correct_pass = secrets.compare_digest(credentials.password, settings.log_admin_password)
+        if not correct_user or not correct_pass:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid credentials",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        request.state.user = credentials.username
+
+    return _check_basic

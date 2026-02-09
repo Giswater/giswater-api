@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DMA connecs endpoints
 - Waterbalance endpoint
 - Tests
+- Database logging + endpoint to see them
 
 ### Changed
 
