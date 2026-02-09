@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Log Viewer</title>
+    <link rel="stylesheet" href="../static/css/logs.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/32.2.0/ag-grid-community.min.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Top bar -->
+        <div class="top-bar">
+            <div class="top-bar-info">
+                <h1>API Log Viewer</h1>
+                <span id="result-count" class="count"></span>
+            </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label for="filter-from">From</label>
+                <input type="datetime-local" id="filter-from" step="1">
+            </div>
+            <div class="filter-group">
+                <label for="filter-to">To</label>
+                <input type="datetime-local" id="filter-to" step="1">
+            </div>
+            <div class="filter-group">
+                <label for="filter-endpoint">Endpoint</label>
+                <input type="text" id="filter-endpoint" placeholder="/endpoint">
+            </div>
+            <div class="filter-group">
+                <label for="filter-method">Method</label>
+                <select id="filter-method">
+                    <option value="">All</option>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-status">Status</label>
+                <input type="number" id="filter-status" placeholder="200" min="100" max="599">
+            </div>
+            <div class="filter-group">
+                <label for="filter-user">User</label>
+                <input type="text" id="filter-user" placeholder="username">
+            </div>
+            <div class="filter-group">
+                <label for="filter-limit">Limit</label>
+                <input type="number" id="filter-limit" value="200" min="1" max="1000">
+            </div>
+            <button class="btn btn-primary" id="btn-search">Search</button>
+        </div>
+
+        <!-- AG Grid -->
+        <div class="grid-wrapper">
+            <div id="log-grid" class="ag-theme-alpine-dark"></div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-bar">
+            <button class="btn btn-secondary" id="btn-prev" disabled>&larr; Prev</button>
+            <button class="btn btn-secondary" id="btn-next">Next &rarr;</button>
+            <span class="page-info" id="page-info"></span>
+        </div>
+    </div>
+
+    <!-- Drawer overlay -->
+    <div class="drawer-overlay" id="drawer-overlay"></div>
+
+    <!-- Detail drawer -->
+    <div class="drawer" id="detail-drawer">
+        <div class="drawer-header">
+            <h2>Request Detail</h2>
+            <button class="drawer-close" id="drawer-close">&times;</button>
+        </div>
+        <div class="drawer-body" id="drawer-body">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <script src="../static/js/logs.js"></script>
+</body>
+</html>

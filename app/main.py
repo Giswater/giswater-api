@@ -183,13 +183,21 @@ async def get_logs(
         f"""
         SELECT ts, endpoint, method, status, duration_ms, user_name, request_id,
                client_ip, query_params, body_size, response_size,
-               request_headers, request_body, response_headers, response_body
-        FROM {{schema}}.{{table}}
+               request_headers, request_body, response_headers, response_body,
+               EXISTS (
+                   SELECT 1 FROM {{schema}}.{{db_table}} d
+                   WHERE d.request_id = main.request_id
+               ) AS has_db_logs
+        FROM {{schema}}.{{table}} main
         {where_sql}
         ORDER BY ts DESC
         LIMIT %s OFFSET %s
         """
-    ).format(schema=sql.Identifier(utils.LOG_SCHEMA), table=sql.Identifier(utils.LOG_TABLE))
+    ).format(
+        schema=sql.Identifier(utils.LOG_SCHEMA),
+        table=sql.Identifier(utils.LOG_TABLE),
+        db_table=sql.Identifier(utils.LOG_DB_TABLE),
+    )
     params.extend([limit, offset])
 
     async with db_manager.get_db() as conn:
@@ -205,6 +213,51 @@ async def get_logs(
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {"count": len(rows), "items": rows}
+
+
+@app.get("/logs/db", dependencies=[Depends(verify_log_admin())])
+async def get_db_logs(
+    request: Request,
+    request_id: str = Query(...),
+    limit: int = Query(default=50, ge=1, le=500),
+):
+    """Return database-level logs linked to a specific API request."""
+    db_manager = request.app.state.db_manager
+    try:
+        rid = uuid.UUID(request_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid request_id") from exc
+
+    query = sql.SQL(
+        """
+        SELECT ts, request_id, schema_name, function_name, sql_text,
+               response_json, duration_ms, status, error
+        FROM {schema}.{table}
+        WHERE request_id = %s
+        ORDER BY ts ASC
+        LIMIT %s
+        """
+    ).format(schema=sql.Identifier(utils.LOG_SCHEMA), table=sql.Identifier(utils.LOG_DB_TABLE))
+
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor(row_factory=dict_row) as cursor:
+                await cursor.execute(query, (rid, limit))
+                rows = await cursor.fetchall()
+            await conn.commit()
+        except Exception as exc:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"count": len(rows), "items": rows}
+
+
+@app.get("/logs/ui", include_in_schema=False, dependencies=[Depends(verify_log_admin())])
+async def logs_ui():
+    """Serve the log viewer UI."""
+    return FileResponse("app/static/logs.html", media_type="text/html")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

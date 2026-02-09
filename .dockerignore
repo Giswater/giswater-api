@@ -1,0 +1,31 @@
+# Version control
+.git/
+.github/
+
+# Python
+venv/
+*.venv
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+
+# Logs
+logs/
+
+# IDE / OS
+.vscode/
+.cursor/
+.idea/
+.DS_Store
+
+# Docker
+docker-compose.yml
+
+# Env
+.env
+
+# Tests (not needed in image)
+tests/
+pytest.ini

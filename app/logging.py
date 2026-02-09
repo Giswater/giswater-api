@@ -11,6 +11,11 @@ from starlette.responses import Response
 from .config import settings
 from .utils import utils
 
+# Endpoints where request/response bodies are not worth storing (e.g. they
+# return log data itself, static content, or trivial health payloads).
+# Metadata (method, path, status, duration, user, IP) is still logged.
+_SKIP_BODY_PREFIXES = ("/logs", "/health", "/favicon.ico", "/docs", "/openapi.json")
+
 LOG_HEADER_ALLOWLIST = {
     "accept",
     "accept-encoding",
@@ -129,13 +134,15 @@ def _build_log_record(
     duration_ms: int,
     error: Exception | None,
     request_body: bytes,
+    skip_body: bool = False,
 ):
     request_headers = _filter_headers({key.lower(): value for key, value in request.headers.items()})
     response_headers = None
     response_body_text = None
     if response is not None:
         response_headers = _filter_headers({key.lower(): value for key, value in response.headers.items()})
-        response_body_text = _body_to_text(response_body)
+        if not skip_body:
+            response_body_text = _body_to_text(response_body)
 
     return {
         "ts": datetime.now(timezone.utc),
@@ -152,7 +159,7 @@ def _build_log_record(
         "request_headers": request_headers,
         "request_body": _body_to_text(request_body),
         "response_headers": response_headers,
-        "response_body": response_body_text,
+        "response_body": None if skip_body else response_body_text,
         "error": str(error) if error else None,
     }
 
@@ -188,6 +195,7 @@ async def request_logging_middleware(request: Request, call_next):
     finally:
         utils.REQUEST_ID_CTX.reset(token)
         duration_ms = int((time.monotonic() - start) * 1000)
+        skip_body = any(prefix in request.url.path for prefix in _SKIP_BODY_PREFIXES)
         response, response_body = await _capture_response_body(response)
         _ensure_api_logger(request)
         log_record = _build_log_record(
@@ -199,6 +207,7 @@ async def request_logging_middleware(request: Request, call_next):
             duration_ms=duration_ms,
             error=error,
             request_body=request_body,
+            skip_body=skip_body,
         )
 
         api_logger = getattr(request.app.state, "api_logger", None)
