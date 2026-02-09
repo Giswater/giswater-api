@@ -80,6 +80,18 @@ class Settings:
     keycloak_admin_client_secret: str | None = _get_env("KEYCLOAK_ADMIN_CLIENT_SECRET")
     keycloak_callback_uri: str | None = _get_env("KEYCLOAK_CALLBACK_URI")
 
+    # Log admin
+    log_admin_user: str = _get_env("LOG_ADMIN_USER", "admin") or "admin"
+    log_admin_password: str | None = _get_env("LOG_ADMIN_PASSWORD")
+
+    # Logging
+    log_level: str = _get_env("LOG_LEVEL", "INFO") or "INFO"
+    log_dir: str = _get_env("LOG_DIR", "logs") or "logs"
+    log_rotate_days: int = _get_int("LOG_ROTATE_DAYS", 14)
+    log_db_enabled: bool = _get_bool("LOG_DB_ENABLED", True)
+    log_db_sample_rate: float = _get_float("LOG_DB_SAMPLE_RATE", 1.0)
+    log_db_max_body_bytes: int = _get_int("LOG_DB_MAX_BODY_BYTES", 0)
+
     def validate(self) -> None:
         if self.keycloak_enabled:
             missing = [

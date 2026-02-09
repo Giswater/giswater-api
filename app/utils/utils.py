@@ -9,15 +9,22 @@ or (at your option) any later version.
 import os
 import logging
 import json
+import asyncio
+import contextvars
+import time
+import uuid
+from logging.handlers import TimedRotatingFileHandler
 
 from typing import Any, Dict, Literal
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from fastapi import FastAPI, HTTPException
 from psycopg import sql
 from psycopg.rows import dict_row
+from psycopg.types.json import Json
 
 from ..models.util_models import APIResponse
 from ..exceptions import ProcedureError
+from ..config import settings
 
 
 def load_plugins(app: FastAPI):
@@ -199,6 +206,7 @@ async def execute_procedure(  # noqa: C901
     execution_msg = sql
     response_msg = ""
 
+    start_time = time.monotonic()
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
@@ -210,6 +218,7 @@ async def execute_procedure(  # noqa: C901
             identity = None
         else:
             identity = user
+        db_error = None
         try:
             async with conn.cursor() as cursor:
                 if set_role and identity:
@@ -223,6 +232,7 @@ async def execute_procedure(  # noqa: C901
         except Exception as e:
             # Rollback on error
             await conn.rollback()
+            db_error = str(e)
             db_version = None
             if result and "version" in result:
                 db_version = result["version"]
@@ -246,6 +256,22 @@ async def execute_procedure(  # noqa: C901
 
         if result and "version" in result:
             result["version"] = {"db": result["version"], "api": api_version}
+
+        if settings.log_db_enabled:
+            duration_ms = int((time.monotonic() - start_time) * 1000)
+            request_id = REQUEST_ID_CTX.get()
+            db_log_record = {
+                "ts": datetime.now(timezone.utc),
+                "request_id": request_id,
+                "schema_name": schema_name,
+                "function_name": function_name,
+                "sql_text": sql,
+                "response_json": response_msg,
+                "duration_ms": duration_ms,
+                "status": result.get("status") if isinstance(result, dict) else None,
+                "error": db_error,
+            }
+            asyncio.create_task(insert_api_db_log(db_manager, db_log_record))
 
         return result
 
@@ -393,7 +419,7 @@ def create_log(class_name):
 
     # Directory where log file is saved, changes location depending on what tenant is used
     # logs_directory = "/var/log/giswater-api-server"
-    logs_directory = "logs"
+    logs_directory = settings.log_dir
     if not os.path.exists(logs_directory):
         os.makedirs(logs_directory)
 
@@ -411,19 +437,29 @@ def create_log(class_name):
     # Select file name for the log
     log_file = f"{service_name}_{today}.log"
 
-    fileh = logging.FileHandler(f"{today_directory}/{log_file}", "a", encoding="utf-8")
+    log_path = os.path.join(today_directory, log_file)
+    if not os.path.exists(log_path):
+        open(log_path, "a", encoding="utf-8").close()
+
+    fileh = TimedRotatingFileHandler(
+        log_path,
+        when="midnight",
+        interval=1,
+        backupCount=settings.log_rotate_days,
+        encoding="utf-8",
+        utc=False,
+    )
     # Declares how log info is added to the file
     formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
     fileh.setFormatter(formatter)
 
     # Removes previous handlers on root Logger
-    remove_handlers()
     # Gets root Logger and add handler
     logger_name = f"{class_name.split('.')[-1]}"
     log = logging.getLogger(logger_name)
-    # log = logging.getLogger()
+    remove_handlers(log)
     log.addHandler(fileh)
-    log.setLevel(logging.DEBUG)
+    log.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
     return log
 
 
@@ -433,6 +469,278 @@ def remove_handlers(log=None):
         log = logging.getLogger()
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
+
+
+LOG_SCHEMA = "log"
+LOG_TABLE = "gw_api_logs"
+LOG_DB_TABLE = "gw_api_logs_db"
+REQUEST_ID_CTX: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVar("request_id", default=None)
+
+
+async def ensure_log_schema(db_manager) -> None:
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            return
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(LOG_SCHEMA)))
+                await cursor.execute(
+                    sql.SQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS {}.{} (
+                            ts timestamptz NOT NULL,
+                            id bigserial NOT NULL,
+                            method text NOT NULL,
+                            endpoint text NOT NULL,
+                            status integer NOT NULL,
+                            duration_ms integer,
+                            user_name text,
+                            request_id uuid,
+                            client_ip inet,
+                            query_params jsonb,
+                            body_size integer,
+                            response_size integer,
+                            request_headers jsonb,
+                            request_body text,
+                            response_headers jsonb,
+                            response_body text,
+                            PRIMARY KEY (ts, id)
+                        ) PARTITION BY RANGE (ts)
+                        """
+                    ).format(sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE))
+                )
+                await cursor.execute(
+                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS request_headers jsonb").format(
+                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS request_body text").format(
+                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS response_headers jsonb").format(
+                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS response_body text").format(
+                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("ALTER TABLE {}.{} DROP COLUMN IF EXISTS user_agent").format(
+                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (ts DESC)").format(
+                        sql.Identifier("gw_api_logs_ts_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (endpoint)").format(
+                        sql.Identifier("gw_api_logs_endpoint_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (method)").format(
+                        sql.Identifier("gw_api_logs_method_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (status)").format(
+                        sql.Identifier("gw_api_logs_status_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (user_name)").format(
+                        sql.Identifier("gw_api_logs_user_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (request_id)").format(
+                        sql.Identifier("gw_api_logs_request_id_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS {}.{} (
+                            ts timestamptz NOT NULL,
+                            id bigserial NOT NULL,
+                            request_id uuid,
+                            schema_name text,
+                            function_name text,
+                            sql_text text,
+                            response_json text,
+                            duration_ms integer,
+                            status text,
+                            error text,
+                            PRIMARY KEY (ts, id)
+                        ) PARTITION BY RANGE (ts)
+                        """
+                    ).format(sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_DB_TABLE))
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (ts DESC)").format(
+                        sql.Identifier("gw_api_logs_db_ts_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_DB_TABLE),
+                    )
+                )
+                await cursor.execute(
+                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (request_id)").format(
+                        sql.Identifier("gw_api_logs_db_request_id_idx"),
+                        sql.Identifier(LOG_SCHEMA),
+                        sql.Identifier(LOG_DB_TABLE),
+                    )
+                )
+            await conn.commit()
+            await ensure_log_partition(conn, datetime.now(timezone.utc), LOG_TABLE)
+            await ensure_log_partition(conn, datetime.now(timezone.utc), LOG_DB_TABLE)
+            await conn.commit()
+        except Exception:
+            await conn.rollback()
+            raise
+
+
+def _month_range(ts: datetime, table_name: str) -> tuple[datetime, datetime, str]:
+    month_start = datetime(ts.year, ts.month, 1, tzinfo=ts.tzinfo)
+    if ts.month == 12:
+        month_end = datetime(ts.year + 1, 1, 1, tzinfo=ts.tzinfo)
+    else:
+        month_end = datetime(ts.year, ts.month + 1, 1, tzinfo=ts.tzinfo)
+    partition_name = f"{table_name}_{month_start.year}_{month_start.month:02d}"
+    return month_start, month_end, partition_name
+
+
+async def ensure_log_partition(conn, ts: datetime, table_name: str) -> None:
+    month_start, month_end, partition_name = _month_range(ts, table_name)
+    async with conn.cursor() as cursor:
+        await cursor.execute(
+            sql.SQL(
+                """
+                CREATE TABLE IF NOT EXISTS {}.{}
+                PARTITION OF {}.{}
+                FOR VALUES FROM ({}) TO ({})
+                """
+            ).format(
+                sql.Identifier(LOG_SCHEMA),
+                sql.Identifier(partition_name),
+                sql.Identifier(LOG_SCHEMA),
+                sql.Identifier(table_name),
+                sql.Literal(month_start),
+                sql.Literal(month_end),
+            ),
+        )
+
+
+async def insert_api_log(db_manager, record: Dict[str, Any]) -> None:
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            return
+        try:
+            await ensure_log_partition(conn, record["ts"], LOG_TABLE)
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    sql.SQL(
+                        """
+                        INSERT INTO {}.{} (
+                            ts,
+                            method,
+                            endpoint,
+                            status,
+                            duration_ms,
+                            user_name,
+                            request_id,
+                            client_ip,
+                            query_params,
+                            body_size,
+                            response_size,
+                            request_headers,
+                            request_body,
+                            response_headers,
+                            response_body
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                    ).format(sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)),
+                    (
+                        record.get("ts"),
+                        record.get("method"),
+                        record.get("endpoint"),
+                        record.get("status"),
+                        record.get("duration_ms"),
+                        record.get("user_name"),
+                        record.get("request_id"),
+                        record.get("client_ip"),
+                        Json(record.get("query_params")) if record.get("query_params") is not None else None,
+                        record.get("body_size"),
+                        record.get("response_size"),
+                        Json(record.get("request_headers")) if record.get("request_headers") is not None else None,
+                        record.get("request_body"),
+                        Json(record.get("response_headers")) if record.get("response_headers") is not None else None,
+                        record.get("response_body"),
+                    ),
+                )
+            await conn.commit()
+        except Exception:
+            await conn.rollback()
+
+
+async def insert_api_db_log(db_manager, record: Dict[str, Any]) -> None:
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            return
+        try:
+            await ensure_log_partition(conn, record["ts"], LOG_DB_TABLE)
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    sql.SQL(
+                        """
+                        INSERT INTO {}.{} (
+                            ts,
+                            request_id,
+                            schema_name,
+                            function_name,
+                            sql_text,
+                            response_json,
+                            duration_ms,
+                            status,
+                            error
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                    ).format(sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_DB_TABLE)),
+                    (
+                        record.get("ts"),
+                        record.get("request_id"),
+                        record.get("schema_name"),
+                        record.get("function_name"),
+                        record.get("sql_text"),
+                        record.get("response_json"),
+                        record.get("duration_ms"),
+                        record.get("status"),
+                        record.get("error"),
+                    ),
+                )
+            await conn.commit()
+        except Exception:
+            await conn.rollback()
 
 
 def create_api_response(
