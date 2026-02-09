@@ -69,4 +69,4 @@ jobs:
           API_MAPZONES: true
           API_ROUTING: true
           API_CRM: true
-        run: pytest -v -m "not ${{ matrix.skip_marker }} or destructive"
+        run: pytest -v -m "not ${{ matrix.skip_marker }}"

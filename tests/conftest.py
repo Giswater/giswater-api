@@ -9,10 +9,13 @@ import os
 import asyncio
 import sys
 
-import pytest
-from fastapi.testclient import TestClient
+# Disable DB logging during tests
+os.environ.setdefault("LOG_DB_ENABLED", "false")
 
-from app.main import app
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
 
 
 if sys.platform == "win32":
