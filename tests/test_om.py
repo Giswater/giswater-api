@@ -110,7 +110,7 @@ def _create_mincut(client, default_params) -> int:
     payload = {
         "coordinates": _MINCUT_COORDINATES,
         "plan": {
-            "mincut_type": "Demo",
+            "mincut_type": "Real",
             "anl_cause": "Accidental",
             "anl_descript": "Test mincut",
         },
@@ -194,13 +194,10 @@ def test_mincut_cancel(client, default_params):
     assert_healthy(client)
 
     mincut_id = _create_mincut(client, default_params)
-    try:
-        response = client.post(f"/om/mincuts/{mincut_id}/cancel", params=default_params)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
-    finally:
-        _delete_mincut(client, default_params, mincut_id)
+    response = client.post(f"/om/mincuts/{mincut_id}/cancel", params=default_params)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
 
 
 @pytest.mark.ws
