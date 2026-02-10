@@ -9,6 +9,7 @@ import os
 import uuid
 from datetime import date, datetime
 from contextlib import asynccontextmanager
+from importlib.metadata import version as pkg_version
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -30,7 +31,7 @@ from .routers.crm import crm
 from .models.util_models import GwErrorResponse
 
 TITLE = "Giswater API"
-VERSION = "0.7.0"
+VERSION = pkg_version("giswater-api")
 DESCRIPTION = "API for interacting with a Giswater database."
 
 # Database manager

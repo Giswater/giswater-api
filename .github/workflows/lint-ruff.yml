@@ -31,4 +31,4 @@ jobs:
         run: pip install ruff
 
       - name: Lint with ruff
-        run: ruff check . --config ruff.toml
+        run: ruff check .

@@ -166,7 +166,7 @@ async def execute_procedure(  # noqa: C901
     needs_write=False,
     schema=None,
     user: str | None = "anonymous",
-    api_version="0.7.0",
+    api_version=None,
 ):
     """
     Manage execution of database function.

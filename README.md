@@ -20,6 +20,7 @@ A lightweight, modular FastAPI application with **Swagger UI**, **Docker support
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
 - [Testing & Linting](#testing--linting)
+- [Releasing](#releasing)
 - [License](#license)
 
 <a id="overview"></a>
@@ -57,7 +58,7 @@ cd giswater-api
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # for Windows PowerShell: .\venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 ```
 
 ### 3️⃣ **Run Locally**
@@ -314,7 +315,10 @@ giswater-api/
 │── .github/workflows/   # CI/CD (flake8 lint, pytest)
 │── Dockerfile           # Docker build config
 │── gunicorn.conf.py     # Gunicorn production config
-│── requirements.txt     # Python dependencies
+│── pyproject.toml       # Project metadata, dependencies, and tooling config
+│── scripts/
+│   │── release.sh       # Release script (bash)
+│   └── release.ps1      # Release script (PowerShell)
 └── README.md
 ```
 
@@ -330,10 +334,32 @@ pytest
 ### Run Linter
 
 ```bash
-ruff check . --config ruff.toml
+ruff check .
 ```
 
 CI/CD runs both on push via GitHub Actions (`.github/workflows/`).
+
+---
+
+<a id="releasing"></a>
+## 🚀 Releasing
+
+1. Update `CHANGELOG.md` with the new version's changes and commit.
+2. Run the release script:
+
+```bash
+# Bash
+./scripts/release.sh 0.8.0
+
+# PowerShell
+.\scripts\release.ps1 0.8.0
+```
+
+The script will:
+- Abort if there are uncommitted changes
+- Update the version in `pyproject.toml`
+- Commit, tag `vX.Y.Z`, create branch `release/X.Y`
+- Push everything to origin
 
 ---
 
