@@ -144,46 +144,42 @@ def test_mincut_lifecycle(client, default_params):
     # 1. Create
     mincut_id = _create_mincut(client, default_params)
 
-    try:
-        # 2. Get dialog
-        response = client.get(f"/om/mincuts/{mincut_id}", params=default_params)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
-        assert "body" in data
+    # 2. Get dialog
+    response = client.get(f"/om/mincuts/{mincut_id}", params=default_params)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
 
-        # 3. Update
-        update_payload = {
-            "plan": {"anl_descript": "Updated test mincut"},
-            "use_psectors": False,
-        }
-        response = client.patch(f"/om/mincuts/{mincut_id}", params=default_params, json=update_payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
+    # 3. Update
+    update_payload = {
+        "plan": {"anl_descript": "Updated test mincut"},
+        "use_psectors": False,
+    }
+    response = client.patch(f"/om/mincuts/{mincut_id}", params=default_params, json=update_payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
 
-        # 4. Get valves
-        response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
+    # 4. Get valves
+    response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
 
-        # 5. Start
-        start_payload = {"use_psectors": False}
-        response = client.post(f"/om/mincuts/{mincut_id}/start", params=default_params, json=start_payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
+    # 5. Start
+    start_payload = {"use_psectors": False}
+    response = client.post(f"/om/mincuts/{mincut_id}/start", params=default_params, json=start_payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
 
-        # 6. End
-        end_payload = {"shutoff_required": True, "use_psectors": False}
-        response = client.post(f"/om/mincuts/{mincut_id}/end", params=default_params, json=end_payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "Accepted"
-    finally:
-        # 7. Delete (always clean up)
-        _delete_mincut(client, default_params, mincut_id)
+    # 6. End
+    end_payload = {"shutoff_required": True, "use_psectors": False}
+    response = client.post(f"/om/mincuts/{mincut_id}/end", params=default_params, json=end_payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
 
 
 @pytest.mark.ws
