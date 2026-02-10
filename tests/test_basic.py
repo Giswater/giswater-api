@@ -182,15 +182,22 @@ def test_get_arc_audit_values(client, default_params):
     assert "body" in data
 
 
-@pytest.mark.skip(reason="getlist DB function needs refactoring")
-def test_get_list(client, default_params):
+@pytest.mark.parametrize(
+    ("table_name"),
+    [
+        ("ve_arc"),
+        ("ve_epa_junction"),
+        ("tbl_workspace_manager"),
+    ],
+)
+def test_get_list(client, default_params, table_name):
     assert_healthy(client)
 
     response = client.get(
         "/basic/getlist",
         params={
             **default_params,
-            "tableName": "ve_arc_pipe",
+            "tableName": table_name,
         },
     )
 
