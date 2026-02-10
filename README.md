@@ -2,9 +2,10 @@
 
 | | |
 | --- | --- |
-| Testing | [![Lint](https://github.com/Giswater/giswater-api/actions/workflows/lint-ruff.yml/badge.svg)](https://github.com/Giswater/giswater-api/actions/workflows/lint-ruff.yml) [![Tests](https://github.com/Giswater/giswater-api/actions/workflows/test.yml/badge.svg)](https://github.com/Giswater/giswater-api/actions/workflows/test.yml) |
-| Runtime | [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/) [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) |
-| Meta | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE) |
+| Versions | [![Release](https://img.shields.io/github/v/release/Giswater/giswater-api?sort=semver)](https://github.com/Giswater/giswater-api/releases) [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/) |
+| CI | [![Lint](https://github.com/Giswater/giswater-api/actions/workflows/lint-ruff.yml/badge.svg)](https://github.com/Giswater/giswater-api/actions/workflows/lint-ruff.yml) [![Tests](https://github.com/Giswater/giswater-api/actions/workflows/test.yml/badge.svg)](https://github.com/Giswater/giswater-api/actions/workflows/test.yml) |
+| Status |  [![Last commit](https://img.shields.io/github/last-commit/Giswater/giswater-api)](https://github.com/Giswater/giswater-api/commits/main) [![Commit activity](https://img.shields.io/github/commit-activity/m/Giswater/giswater-api)](https://github.com/Giswater/giswater-api/graphs/commit-activity) |
+| Meta | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-orange.svg)](./LICENSE) |
 
 A lightweight, modular FastAPI application with **Swagger UI**, **Docker support**, **Keycloak authentication**, and **Gunicorn + Uvicorn** for production.
 
