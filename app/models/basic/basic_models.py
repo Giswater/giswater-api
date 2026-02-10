@@ -94,11 +94,19 @@ class GetInfoFromCoordinatesResponse(BaseAPIResponse[GetInfoFromCoordinatesBody]
     pass
 
 
+class GetFeaturesFromPolygonFeatures(BaseModel):
+    """Get features from polygon features model"""
+
+    arc: Optional[List[int]] = Field(None, description="Arc IDs")
+    node: Optional[List[int]] = Field(None, description="Node IDs")
+    connec: Optional[List[int]] = Field(None, description="Connec IDs")
+    gully: Optional[List[int]] = Field(None, description="Gully IDs")
+
+
 class GetFeaturesFromPolygonData(Data):
     """Get features from polygon data"""
 
-    featureType: Literal["arc", "node", "connec", "gully"] = Field(..., description="Feature type")
-    featureIds: Optional[List[int]] = Field(None, description="Feature IDs")
+    features: GetFeaturesFromPolygonFeatures = Field(..., description="Features")
 
 
 class GetFeaturesFromPolygonBody(Body[GetFeaturesFromPolygonData]):

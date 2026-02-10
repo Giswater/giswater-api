@@ -11,3 +11,11 @@ def test_get_status(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
+
+
+def test_health(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] in ("healthy", "degraded")
+    assert "timestamp" in data

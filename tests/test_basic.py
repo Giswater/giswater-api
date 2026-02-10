@@ -99,3 +99,102 @@ def test_get_feature_changes(client, default_params, feature_type, action, last_
     assert "body" in data
     assert "data" in data["body"]
     assert "features" in data["body"]["data"]
+
+
+def test_get_features_from_polygon(client, default_params):
+    assert_healthy(client)
+
+    polygon = (
+        "MULTIPOLYGON (((419023.56746357883 4576663.176018708, "
+        "419062.1908605342 4576737.759130071, "
+        "419101.1472178081 4576736.760249115, "
+        "419143.10021794925 4576649.857605965, "
+        "419128.1170036131 4576618.2263757, "
+        "419025.23226517177 4576637.205113859, "
+        "419023.56746357883 4576663.176018708)))"
+    )
+
+    response = client.get(
+        "/basic/getfeaturesfrompolygon",
+        params={
+            **default_params,
+            "featureType": "NODE",
+            "polygonGeom": polygon,
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+@pytest.mark.skip(reason="getselectors DB function needs refactoring")
+def test_get_selectors(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getselectors",
+        params={
+            **default_params,
+            "selectorType": "selector_basic",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+def test_get_search(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getsearch",
+        params={
+            **default_params,
+            "searchText": "test",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+def test_get_arc_audit_values(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getarcauditvalues",
+        params={
+            **default_params,
+            "startDate": "2020-01-01",
+            "endDate": "2026-01-31",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
+
+
+@pytest.mark.skip(reason="getlist DB function needs refactoring")
+def test_get_list(client, default_params):
+    assert_healthy(client)
+
+    response = client.get(
+        "/basic/getlist",
+        params={
+            **default_params,
+            "tableName": "ve_arc_pipe",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "Accepted"
+    assert "body" in data
