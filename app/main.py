@@ -30,7 +30,7 @@ from .routers.crm import crm
 from .models.util_models import GwErrorResponse
 
 TITLE = "Giswater API"
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 DESCRIPTION = "API for interacting with a Giswater database."
 
 # Database manager
