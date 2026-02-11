@@ -13,7 +13,7 @@ dependencies = [
     "requests==2.32.4",
     "pyproj==3.7.1",
     "pyjwt[crypto]==2.10.1",
-    "cryptography==46.0.3",
+    "cryptography==46.0.5",
     "fastapi-keycloak==1.1.1",
     "python-dotenv==1.2.1",
 ]
