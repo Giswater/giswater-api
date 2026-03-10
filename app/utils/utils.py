@@ -380,6 +380,170 @@ async def execute_sql(
     return rows
 
 
+async def execute_sql_insert(
+    log,
+    db_manager,
+    table_name: str,
+    data: dict,
+    set_role: bool = True,
+    schema: str | None = None,
+    user: str | None = "anonymous",
+):
+    """
+    Execute an INSERT on a table and return inserted rows as dicts.
+    """
+    schema_name = schema or db_manager.default_schema
+    if schema_name is None:
+        log.warning("Schema is None")
+        raise HTTPException(status_code=500, detail="Schema not found")
+
+    if not await db_manager.validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_name}' not found")
+
+    if not data:
+        raise HTTPException(status_code=400, detail="No data provided for insert")
+
+    columns = [sql.Identifier(col) for col in data.keys()]
+    values = list(data.values())
+    placeholders = sql.SQL(", ").join(sql.Placeholder() for _ in values)
+
+    query = sql.SQL("INSERT INTO {}.{} ({}) VALUES ({}) RETURNING *").format(
+        sql.Identifier(schema_name),
+        sql.Identifier(table_name),
+        sql.SQL(", ").join(columns),
+        placeholders,
+    )
+
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor(row_factory=dict_row) as cursor:
+                identity = None if user == "anonymous" else user
+                if set_role and identity:
+                    await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
+                await cursor.execute(query, tuple(values))
+                rows = await cursor.fetchall()
+            await conn.commit()
+        except Exception as e:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+    return rows
+
+
+async def execute_sql_update(
+    log,
+    db_manager,
+    table_name: str,
+    data: dict,
+    where_data: dict,
+    set_role: bool = True,
+    schema: str | None = None,
+    user: str | None = "anonymous",
+):
+    """
+    Execute an UPDATE on a table and return updated rows as dicts.
+    """
+    schema_name = schema or db_manager.default_schema
+    if schema_name is None:
+        log.warning("Schema is None")
+        raise HTTPException(status_code=500, detail="Schema not found")
+
+    if not await db_manager.validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_name}' not found")
+
+    if not data:
+        raise HTTPException(status_code=400, detail="No data provided for update")
+    if not where_data:
+        raise HTTPException(status_code=400, detail="No where_data provided for update")
+
+    set_clauses = [sql.SQL("{} = {}").format(sql.Identifier(col), sql.Placeholder()) for col in data.keys()]
+    where_clauses = [sql.SQL("{} = {}").format(sql.Identifier(col), sql.Placeholder()) for col in where_data.keys()]
+
+    values = list(data.values()) + list(where_data.values())
+
+    query = sql.SQL("UPDATE {}.{} SET {} WHERE {} RETURNING *").format(
+        sql.Identifier(schema_name),
+        sql.Identifier(table_name),
+        sql.SQL(", ").join(set_clauses),
+        sql.SQL(" AND ").join(where_clauses),
+    )
+
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor(row_factory=dict_row) as cursor:
+                identity = None if user == "anonymous" else user
+                if set_role and identity:
+                    await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
+                await cursor.execute(query, tuple(values))
+                rows = await cursor.fetchall()
+            await conn.commit()
+        except Exception as e:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+    return rows
+
+
+async def execute_sql_delete(
+    log,
+    db_manager,
+    table_name: str,
+    where_data: dict,
+    set_role: bool = True,
+    schema: str | None = None,
+    user: str | None = "anonymous",
+):
+    """
+    Execute a DELETE on a table and return deleted rows as dicts.
+    """
+    schema_name = schema or db_manager.default_schema
+    if schema_name is None:
+        log.warning("Schema is None")
+        raise HTTPException(status_code=500, detail="Schema not found")
+
+    if not await db_manager.validate_schema(schema_name):
+        log.warning(f"Schema '{schema_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_name}' not found")
+
+    if not where_data:
+        raise HTTPException(status_code=400, detail="No where_data provided for delete")
+
+    where_clauses = [sql.SQL("{} = {}").format(sql.Identifier(col), sql.Placeholder()) for col in where_data.keys()]
+    values = list(where_data.values())
+
+    query = sql.SQL("DELETE FROM {}.{} WHERE {} RETURNING *").format(
+        sql.Identifier(schema_name),
+        sql.Identifier(table_name),
+        sql.SQL(" AND ").join(where_clauses),
+    )
+
+    async with db_manager.get_db() as conn:
+        if conn is None:
+            log.error("No connection to database")
+            raise HTTPException(status_code=500, detail="No connection to database")
+        try:
+            async with conn.cursor(row_factory=dict_row) as cursor:
+                identity = None if user == "anonymous" else user
+                if set_role and identity:
+                    await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
+                await cursor.execute(query, tuple(values))
+                rows = await cursor.fetchall()
+            await conn.commit()
+        except Exception as e:
+            await conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+    return rows
+
+
 async def get_db_version(log, db_manager, schema: str | None = None) -> str | None:
     """
     Return latest giswater version from sys_version.

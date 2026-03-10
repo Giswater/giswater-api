@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Scripts to do releases
 - pyproject.toml file
+- Add EPA Dscenario endpoints
 
 ## [0.7.0] - 2026-02-10
 

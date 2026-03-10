@@ -55,6 +55,7 @@ class Settings:
     api_mapzones: bool = _get_bool("API_MAPZONES", False)
     api_routing: bool = _get_bool("API_ROUTING", False)
     api_crm: bool = _get_bool("API_CRM", False)
+    api_epa: bool = _get_bool("API_EPA", False)
 
     # Database
     db_host: str | None = _get_env("DB_HOST", "localhost")

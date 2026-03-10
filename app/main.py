@@ -28,6 +28,7 @@ from .routers.om import mincut, profile, flow, waterbalance
 from .routers.om.mapzones import dma, sector, presszone, dqa, omzone, omunit
 from .routers.routing import routing
 from .routers.crm import crm
+from .routers.epa import dscenario
 from .models.util_models import GwErrorResponse
 
 TITLE = "Giswater API"
@@ -106,6 +107,8 @@ if settings.api_routing:
     app.include_router(routing.router)
 if settings.api_crm:
     app.include_router(crm.router)
+if settings.api_epa:
+    app.include_router(dscenario.router)
 # Load plugins
 utils.load_plugins(app)
 
