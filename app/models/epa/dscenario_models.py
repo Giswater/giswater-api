@@ -105,23 +105,23 @@ def get_dscenario_table(object_type: DscenarioObjectType) -> str:
 # Adjust if your schema uses different primary key columns.
 DscenarioObjectIdColumnMap: Dict[DscenarioObjectType, str] = {
     "connec": "connec_id",
-    "controls": "control_id",
-    "demand": "demand_id",
-    "frpump": "pump_id",
-    "frshortpipe": "arc_id",
-    "frvalve": "valve_id",
-    "inlet": "inlet_id",
+    "controls": "id",
+    "demand": "id",
+    "frpump": "element_id",
+    "frshortpipe": "element_id",
+    "frvalve": "element_id",
+    "inlet": "node_id",
     "junction": "node_id",
     "pipe": "arc_id",
-    "pump": "pump_id",
-    "pump_additional": "pump_id",
+    "pump": "node_id",
+    "pump_additional": "node_id",  # + order_id
     "reservoir": "node_id",
-    "rules": "rule_id",
-    "shortpipe": "arc_id",
+    "rules": "id",
+    "shortpipe": "node_id",
     "tank": "node_id",
-    "valve": "valve_id",
-    "virtualpump": "pump_id",
-    "virtualvalve": "valve_id",
+    "valve": "node_id",
+    "virtualpump": "arc_id",
+    "virtualvalve": "arc_id",
 }
 
 
