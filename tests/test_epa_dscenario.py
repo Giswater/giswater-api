@@ -79,7 +79,7 @@ def test_get_dscenario_object_not_found(client, default_params, object_type: str
     response = client.get(f"/epa/dscenarios/999999/{object_type}/999999", params=default_params)
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Not found"
+    assert response.json()["detail"] == "Object not found"
 
 
 @pytest.mark.ws
@@ -96,7 +96,7 @@ def test_update_dscenario_object_not_found(client, default_params, object_type: 
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Not found"
+    assert response.json()["detail"] == "Object not found"
 
 
 @pytest.mark.ws
@@ -111,7 +111,7 @@ def test_delete_dscenario_object_not_found(client, default_params, object_type: 
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Not found"
+    assert response.json()["detail"] == "Object not found"
 
 
 @pytest.mark.ws
@@ -137,4 +137,4 @@ def test_delete_dscenario_not_found(client, default_params):
     response = client.delete("/epa/dscenarios/999999", params=default_params)
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Not found"
+    assert response.json()["detail"] == "Dscenario not found"
