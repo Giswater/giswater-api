@@ -62,6 +62,17 @@ class DscenarioObjectResponse(BaseAPIResponse[DscenarioObjectBody]):
     pass
 
 
+class DscenarioCreateRequest(BaseModel):
+    """Request model for creating a new dscenario"""
+
+    name: str = Field(..., description="Dscenario name")
+    descript: Optional[str] = Field(None, description="Description")
+    parent: Optional[int] = Field(None, description="Parent dscenario id")
+    type: str = Field(..., description="Dscenario type (e.g. DEMAND)")
+    active: bool = Field(True, description="Whether the dscenario is active")
+    expl: int = Field(0, description="Exploitation id")
+
+
 DscenarioObjectType = Literal[
     "connec",
     "controls",

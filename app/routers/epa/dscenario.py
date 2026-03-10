@@ -12,15 +12,19 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import ValidationError
 
 from ...utils.utils import (
+    create_body_dict,
     create_log,
+    execute_procedure,
     execute_sql_delete,
     execute_sql_insert,
     execute_sql_select,
     execute_sql_update,
     get_db_version,
+    handle_procedure_result,
 )
 from ...models.basic.basic_models import GetListResponse
 from ...models.epa.dscenario_models import (
+    DscenarioCreateRequest,
     DscenarioFilterFieldsModel,
     DscenarioObjectResponse,
     DscenarioObjectType,
@@ -31,6 +35,48 @@ from ..basic.basic import get_list
 from ...dependencies import CommonsDep
 
 router = APIRouter(prefix="/epa", tags=["EPA - Dscenario"])
+
+
+@router.post(
+    "/dscenarios",
+    description="Create an empty dscenario by calling gw_fct_create_dscenario_empty",
+    response_model=dict,
+    response_model_exclude_unset=True,
+)
+async def create_dscenario(
+    commons: CommonsDep,
+    payload: DscenarioCreateRequest = Body(..., description="Dscenario creation parameters"),
+):
+    log = create_log(__name__)
+
+    parameters = {
+        "name": payload.name,
+        "descript": payload.descript or "",
+        "parent": payload.parent,
+        "type": payload.type,
+        "active": "true" if payload.active else "false",
+        "expl": str(payload.expl),
+    }
+
+    body = create_body_dict(
+        project_epsg=None,
+        extras={"parameters": parameters},
+        cur_user=commons["user_id"],
+        device=commons["device"],
+        lang=commons["lang"],
+    )
+
+    result = await execute_procedure(
+        log,
+        commons["db_manager"],
+        "gw_fct_create_dscenario_empty",
+        body,
+        schema=commons["schema"],
+        user=commons["user_id"],
+        api_version=commons["api_version"],
+    )
+
+    return handle_procedure_result(result)
 
 
 @router.get(
@@ -61,6 +107,50 @@ async def get_dscenarios(
         page_info=None,
         filter_fields=filter_fields,
     )
+
+
+@router.delete(
+    "/dscenarios/{dscenario_id}",
+    description="Delete a dscenario from ve_cat_dscenario",
+    response_model=DscenarioObjectResponse,
+    response_model_exclude_unset=True,
+)
+async def delete_dscenario(
+    commons: CommonsDep,
+    dscenario_id: int = Path(..., description="Dscenario id"),
+):
+    log = create_log(__name__)
+
+    table_name = "ve_cat_dscenario"
+    where_data = {"dscenario_id": dscenario_id}
+
+    rows = await execute_sql_delete(
+        log=log,
+        db_manager=commons["db_manager"],
+        table_name=table_name,
+        where_data=where_data,
+        schema=commons["schema"],
+        user=commons["user_id"],
+    )
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="Dscenario not found")
+
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
+
+    return {
+        "status": "Accepted",
+        "message": {"level": 3, "text": "Dscenario deleted"},
+        "version": {"db": db_version, "api": commons["api_version"]},
+        "body": {
+            "form": None,
+            "feature": None,
+            "data": {
+                "items": rows,
+                "count": len(rows),
+            },
+        },
+    }
 
 
 @router.get(
