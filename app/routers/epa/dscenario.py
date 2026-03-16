@@ -124,7 +124,7 @@ async def delete_dscenario(
     table_name = "ve_cat_dscenario"
     where_data = {"dscenario_id": dscenario_id}
 
-    status = await execute_sql_delete(
+    rows_deleted = await execute_sql_delete(
         log=log,
         db_manager=commons["db_manager"],
         table_name=table_name,
@@ -133,7 +133,7 @@ async def delete_dscenario(
         user=commons["user_id"],
     )
 
-    if not status:
+    if rows_deleted in (None, 0, -1):
         raise HTTPException(status_code=404, detail="Dscenario not found")
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
@@ -367,7 +367,7 @@ async def delete_dscenario_object(
 
     where_data = {"dscenario_id": dscenario_id, id_column: object_id}
 
-    status = await execute_sql_delete(
+    rows_deleted = await execute_sql_delete(
         log=log,
         db_manager=commons["db_manager"],
         table_name=table_name,
@@ -376,7 +376,7 @@ async def delete_dscenario_object(
         user=commons["user_id"],
     )
 
-    if not status:
+    if rows_deleted in (None, 0, -1):
         raise HTTPException(status_code=404, detail="Object not found")
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

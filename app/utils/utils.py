@@ -502,9 +502,9 @@ async def execute_sql_delete(
     user: str | None = "anonymous",
 ):
     """
-    Execute a DELETE on a table and return True if successful, False otherwise.
+    Execute a DELETE on a table and return the number of rows deleted.
     """
-    status = False
+    rows_deleted = None
     schema_name = schema or db_manager.default_schema
     if schema_name is None:
         log.warning("Schema is None")
@@ -536,13 +536,13 @@ async def execute_sql_delete(
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
+                rows_deleted = cursor.rowcount
             await conn.commit()
-            status = True
         except Exception as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-    return status
+    return rows_deleted
 
 
 async def get_db_version(log, db_manager, schema: str | None = None) -> str | None:
