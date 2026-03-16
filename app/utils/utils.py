@@ -500,11 +500,11 @@ async def execute_sql_delete(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
-):
+) -> bool:
     """
-    Execute a DELETE on a table and return the number of rows deleted.
+    Execute a DELETE on a table and return True if successful, False otherwise.
     """
-    rows_deleted = None
+    status = False
     schema_name = schema or db_manager.default_schema
     if schema_name is None:
         log.warning("Schema is None")
@@ -532,17 +532,32 @@ async def execute_sql_delete(
             raise HTTPException(status_code=500, detail="No connection to database")
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
+                rows = await execute_sql_select(
+                    log=log,
+                    db_manager=db_manager,
+                    table_name=table_name,
+                    where_clause=sql.SQL(" AND ").join(where_clauses).as_string(conn),
+                    parameters=tuple(values),
+                    schema=schema_name,
+                    user=user,
+                )
+                if not rows:
+                    raise HTTPException(status_code=404, detail="No rows found to delete")
+
                 identity = None if user == "anonymous" else user
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
-                rows_deleted = cursor.rowcount
+                status = True
             await conn.commit()
+        except HTTPException as e:
+            await conn.rollback()
+            raise e
         except Exception as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-    return rows_deleted
+    return status
 
 
 async def get_db_version(log, db_manager, schema: str | None = None) -> str | None:
