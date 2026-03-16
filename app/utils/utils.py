@@ -542,7 +542,7 @@ async def execute_sql_delete(
                     user=user,
                 )
                 if not rows:
-                    raise HTTPException(status_code=404, detail="No rows found to delete")
+                    return False
 
                 identity = None if user == "anonymous" else user
                 if set_role and identity:
@@ -550,9 +550,6 @@ async def execute_sql_delete(
                 await cursor.execute(query, tuple(values))
                 status = True
             await conn.commit()
-        except HTTPException as e:
-            await conn.rollback()
-            raise e
         except Exception as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
