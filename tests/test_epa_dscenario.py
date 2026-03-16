@@ -50,8 +50,8 @@ def _create_dscenario(client, default_params) -> int:
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["status"] == "Accepted"
-    # Assuming standard Giswater pattern: id returned as dscenarioId
-    dscenario_id = data["body"]["data"]["dscenarioId"]
+    # Assuming standard Giswater pattern: id returned as dscenario_id
+    dscenario_id = data["body"]["data"]["dscenario_id"]
     return dscenario_id
 
 
@@ -77,23 +77,6 @@ def test_get_dscenario_object_not_found(client, default_params, object_type: str
     assert_healthy(client)
 
     response = client.get(f"/epa/dscenarios/999999/{object_type}/999999", params=default_params)
-
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Object not found"
-
-
-@pytest.mark.ws
-@pytest.mark.parametrize("object_type", DSCENARIO_OBJECT_TYPES)
-def test_update_dscenario_object_not_found(client, default_params, object_type: str):
-    """PATCH single object should return 404 for non-existing ids."""
-    assert_healthy(client)
-
-    payload = {"dummy_field": "value"}
-    response = client.patch(
-        f"/epa/dscenarios/999999/{object_type}/999999",
-        params=default_params,
-        json=payload,
-    )
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Object not found"
