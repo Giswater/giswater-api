@@ -50,7 +50,7 @@ def _create_dscenario(client, default_params) -> int:
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["status"] == "Accepted"
-    # Assuming standard Giswater pattern: id returned as dscenario_id
+
     dscenario_id = data["body"]["data"]["dscenario_id"]
     return dscenario_id
 
