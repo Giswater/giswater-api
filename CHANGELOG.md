@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pyproject.toml file
 - Add EPA Dscenario endpoints
 
+### Changed
+
+- Profile validation model: node_id/arc_id are integers
+
 ## [0.7.0] - 2026-02-10
 
 ### Added

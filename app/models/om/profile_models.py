@@ -129,7 +129,7 @@ class StylesheetModel(BaseModel):
 class NodeModel(BaseModel):
     """Node model"""
 
-    node_id: str = Field(..., description="Node identifier")
+    node_id: int = Field(..., description="Node identifier")
     surface_type: str = Field(..., description="Type of surface")
     descript: str = Field(..., description="JSON description of the node")
     data_type: str = Field(..., description="Data type (e.g., REAL)")
@@ -156,7 +156,7 @@ class TerrainModel(BaseModel):
 class ArcModel(BaseModel):
     """Arc model"""
 
-    arc_id: str = Field(..., description="Arc identifier")
+    arc_id: int = Field(..., description="Arc identifier")
     descript: str = Field(..., description="JSON description of the arc")
     cat_geom1: float = Field(..., description="Geometry category 1")
     length: float = Field(..., description="Arc length")
@@ -166,8 +166,8 @@ class ArcModel(BaseModel):
     y2: float = Field(..., description="Y2")
     elev1: float = Field(..., description="Elevation 1")
     elev2: float = Field(..., description="Elevation 2")
-    node_1: str = Field(..., description="Node 1")
-    node_2: str = Field(..., description="Node 2")
+    node_1: int = Field(..., description="Node 1")
+    node_2: int = Field(..., description="Node 2")
     omunit_id: int = Field(..., description="OM unit id")
 
 
