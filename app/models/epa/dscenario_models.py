@@ -62,13 +62,35 @@ class DscenarioObjectResponse(BaseAPIResponse[DscenarioObjectBody]):
     pass
 
 
+DscenarioType = Literal[
+    "DEMAND",
+    "VALVE",
+    "INLET",
+    "PUMP",
+    "PIPE",
+    "JOINED",
+    "OTHER",
+    "JUNCTION",
+    "CONNEC",
+    "SHORTPIPE",
+    "VIRTUALVALVE",
+    "ADDITIONAL",
+    "CONTROLS",
+    "RULES",
+    "RESERVOIR",
+    "TANK",
+    "NETWORK",
+    "VIRTUALPUMP",
+]
+
+
 class DscenarioCreateRequest(BaseModel):
     """Request model for creating a new dscenario"""
 
     name: str = Field(..., description="Dscenario name")
     descript: Optional[str] = Field(None, description="Description")
     parent: Optional[int] = Field(None, description="Parent dscenario id")
-    type: str = Field(..., description="Dscenario type (e.g. DEMAND)")
+    type: DscenarioType = Field(..., description="Dscenario type")
     active: bool = Field(True, description="Whether the dscenario is active")
     expl: int = Field(0, description="Exploitation id")
 
@@ -101,8 +123,6 @@ def get_dscenario_table(object_type: DscenarioObjectType) -> str:
     return f"ve_inp_dscenario_{object_type}"
 
 
-# NOTE: These are the per-type object id column names used in path /{object_id}.
-# Adjust if your schema uses different primary key columns.
 DscenarioObjectIdColumnMap: Dict[DscenarioObjectType, str] = {
     "connec": "connec_id",
     "controls": "id",
