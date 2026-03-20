@@ -210,20 +210,17 @@ async def insert_dscenario_objects(
     table_name = get_dscenario_table(object_type)
 
     # Normalize to list and inject dscenario_id
-    if isinstance(objects, dict):
-        items_list = [objects]
-    else:
-        items_list = list(objects)
+    items_list = [objects] if isinstance(objects, dict) else objects
 
     all_rows: List[Dict[str, Any]] = []
+    # TODO: Use bulk insert
     for obj in items_list:
-        data = dict(obj)
-        data["dscenario_id"] = dscenario_id
+        obj["dscenario_id"] = dscenario_id
         rows = await execute_sql_insert(
             log=log,
             db_manager=commons["db_manager"],
             table_name=table_name,
-            data=data,
+            data=obj,
             schema=commons["schema"],
             user=commons["user_id"],
         )
