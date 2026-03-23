@@ -93,6 +93,10 @@ class Settings:
     log_db_sample_rate: float = _get_float("LOG_DB_SAMPLE_RATE", 1.0)
     log_db_max_body_bytes: int = _get_int("LOG_DB_MAX_BODY_BYTES", 0)
 
+    # Endpoint rate limiting defaults
+    rate_limit_default_max_requests: int = _get_int("RATE_LIMIT_DEFAULT_MAX_REQUESTS", 30)
+    rate_limit_default_window_seconds: int = _get_int("RATE_LIMIT_DEFAULT_WINDOW_SECONDS", 60)
+
     def validate(self) -> None:
         if self.keycloak_enabled:
             missing = [

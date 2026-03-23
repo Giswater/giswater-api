@@ -13,11 +13,12 @@ import asyncio
 import contextvars
 import time
 import uuid
+from collections import defaultdict, deque
 from logging.handlers import TimedRotatingFileHandler
 
-from typing import Any, Dict, Literal
+from typing import Any, Awaitable, Callable, Dict, Literal
 from datetime import date, datetime, timezone
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
@@ -25,6 +26,49 @@ from psycopg.types.json import Json
 from ..models.util_models import APIResponse
 from ..exceptions import ProcedureError
 from ..config import settings
+
+_rate_limit_state: dict[tuple[str, str], deque[float]] = defaultdict(deque)
+_rate_limit_lock = asyncio.Lock()
+
+
+def create_rate_limiter(
+    *,
+    max_requests: int,
+    window_seconds: int,
+    scope: str,
+) -> Callable[[Any], Awaitable[None]]:
+    """
+    Create a reusable per-IP rate-limit dependency for FastAPI endpoints.
+
+    Use in routes as: dependencies=[Depends(create_rate_limiter(...))]
+    """
+
+    async def rate_limit_dependency(request: Request) -> None:
+        if max_requests <= 0 or window_seconds <= 0:
+            return
+
+        now = time.monotonic()
+        client_ip = request.client.host if request.client else "unknown"
+        bucket_key = (scope, client_ip)
+
+        async with _rate_limit_lock:
+            hits = _rate_limit_state[bucket_key]
+            cutoff = now - window_seconds
+
+            while hits and hits[0] <= cutoff:
+                hits.popleft()
+
+            if len(hits) >= max_requests:
+                retry_after = max(1, int(hits[0] + window_seconds - now))
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Rate limit exceeded: max {max_requests} requests per {window_seconds} seconds.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+
+            hits.append(now)
+
+    return rate_limit_dependency
 
 
 def load_plugins(app: FastAPI):

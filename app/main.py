@@ -37,6 +37,11 @@ DESCRIPTION = "API for interacting with a Giswater database."
 
 # Database manager
 db_manager = DatabaseManager()
+schema_rate_limiter = utils.create_rate_limiter(
+    max_requests=settings.rate_limit_default_max_requests,
+    window_seconds=settings.rate_limit_default_window_seconds,
+    scope="schemas_endpoint",
+)
 
 
 @asynccontextmanager
@@ -269,3 +274,14 @@ async def favicon():
     """Favicon endpoint."""
     favicon_path = os.path.join("app", "static", "favicon.ico")
     return FileResponse(favicon_path)
+
+
+@app.get("/schemas/{schema}", dependencies=[Depends(schema_rate_limiter)])
+async def get_schema(request: Request, schema: str):
+    """Validate if a schema exists in the database."""
+    db_manager = request.app.state.db_manager
+
+    if not await db_manager.validate_schema(schema):
+        raise HTTPException(status_code=404, detail=f"Schema '{schema}' not found")
+
+    return {"status": "Accepted", "message": f"Schema '{schema}' is valid"}
