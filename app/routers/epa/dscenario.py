@@ -253,7 +253,7 @@ async def get_dscenario_object(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
-    object_id: int = Path(..., description="Object id"),
+    object_id: Union[int, str] = Path(..., description="Object id"),
 ):
     log = create_log(__name__)
     table_name = get_dscenario_table(object_type)
@@ -299,7 +299,7 @@ async def update_dscenario_object(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
-    object_id: int = Path(..., description="Object id"),
+    object_id: Union[int, str] = Path(..., description="Object id"),
     data: Dict[str, Any] = Body(..., title="Object", description="Fields to update"),
 ):
     log = create_log(__name__)
@@ -356,7 +356,7 @@ async def delete_dscenario_object(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
-    object_id: int = Path(..., description="Object id"),
+    object_id: Union[int, str] = Path(..., description="Object id"),
 ):
     log = create_log(__name__)
     table_name = get_dscenario_table(object_type)

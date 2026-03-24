@@ -114,6 +114,8 @@ DscenarioObjectType = Literal[
     "valve",
     "virtualpump",
     "virtualvalve",
+    "pattern",
+    "pattern_value",
 ]
 
 
@@ -142,6 +144,8 @@ DscenarioObjectIdColumnMap: Dict[DscenarioObjectType, str] = {
     "valve": "node_id",
     "virtualpump": "arc_id",
     "virtualvalve": "arc_id",
+    "pattern": "pattern_id",
+    "pattern_value": "pattern_id",
 }
 
 
