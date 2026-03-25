@@ -125,7 +125,7 @@ def get_dscenario_table(object_type: DscenarioObjectType) -> str:
     return f"ve_inp_dscenario_{object_type}"
 
 
-DscenarioObjectIdColumnMap: Dict[DscenarioObjectType, str] = {
+DscenarioObjectIdColumnMap: Dict[DscenarioObjectType, Tuple[str, type]] = {
     "connec": ("connec_id", int),
     "controls": ("id", int),
     "demand": ("id", int),
