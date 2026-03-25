@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-03-25
+
+### Changed
+
+- Dscenario object_id management & various fixes
+- App icon
+
 ## [0.8.1] - 2026-03-24
 
 ### Security
@@ -168,7 +175,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/giswater/giswater-api/compare/v0.8.0...main
+[unreleased]: https://github.com/giswater/giswater-api/compare/v0.8.2...main
+[0.8.2]: https://github.com/giswater/giswater-api/compare/v0.8.1...0.8.2
+[0.8.1]: https://github.com/giswater/giswater-api/compare/v0.8.0...0.8.1
 [0.8.0]: https://github.com/giswater/giswater-api/compare/v0.7.0...0.8.0
 [0.7.0]: https://github.com/giswater/giswater-api/compare/v0.6.0...0.7.0
 [0.6.0]: https://github.com/giswater/giswater-api/compare/v0.5.0...0.6.0
