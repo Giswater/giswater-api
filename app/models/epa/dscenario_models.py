@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any, List, Literal
+from typing import Optional, Dict, Any, List, Literal, Tuple
 
 from ..util_models import BaseAPIResponse, Body, FilterFieldModel
 
@@ -124,28 +124,30 @@ def get_dscenario_table(object_type: DscenarioObjectType) -> str:
 
 
 DscenarioObjectIdColumnMap: Dict[DscenarioObjectType, str] = {
-    "connec": "connec_id",
-    "controls": "id",
-    "demand": "id",
-    "frpump": "element_id",
-    "frshortpipe": "element_id",
-    "frvalve": "element_id",
-    "inlet": "node_id",
-    "junction": "node_id",
-    "pipe": "arc_id",
-    "pump": "node_id",
-    "pump_additional": "node_id",  # + order_id
-    "reservoir": "node_id",
-    "rules": "id",
-    "shortpipe": "node_id",
-    "tank": "node_id",
-    "valve": "node_id",
-    "virtualpump": "arc_id",
-    "virtualvalve": "arc_id",
+    "connec": ("connec_id", int),
+    "controls": ("id", int),
+    "demand": ("id", int),
+    "frpump": ("element_id", int),
+    "frshortpipe": ("element_id", int),
+    "frvalve": ("element_id", int),
+    "inlet": ("node_id", int),
+    "junction": ("node_id", int),
+    "pipe": ("arc_id", int),
+    "pump": ("node_id", int),
+    "pump_additional": ("node_id", int),  # + order_id
+    "reservoir": ("node_id", int),
+    "rules": ("id", int),
+    "shortpipe": ("node_id", int),
+    "tank": ("node_id", int),
+    "valve": ("node_id", int),
+    "virtualpump": ("arc_id", int),
+    "virtualvalve": ("arc_id", int),
+    "pattern": ("pattern_id", str),
+    "pattern_value": ("pattern_id", str),
 }
 
 
-def get_dscenario_object_id_column(object_type: DscenarioObjectType) -> str:
+def get_dscenario_object_id_column(object_type: DscenarioObjectType) -> Tuple[str, type]:
     """Return the id column name for a given dscenario object type."""
 
     return DscenarioObjectIdColumnMap[object_type]

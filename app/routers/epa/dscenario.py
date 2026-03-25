@@ -109,6 +109,53 @@ async def get_dscenarios(
     )
 
 
+@router.post(
+    "/dscenarios/{dscenario_id}/select",
+    description="Set a dscenario as selected for the current user",
+    response_model=DscenarioObjectResponse,
+    response_model_exclude_unset=True,
+)
+async def select_dscenario(
+    commons: CommonsDep,
+    dscenario_id: int = Path(..., description="Dscenario id"),
+):
+    log = create_log(__name__)
+    table_name = "selector_inp_dscenario"
+    where_data = {"cur_user": commons["user_id"]}
+    rows = await execute_sql_update(
+        log=log,
+        db_manager=commons["db_manager"],
+        table_name=table_name,
+        data={"dscenario_id": dscenario_id},
+        where_data=where_data,
+        schema=commons["schema"],
+        user=commons["user_id"],
+    )
+    if not rows:
+        rows = await execute_sql_insert(
+            log=log,
+            db_manager=commons["db_manager"],
+            table_name=table_name,
+            data={"dscenario_id": dscenario_id, "cur_user": commons["user_id"]},
+            schema=commons["schema"],
+            user=commons["user_id"],
+        )
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
+    return {
+        "status": "Accepted",
+        "message": {"level": 3, "text": "Dscenario selected"},
+        "version": {"db": db_version, "api": commons["api_version"]},
+        "body": {
+            "form": None,
+            "feature": None,
+            "data": {
+                "items": rows,
+                "count": len(rows),
+            },
+        },
+    }
+
+
 @router.delete(
     "/dscenarios/{dscenario_id}",
     description="Delete a dscenario from ve_cat_dscenario",
@@ -124,7 +171,7 @@ async def delete_dscenario(
     table_name = "ve_cat_dscenario"
     where_data = {"dscenario_id": dscenario_id}
 
-    status = await execute_sql_delete(
+    await execute_sql_delete(
         log=log,
         db_manager=commons["db_manager"],
         table_name=table_name,
@@ -132,9 +179,6 @@ async def delete_dscenario(
         schema=commons["schema"],
         user=commons["user_id"],
     )
-
-    if not status:
-        raise HTTPException(status_code=404, detail="Dscenario not found")
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
@@ -256,11 +300,13 @@ async def get_dscenario_object(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
-    object_id: int = Path(..., description="Object id"),
+    object_id: str = Path(..., description="Object id"),
 ):
     log = create_log(__name__)
     table_name = get_dscenario_table(object_type)
-    id_column = get_dscenario_object_id_column(object_type)
+    id_column, id_type = get_dscenario_object_id_column(object_type)
+    # Transform object_id to the correct type
+    object_id = id_type(object_id)
 
     rows = await execute_sql_select(
         log=log,
@@ -302,12 +348,14 @@ async def update_dscenario_object(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
-    object_id: int = Path(..., description="Object id"),
+    object_id: str = Path(..., description="Object id"),
     data: Dict[str, Any] = Body(..., title="Object", description="Fields to update"),
 ):
     log = create_log(__name__)
     table_name = get_dscenario_table(object_type)
-    id_column = get_dscenario_object_id_column(object_type)
+    id_column, id_type = get_dscenario_object_id_column(object_type)
+    # Transform object_id to the correct type
+    object_id = id_type(object_id)
 
     update_data = dict(data)
     # Enforce dscenario and id in where; prevent overriding them in SET
@@ -359,15 +407,17 @@ async def delete_dscenario_object(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
-    object_id: int = Path(..., description="Object id"),
+    object_id: str = Path(..., description="Object id"),
 ):
     log = create_log(__name__)
     table_name = get_dscenario_table(object_type)
-    id_column = get_dscenario_object_id_column(object_type)
+    id_column, id_type = get_dscenario_object_id_column(object_type)
+    # Transform object_id to the correct type
+    object_id = id_type(object_id)
 
     where_data = {"dscenario_id": dscenario_id, id_column: object_id}
 
-    status = await execute_sql_delete(
+    await execute_sql_delete(
         log=log,
         db_manager=commons["db_manager"],
         table_name=table_name,
@@ -375,9 +425,6 @@ async def delete_dscenario_object(
         schema=commons["schema"],
         user=commons["user_id"],
     )
-
-    if not status:
-        raise HTTPException(status_code=404, detail="Object not found")
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
 
