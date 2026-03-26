@@ -10,7 +10,7 @@ dependencies = [
     "pydantic-geojson==0.3.2",
     "httpx==0.28.1",
     "psycopg[binary,pool]==3.3.3",
-    "requests==2.32.5",
+    "requests==2.33.0",
     "pyproj==3.7.2",
     "pyjwt[crypto]==2.12.1",
     "cryptography==46.0.5",
