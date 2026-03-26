@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-03-26
+
+### Security
+
+- Bumped `requests` version
+
 ## [0.8.2] - 2026-03-25
 
 ### Changed
@@ -175,7 +181,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/giswater/giswater-api/compare/v0.8.2...main
+[unreleased]: https://github.com/giswater/giswater-api/compare/v0.8.3...main
+[0.8.3]: https://github.com/giswater/giswater-api/compare/v0.8.2...0.8.3
 [0.8.2]: https://github.com/giswater/giswater-api/compare/v0.8.1...0.8.2
 [0.8.1]: https://github.com/giswater/giswater-api/compare/v0.8.0...0.8.1
 [0.8.0]: https://github.com/giswater/giswater-api/compare/v0.7.0...0.8.0
