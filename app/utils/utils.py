@@ -536,6 +536,62 @@ async def execute_sql_update(
     return rows
 
 
+async def execute_sql_upsert(
+    log,
+    db_manager,
+    table_name: str,
+    data: dict,
+    where_data: dict,
+    set_role: bool = True,
+    schema: str | None = None,
+    user: str | None = "anonymous",
+) -> tuple[list[dict], Literal["inserted", "updated"]]:
+    """
+    Try UPDATE first; if no row matched, INSERT with where_data + data.
+    When data is empty (only key fields provided), checks existence via SELECT instead.
+    Returns (rows, "inserted" | "updated").
+    """
+    if data:
+        rows = await execute_sql_update(
+            log=log,
+            db_manager=db_manager,
+            table_name=table_name,
+            data=data,
+            where_data=where_data,
+            set_role=set_role,
+            schema=schema,
+            user=user,
+        )
+        if rows:
+            return rows, "updated"
+    else:
+        where_clause = " AND ".join(f"{col} = %s" for col in where_data)
+        rows = await execute_sql_select(
+            log=log,
+            db_manager=db_manager,
+            table_name=table_name,
+            where_clause=where_clause,
+            parameters=tuple(where_data.values()),
+            set_role=set_role,
+            schema=schema,
+            user=user,
+        )
+        if rows:
+            return rows, "updated"
+
+    insert_data = {**where_data, **data}
+    rows = await execute_sql_insert(
+        log=log,
+        db_manager=db_manager,
+        table_name=table_name,
+        data=insert_data,
+        set_role=set_role,
+        schema=schema,
+        user=user,
+    )
+    return rows, "inserted"
+
+
 async def execute_sql_delete(
     log,
     db_manager,

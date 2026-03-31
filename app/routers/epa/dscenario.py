@@ -19,6 +19,7 @@ from ...utils.utils import (
     execute_sql_insert,
     execute_sql_select,
     execute_sql_update,
+    execute_sql_upsert,
     get_db_version,
     handle_procedure_result,
 )
@@ -120,26 +121,15 @@ async def select_dscenario(
     dscenario_id: int = Path(..., description="Dscenario id"),
 ):
     log = create_log(__name__)
-    table_name = "selector_inp_dscenario"
-    where_data = {"cur_user": commons["user_id"]}
-    rows = await execute_sql_update(
+    rows, _ = await execute_sql_upsert(
         log=log,
         db_manager=commons["db_manager"],
-        table_name=table_name,
+        table_name="selector_inp_dscenario",
         data={"dscenario_id": dscenario_id},
-        where_data=where_data,
+        where_data={"cur_user": commons["user_id"]},
         schema=commons["schema"],
         user=commons["user_id"],
     )
-    if not rows:
-        rows = await execute_sql_insert(
-            log=log,
-            db_manager=commons["db_manager"],
-            table_name=table_name,
-            data={"dscenario_id": dscenario_id, "cur_user": commons["user_id"]},
-            schema=commons["schema"],
-            user=commons["user_id"],
-        )
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
     return {
         "status": "Accepted",
@@ -290,6 +280,68 @@ async def insert_dscenario_objects(
     }
 
 
+@router.put(
+    "/dscenarios/{dscenario_id}/{object_type}",
+    description="Upsert objects (single or bulk) for a dscenario and object type",
+    response_model=DscenarioObjectResponse,
+    response_model_exclude_unset=True,
+)
+async def upsert_dscenario_objects(
+    commons: CommonsDep,
+    dscenario_id: int = Path(..., description="Dscenario id"),
+    object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
+    objects: Union[Dict[str, Any], List[Dict[str, Any]]] = Body(
+        ...,
+        title="Objects",
+        description="Single object or list of objects to upsert; each must include the id field for this object type",
+    ),
+):
+    log = create_log(__name__)
+    table_name = get_dscenario_table(object_type)
+    id_column, id_type = get_dscenario_object_id_column(object_type)
+
+    items_list = [objects] if isinstance(objects, dict) else objects
+
+    all_rows: List[Dict[str, Any]] = []
+    for obj in items_list:
+        row = dict(obj)
+        row.pop("dscenario_id", None)
+        if id_column not in row:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Each object must include '{id_column}'",
+            )
+        object_id = id_type(row.pop(id_column))
+
+        where_data = {"dscenario_id": dscenario_id, id_column: object_id}
+        rows, _ = await execute_sql_upsert(
+            log=log,
+            db_manager=commons["db_manager"],
+            table_name=table_name,
+            data=row,
+            where_data=where_data,
+            schema=commons["schema"],
+            user=commons["user_id"],
+        )
+        all_rows.extend(rows)
+
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
+
+    return {
+        "status": "Accepted",
+        "message": {"level": 3, "text": f"Upserted {len(all_rows)} rows"},
+        "version": {"db": db_version, "api": commons["api_version"]},
+        "body": {
+            "form": None,
+            "feature": None,
+            "data": {
+                "items": all_rows,
+                "count": len(all_rows),
+            },
+        },
+    }
+
+
 @router.get(
     "/dscenarios/{dscenario_id}/{object_type}/{object_id}",
     description="Get a single object of a given type for a dscenario",
@@ -385,6 +437,57 @@ async def update_dscenario_object(
     return {
         "status": "Accepted",
         "message": {"level": 3, "text": "Object updated"},
+        "version": {"db": db_version, "api": commons["api_version"]},
+        "body": {
+            "form": None,
+            "feature": None,
+            "data": {
+                "items": rows,
+                "count": len(rows),
+            },
+        },
+    }
+
+
+@router.put(
+    "/dscenarios/{dscenario_id}/{object_type}/{object_id}",
+    description="Upsert a single object for a dscenario and object type",
+    response_model=DscenarioObjectResponse,
+    response_model_exclude_unset=True,
+)
+async def upsert_dscenario_object(
+    commons: CommonsDep,
+    dscenario_id: int = Path(..., description="Dscenario id"),
+    object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
+    object_id: str = Path(..., description="Object id"),
+    data: Dict[str, Any] = Body(..., title="Object", description="Fields to upsert"),
+):
+    log = create_log(__name__)
+    table_name = get_dscenario_table(object_type)
+    id_column, id_type = get_dscenario_object_id_column(object_type)
+    object_id = id_type(object_id)
+
+    upsert_data = dict(data)
+    upsert_data.pop("dscenario_id", None)
+    upsert_data.pop(id_column, None)
+
+    where_data = {"dscenario_id": dscenario_id, id_column: object_id}
+    rows, op = await execute_sql_upsert(
+        log=log,
+        db_manager=commons["db_manager"],
+        table_name=table_name,
+        data=upsert_data,
+        where_data=where_data,
+        schema=commons["schema"],
+        user=commons["user_id"],
+    )
+    message_text = "Object inserted" if op == "inserted" else "Object updated"
+
+    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
+
+    return {
+        "status": "Accepted",
+        "message": {"level": 3, "text": message_text},
         "version": {"db": db_version, "api": commons["api_version"]},
         "body": {
             "form": None,

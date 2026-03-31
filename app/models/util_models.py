@@ -322,4 +322,6 @@ class FilterFieldModel(BaseModel):
     """Filter field model"""
 
     value: Any = Field(..., description="Value")
-    filterSign: Literal["=", ">", "<", ">=", "<=", "LIKE", "ILIKE", "BETWEEN"] = Field("=", description="Filter sign")
+    filterSign: Literal["=", ">", "<", ">=", "<=", "LIKE", "ILIKE", "BETWEEN", "IN"] = Field(
+        "=", description="Filter sign"
+    )
