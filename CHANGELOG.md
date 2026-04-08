@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-08
+
+### Added
+
+- Keycloak admin client id
+- Add execute upsert on utils and new upsert endpoint for dscenario objects
+
+## [0.8.3] - 2026-03-26
+
 ### Added
 
 - Github workflow to publish on Docker Hub
-
-## [0.8.3] - 2026-03-26
 
 ### Security
 
