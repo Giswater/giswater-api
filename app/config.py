@@ -78,6 +78,7 @@ class Settings:
     keycloak_realm: str | None = _get_env("KEYCLOAK_REALM")
     keycloak_client_id: str | None = _get_env("KEYCLOAK_CLIENT_ID")
     keycloak_client_secret: str | None = _get_env("KEYCLOAK_CLIENT_SECRET")
+    keycloak_admin_client_id: str | None = _get_env("KEYCLOAK_ADMIN_CLIENT_ID")
     keycloak_admin_client_secret: str | None = _get_env("KEYCLOAK_ADMIN_CLIENT_SECRET")
     keycloak_callback_uri: str | None = _get_env("KEYCLOAK_CALLBACK_URI")
 
@@ -106,6 +107,7 @@ class Settings:
                     ("KEYCLOAK_REALM", self.keycloak_realm),
                     ("KEYCLOAK_CLIENT_ID", self.keycloak_client_id),
                     ("KEYCLOAK_CLIENT_SECRET", self.keycloak_client_secret),
+                    ("KEYCLOAK_ADMIN_CLIENT_ID", self.keycloak_admin_client_id),
                     ("KEYCLOAK_ADMIN_CLIENT_SECRET", self.keycloak_admin_client_secret),
                     ("KEYCLOAK_CALLBACK_URI", self.keycloak_callback_uri),
                 )

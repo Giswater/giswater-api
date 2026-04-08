@@ -15,6 +15,7 @@ if settings.keycloak_enabled:
         server_url=settings.keycloak_url,
         client_id=settings.keycloak_client_id,
         client_secret=settings.keycloak_client_secret,
+        admin_client_id=settings.keycloak_admin_client_id,
         admin_client_secret=settings.keycloak_admin_client_secret,
         realm=settings.keycloak_realm,
         callback_uri=settings.keycloak_callback_uri,
