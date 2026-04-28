@@ -9,7 +9,7 @@ import pytest
 
 from uuid import uuid4
 
-from tests.helpers import assert_healthy
+from tests.helpers import assert_ready
 
 
 def _new_hydrometer_code() -> str:
@@ -29,7 +29,7 @@ def _insert_hydrometers(client, default_params, payload):
 
 
 def test_insert_hydrometer_single(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     code = _new_hydrometer_code()
     payload = _hydrometer_payload(code)
@@ -44,7 +44,7 @@ def test_insert_hydrometer_single(client, default_params):
 
 
 def test_insert_hydrometers_bulk(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     payload = [_hydrometer_payload(_new_hydrometer_code()) for _ in range(2)]
 
@@ -58,7 +58,7 @@ def test_insert_hydrometers_bulk(client, default_params):
 
 
 def test_update_hydrometer_single(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     code = _new_hydrometer_code()
     _insert_hydrometers(client, default_params, _hydrometer_payload(code))
@@ -74,7 +74,7 @@ def test_update_hydrometer_single(client, default_params):
 
 
 def test_update_hydrometers_bulk(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     codes = [_new_hydrometer_code(), _new_hydrometer_code()]
     payload = [_hydrometer_payload(code) for code in codes]
@@ -94,7 +94,7 @@ def test_update_hydrometers_bulk(client, default_params):
 
 
 def test_delete_hydrometer_single(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     code = _new_hydrometer_code()
     _insert_hydrometers(client, default_params, _hydrometer_payload(code))
@@ -109,7 +109,7 @@ def test_delete_hydrometer_single(client, default_params):
 
 
 def test_delete_hydrometers_bulk(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     codes = [_new_hydrometer_code(), _new_hydrometer_code()]
     payload = [_hydrometer_payload(code) for code in codes]
@@ -126,7 +126,7 @@ def test_delete_hydrometers_bulk(client, default_params):
 
 @pytest.mark.destructive
 def test_replace_all_hydrometers(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     payload = [_hydrometer_payload(_new_hydrometer_code()) for _ in range(2)]
     response = client.put("/crm/hydrometers", params=default_params, json=payload)

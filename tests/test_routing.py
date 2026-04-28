@@ -10,12 +10,12 @@ import warnings
 
 import pytest
 
-from tests.helpers import assert_healthy
+from tests.helpers import assert_ready
 
 
 @pytest.mark.ws
 def test_get_object_optimal_path_order(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/routing/getobjectoptimalpathorder",
@@ -43,7 +43,7 @@ def test_get_object_optimal_path_order(client, default_params):
 
 @pytest.mark.ws
 def test_get_object_parameter_order(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/routing/getobjectparameterorder",

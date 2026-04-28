@@ -8,7 +8,7 @@ or (at your option) any later version.
 import pytest
 from uuid import uuid4
 
-from tests.helpers import assert_healthy
+from tests.helpers import assert_ready
 
 
 DSCENARIO_OBJECT_TYPES = [
@@ -59,7 +59,7 @@ def _create_dscenario(client, default_params) -> int:
 @pytest.mark.parametrize("object_type", DSCENARIO_OBJECT_TYPES)
 def test_get_dscenario_objects(client, default_params, object_type: str):
     """Smoke test for list endpoint for each dscenario object type."""
-    assert_healthy(client)
+    assert_ready(client)
 
     # Use a generic dscenario_id; database contents will determine whether it's non-empty.
     response = client.get(f"/epa/dscenarios/1/{object_type}", params=default_params)
@@ -74,7 +74,7 @@ def test_get_dscenario_objects(client, default_params, object_type: str):
 @pytest.mark.parametrize("object_type", DSCENARIO_OBJECT_TYPES)
 def test_get_dscenario_object_not_found(client, default_params, object_type: str):
     """GET single object should return 404 for non-existing ids."""
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(f"/epa/dscenarios/999999/{object_type}/999999", params=default_params)
 
@@ -86,7 +86,7 @@ def test_get_dscenario_object_not_found(client, default_params, object_type: str
 @pytest.mark.parametrize("object_type", DSCENARIO_OBJECT_TYPES)
 def test_delete_dscenario_object_not_found(client, default_params, object_type: str):
     """DELETE single object should return 404 for non-existing ids."""
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.delete(
         f"/epa/dscenarios/999999/{object_type}/999999",
@@ -101,7 +101,7 @@ def test_delete_dscenario_object_not_found(client, default_params, object_type: 
 @pytest.mark.destructive
 def test_create_and_delete_dscenario(client, default_params):
     """Create a dscenario using the DB function and then delete it."""
-    assert_healthy(client)
+    assert_ready(client)
 
     dscenario_id = _create_dscenario(client, default_params)
 
@@ -115,7 +115,7 @@ def test_create_and_delete_dscenario(client, default_params):
 @pytest.mark.ws
 def test_delete_dscenario_not_found(client, default_params):
     """Deleting a non-existing dscenario should return 404."""
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.delete("/epa/dscenarios/999999", params=default_params)
 

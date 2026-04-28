@@ -7,12 +7,12 @@ or (at your option) any later version.
 
 import pytest
 
-from tests.helpers import assert_healthy
+from tests.helpers import assert_ready
 
 
 @pytest.mark.ws
 def test_get_mincuts(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get("/om/mincuts", params=default_params)
 
@@ -33,7 +33,7 @@ def test_get_mincuts(client, default_params):
 def test_create_profile(
     client, default_params, initial_node_id: int, final_node_id: int, expected_status: int, expected_api_status: str
 ):
-    assert_healthy(client)
+    assert_ready(client)
 
     payload = {
         "initial_node_id": initial_node_id,
@@ -61,7 +61,7 @@ def test_create_profile(
     ],
 )
 def test_flow_success(client, default_params, direction: str, node_id: int):
-    assert_healthy(client)
+    assert_ready(client)
 
     payload = {"direction": direction, "node_id": node_id}
     response = client.post("/om/flow", params=default_params, json=payload)
@@ -74,7 +74,7 @@ def test_flow_success(client, default_params, direction: str, node_id: int):
 
 @pytest.mark.ud
 def test_flow_fails_without_node_or_coordinates(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.post("/om/flow", params=default_params, json={"direction": "upstream"})
 
@@ -84,7 +84,7 @@ def test_flow_fails_without_node_or_coordinates(client, default_params):
 
 @pytest.mark.ud
 def test_flow_fails_with_invalid_direction(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.post("/om/flow", params=default_params, json={"direction": "sideways", "node_id": 35})
 
@@ -139,7 +139,7 @@ def _delete_mincut(client, default_params, mincut_id: int):
 @pytest.mark.destructive
 def test_mincut_lifecycle(client, default_params):
     """Full lifecycle: create -> get dialog -> update -> get valves -> start -> end -> delete."""
-    assert_healthy(client)
+    assert_ready(client)
 
     # 1. Create
     mincut_id = _create_mincut(client, default_params)
@@ -186,7 +186,7 @@ def test_mincut_lifecycle(client, default_params):
 @pytest.mark.destructive
 def test_mincut_cancel(client, default_params):
     """Create a mincut, cancel it, then delete it."""
-    assert_healthy(client)
+    assert_ready(client)
 
     mincut_id = _create_mincut(client, default_params)
     response = client.post(f"/om/mincuts/{mincut_id}/cancel", params=default_params)
@@ -199,7 +199,7 @@ def test_mincut_cancel(client, default_params):
 @pytest.mark.destructive
 def test_valve_toggle_unaccess(client, default_params):
     """Create a mincut, get valves, toggle unaccess on the first valve found."""
-    assert_healthy(client)
+    assert_ready(client)
 
     mincut_id = _create_mincut(client, default_params)
     try:
@@ -229,7 +229,7 @@ def test_valve_toggle_unaccess(client, default_params):
 @pytest.mark.destructive
 def test_valve_toggle_status(client, default_params):
     """Create a mincut, get valves, toggle status on the first valve found."""
-    assert_healthy(client)
+    assert_ready(client)
 
     mincut_id = _create_mincut(client, default_params)
     try:
@@ -262,7 +262,7 @@ def test_valve_toggle_status(client, default_params):
 
 @pytest.mark.ws
 def test_get_waterbalance(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get("/om/waterbalance", params=default_params)
 

@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 
 import pytest
-from tests.helpers import assert_healthy
+from tests.helpers import assert_ready
 
 
 @pytest.mark.ws
@@ -19,7 +19,7 @@ from tests.helpers import assert_healthy
     ],
 )
 def test_get_info_from_coordinates_ws(client, default_params, xcoord: float, ycoord: float, zoom_ratio: int):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getinfofromcoordinates",
@@ -49,7 +49,7 @@ def test_get_info_from_coordinates_ws(client, default_params, xcoord: float, yco
     ],
 )
 def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, ycoord: float, zoom_ratio: int):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getinfofromcoordinates",
@@ -80,7 +80,7 @@ def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, yco
     ],
 )
 def test_get_feature_changes(client, default_params, feature_type, action, last_feeding):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getfeaturechanges",
@@ -102,7 +102,7 @@ def test_get_feature_changes(client, default_params, feature_type, action, last_
 
 
 def test_get_features_from_polygon(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     polygon = (
         "MULTIPOLYGON (((419023.56746357883 4576663.176018708, "
@@ -131,7 +131,7 @@ def test_get_features_from_polygon(client, default_params):
 
 @pytest.mark.skip(reason="getselectors DB function needs refactoring")
 def test_get_selectors(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getselectors",
@@ -148,7 +148,7 @@ def test_get_selectors(client, default_params):
 
 
 def test_get_search(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getsearch",
@@ -165,7 +165,7 @@ def test_get_search(client, default_params):
 
 
 def test_get_arc_audit_values(client, default_params):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getarcauditvalues",
@@ -191,7 +191,7 @@ def test_get_arc_audit_values(client, default_params):
     ],
 )
 def test_get_list(client, default_params, table_name):
-    assert_healthy(client)
+    assert_ready(client)
 
     response = client.get(
         "/basic/getlist",
