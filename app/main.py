@@ -7,12 +7,13 @@ or (at your option) any later version.
 
 import os
 import uuid
+import asyncio
 from datetime import date, datetime
 from contextlib import asynccontextmanager
 from importlib.metadata import version as pkg_version
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from psycopg import sql
 from psycopg.rows import dict_row
 
@@ -21,7 +22,12 @@ from .keycloak import idp
 from .config import settings
 from .utils import utils
 from .dependencies import verify_log_admin
-from .exceptions import ProcedureError, procedure_error_handler
+from .exceptions import (
+    DatabaseUnavailableError,
+    ProcedureError,
+    database_unavailable_error_handler,
+    procedure_error_handler,
+)
 from .logging import request_logging_middleware
 from .routers.basic import basic
 from .routers.om import mincut, profile, flow, waterbalance
@@ -46,10 +52,16 @@ schema_rate_limiter = utils.create_rate_limiter(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await db_manager.init_conn_pool()
-    if settings.log_db_enabled:
+    # Do not block startup if DB is down; requests will retry connections lazily.
+    try:
+        await asyncio.wait_for(db_manager.init_conn_pool(), timeout=min(settings.db_connect_timeout, 5))
+    except Exception as exc:
+        print(f"Database init skipped during startup: {exc}")
+
+    if settings.log_db_enabled and db_manager.connection_pool is not None:
         try:
-            await utils.ensure_log_schema(db_manager)
+            # Keep startup responsive if DB logs schema cannot be initialized.
+            await asyncio.wait_for(utils.ensure_log_schema(db_manager), timeout=min(settings.db_connect_timeout, 5))
         except Exception as exc:
             print(f"Failed to initialize log schema: {exc}")
     app_logger = utils.create_log("api")
@@ -68,7 +80,10 @@ app = FastAPI(
     title=TITLE,
     description=DESCRIPTION,
     root_path="/api/v1",
-    responses={500: {"model": GwErrorResponse, "description": "Database function error"}},
+    responses={
+        500: {"model": GwErrorResponse, "description": "Database function error"},
+        503: {"model": GwErrorResponse, "description": "Database unavailable"},
+    },
     lifespan=lifespan,
 )
 
@@ -77,6 +92,7 @@ app.middleware("http")(request_logging_middleware)
 
 # Register exception handlers
 app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore
+app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore
 
 # Add Keycloak Swagger config if enabled
 if idp:
@@ -126,17 +142,17 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
-    try:
-        async with db_manager.get_db() as conn:
-            healthy = conn is not None
-    except Exception:
-        healthy = False
+    """Liveness probe: process is up."""
+    return {"status": "ok"}
 
-    return {
-        "status": "healthy" if healthy else "degraded",
-        "timestamp": __import__("datetime").datetime.now().isoformat(),
-    }
+
+@app.get("/ready")
+async def ready():
+    """Readiness probe: process is up and dependencies are reachable."""
+    db_ready = await db_manager.is_db_available(timeout_seconds=2.0)
+    if not db_ready:
+        return JSONResponse(status_code=503, content={"status": "not_ready", "checks": {"database": "down"}})
+    return {"status": "ready", "checks": {"database": "up"}}
 
 
 def _manage_where_clauses(where_clauses: list, params: list, from_, to, endpoint, method, status, user):
@@ -211,7 +227,7 @@ async def get_logs(
 
     async with db_manager.get_db() as conn:
         if conn is None:
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 await cursor.execute(query, tuple(params))
@@ -250,7 +266,7 @@ async def get_db_logs(
 
     async with db_manager.get_db() as conn:
         if conn is None:
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 await cursor.execute(query, (rid, limit))

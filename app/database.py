@@ -11,6 +11,7 @@ from psycopg_pool import AsyncConnectionPool
 from fastapi import HTTPException
 
 from .config import settings
+from .exceptions import DatabaseUnavailableError
 
 
 class DatabaseManager:
@@ -65,20 +66,34 @@ class DatabaseManager:
         Yields:
             psycopg connection or None if connection fails
         """
-        max_tries = 2
-        n_try = 0
-        while self.connection_pool is None and n_try < max_tries:
-            await self.init_conn_pool()
-            n_try += 1
+        max_tries = 3
+        retry_delay_seconds = 2
+
+        for n_try in range(max_tries):
             if self.connection_pool is None:
-                await asyncio.sleep(5)
+                await self.init_conn_pool()
+                if self.connection_pool is None:
+                    if n_try < max_tries - 1:
+                        await asyncio.sleep(retry_delay_seconds)
+                    continue
 
-        if self.connection_pool is None:
-            yield None
-            return
+            try:
+                async with self.connection_pool.connection() as conn:
+                    yield conn
+                    return
+            except Exception as e:
+                print(f"Failed to acquire database connection (attempt {n_try + 1}/{max_tries}): {e}")
+                # Pool may be stale after DB restarts/outages; force recreation.
+                try:
+                    if self.connection_pool is not None:
+                        await self.connection_pool.close()
+                except Exception:
+                    pass
+                self.connection_pool = None
+                if n_try < max_tries - 1:
+                    await asyncio.sleep(retry_delay_seconds)
 
-        async with self.connection_pool.connection() as conn:
-            yield conn
+        yield None
 
     async def validate_schema(self, schema: str) -> bool:
         """
@@ -95,7 +110,7 @@ class DatabaseManager:
         """
         async with self.get_db() as conn:
             if conn is None:
-                raise HTTPException(status_code=500, detail="Database connection failed")
+                raise DatabaseUnavailableError()
             try:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
@@ -104,6 +119,28 @@ class DatabaseManager:
                     return await cursor.fetchone() is not None
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e)) from e
+
+    async def is_db_available(self, timeout_seconds: float = 2.0) -> bool:
+        """
+        Fast one-shot availability check used by health endpoints.
+        Returns quickly when DB is unavailable.
+        """
+        if self.connection_pool is None:
+            try:
+                await asyncio.wait_for(self.init_conn_pool(), timeout=timeout_seconds)
+            except Exception:
+                return False
+            if self.connection_pool is None:
+                return False
+
+        try:
+            async with self.connection_pool.connection(timeout=timeout_seconds) as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT 1")
+                    await cursor.fetchone()
+            return True
+        except Exception:
+            return False
 
     async def close(self):
         """Close the connection pool."""

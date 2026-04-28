@@ -16,6 +16,23 @@ class ProcedureError(Exception):
         self.result = result
 
 
+class DatabaseUnavailableError(Exception):
+    """Raised when the database cannot be reached."""
+
+
+def db_unavailable_payload() -> dict:
+    return {
+        "status": "Failed",
+        "message": {"level": 2, "text": "Database unavailable. Please retry later."},
+        "error": "database_unavailable",
+    }
+
+
 async def procedure_error_handler(request: Request, exc: ProcedureError):
     # Add your logging here - you have access to request.url, request.headers, etc.
     return JSONResponse(status_code=500, content=exc.result)
+
+
+async def database_unavailable_error_handler(request: Request, exc: DatabaseUnavailableError):
+    # Add your logging here - you have access to request.url, request.headers, etc.
+    return JSONResponse(status_code=503, content=db_unavailable_payload())

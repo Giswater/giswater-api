@@ -24,7 +24,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
 from ..models.util_models import APIResponse
-from ..exceptions import ProcedureError
+from ..exceptions import DatabaseUnavailableError, ProcedureError
 from ..config import settings
 
 _rate_limit_state: dict[tuple[str, str], deque[float]] = defaultdict(deque)
@@ -80,16 +80,23 @@ def load_plugins(app: FastAPI):
     """
     from importlib import import_module
 
-    plugins_dir = "plugins"
+    plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "plugins"))
     if not os.path.exists(plugins_dir):
         return
 
-    for plugin in os.listdir(plugins_dir):
+    # Do not block API startup when plugin directory exists but is not accessible.
+    try:
+        plugin_entries = os.listdir(plugins_dir)
+    except PermissionError as e:
+        logging.warning("Skipping plugin loading: cannot read '%s' (%s)", plugins_dir, e)
+        return
+
+    for plugin in plugin_entries:
         if not os.path.isdir(f"{plugins_dir}/{plugin}"):
             continue
 
         try:
-            module = import_module(f".{plugin}", package=f"{plugins_dir}")
+            module = import_module(f"plugins.{plugin}")
             module.register_plugin(app)
         except Exception as e:
             print(f"Error loading plugin {plugin}: {e}")
@@ -255,7 +262,7 @@ async def execute_procedure(  # noqa: C901
         if conn is None:
             log.error("No connection to database")
             remove_handlers()
-            return create_response(status=False, message="No connection to database")
+            raise DatabaseUnavailableError()
         result = dict()
         print(f"SERVER EXECUTION: {sql}\n")
         if user == "anonymous":
@@ -355,7 +362,7 @@ async def execute_sql_select(
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 identity = None if user == "anonymous" else user
@@ -405,7 +412,7 @@ async def execute_sql(
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 identity = None if user == "anonymous" else user
@@ -462,7 +469,7 @@ async def execute_sql_insert(
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 identity = None if user == "anonymous" else user
@@ -520,7 +527,7 @@ async def execute_sql_update(
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 identity = None if user == "anonymous" else user
@@ -629,7 +636,7 @@ async def execute_sql_delete(
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
                 rows = await execute_sql_select(
@@ -674,7 +681,7 @@ async def get_db_version(log, db_manager, schema: str | None = None) -> str | No
     async with db_manager.get_db() as conn:
         if conn is None:
             log.error("No connection to database")
-            raise HTTPException(status_code=500, detail="No connection to database")
+            raise DatabaseUnavailableError()
         try:
             async with conn.cursor() as cursor:
                 await cursor.execute(query)
@@ -697,44 +704,58 @@ def create_log(class_name):
     # Directory where log file is saved, changes location depending on what tenant is used
     # logs_directory = "/var/log/giswater-api-server"
     logs_directory = settings.log_dir
-    if not os.path.exists(logs_directory):
-        os.makedirs(logs_directory)
 
-    # Check if today's direcotry is created
-    today_directory = f"{logs_directory}/{today}"
-    if not os.path.exists(today_directory):
-        # This shouldn't be necessary, but somehow the directory magically apears
-        # (only the first time of the day it is created)
-        try:
-            os.makedirs(today_directory)
-        except FileExistsError:
-            print("Directory already exists. wtf")
-
-    service_name = os.getcwd().split(os.sep)[-1]
-    # Select file name for the log
-    log_file = f"{service_name}_{today}.log"
-
-    log_path = os.path.join(today_directory, log_file)
-    if not os.path.exists(log_path):
-        open(log_path, "a", encoding="utf-8").close()
-
-    fileh = TimedRotatingFileHandler(
-        log_path,
-        when="midnight",
-        interval=1,
-        backupCount=settings.log_rotate_days,
-        encoding="utf-8",
-        utc=False,
-    )
-    # Declares how log info is added to the file
-    formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
-    fileh.setFormatter(formatter)
-
-    # Removes previous handlers on root Logger
-    # Gets root Logger and add handler
     logger_name = f"{class_name.split('.')[-1]}"
     log = logging.getLogger(logger_name)
     remove_handlers(log)
+
+    def _fallback_stream_logger(reason: Exception):
+        print(f"File logging disabled ({reason}). Falling back to stdout logging.")
+        stream_handler = logging.StreamHandler()
+        formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
+        stream_handler.setFormatter(formatter)
+        log.addHandler(stream_handler)
+        log.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+        return log
+
+    try:
+        if not os.path.exists(logs_directory):
+            os.makedirs(logs_directory)
+
+        # Check if today's direcotry is created
+        today_directory = f"{logs_directory}/{today}"
+        if not os.path.exists(today_directory):
+            # This shouldn't be necessary, but somehow the directory magically apears
+            # (only the first time of the day it is created)
+            try:
+                os.makedirs(today_directory)
+            except FileExistsError:
+                print("Directory already exists. wtf")
+
+        service_name = os.getcwd().split(os.sep)[-1]
+        # Select file name for the log
+        log_file = f"{service_name}_{today}.log"
+
+        log_path = os.path.join(today_directory, log_file)
+        if not os.path.exists(log_path):
+            open(log_path, "a", encoding="utf-8").close()
+
+        fileh = TimedRotatingFileHandler(
+            log_path,
+            when="midnight",
+            interval=1,
+            backupCount=settings.log_rotate_days,
+            encoding="utf-8",
+            utc=False,
+        )
+        # Declares how log info is added to the file
+        formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
+        fileh.setFormatter(formatter)
+    except OSError as e:
+        return _fallback_stream_logger(e)
+
+    # Removes previous handlers on root Logger
+    # Gets root Logger and add handler
     log.addHandler(fileh)
     log.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
     return log
