@@ -204,7 +204,8 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 | Endpoint                          | Method | Description                                                                 |
 | --------------------------------- | ------ | --------------------------------------------------------------------------- |
 | `/`                               | GET    | Root endpoint (version info)                                                |
-| `/health`                         | GET    | Health check (DB connection status)                                         |
+| `/health`                         | GET    | Health check                                                                |
+| `/ready`                          | GET    | Readiness check (database connection status)                                |
 
 ### Basic Module
 
