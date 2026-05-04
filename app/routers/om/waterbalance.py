@@ -6,9 +6,10 @@ or (at your option) any later version.
 """
 
 from fastapi import APIRouter, Query
-from ...utils.utils import create_log, get_db_version, execute_sql
-from ...models.om.waterbalance_models import GetWaterbalanceResponse
+
 from ...dependencies import CommonsDep
+from ...models.om.waterbalance_models import GetWaterbalanceResponse
+from ...utils.utils import create_log, execute_sql, get_db_version
 
 router = APIRouter(prefix="/om", tags=["OM - Water Balance"])
 
@@ -26,14 +27,14 @@ async def get_waterbalance(
     log = create_log(__name__)
 
     sql = """
-        WITH sel_expl AS (
+    WITH sel_expl AS (
             SELECT selector_expl.expl_id
             FROM {schema}.selector_expl
             WHERE selector_expl.cur_user = CURRENT_USER
         )
         SELECT
             w.node_id,
-            w.dma_id,
+            w.mapzone_id AS dma_id,
             w.flow_sign,
             json_build_object(
                 'node_id', w.node_id,
@@ -79,7 +80,7 @@ async def get_waterbalance(
                 )
             ) AS line
         FROM {schema}.ve_dma d
-        JOIN {schema}.om_waterbalance_dma_graph w ON w.dma_id = d.dma_id
+        JOIN {schema}.mapzone_graph w ON w.mapzone_id = d.dma_id
         JOIN {schema}.node n ON w.node_id = n.node_id
         JOIN {schema}.cat_node cn ON cn.id = n.nodecat_id
         WHERE EXISTS (
@@ -87,6 +88,7 @@ async def get_waterbalance(
             FROM sel_expl
             WHERE sel_expl.expl_id = ANY (d.expl_id)
         )
+        AND w.mapzone_type = 'DMA'
         AND d.dma_id > 0
         AND n.the_geom IS NOT NULL
         AND d.the_geom IS NOT NULL
