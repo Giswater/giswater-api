@@ -30,7 +30,7 @@ def test_tenant_health(client):
 
 
 def test_admin_health(client):
-    response = client.get("/admin/health", auth=("admin", "admin"))
+    response = client.get("/admin/health", headers={"host": "bgeo360.com"}, auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
