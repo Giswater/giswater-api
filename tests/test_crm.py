@@ -9,7 +9,7 @@ import pytest
 
 from uuid import uuid4
 
-from tests.helpers import assert_ready
+from tests.helpers import assert_ready, api
 
 
 def _new_hydrometer_code() -> str:
@@ -21,7 +21,7 @@ def _hydrometer_payload(code: str) -> dict:
 
 
 def _insert_hydrometers(client, default_params, payload):
-    response = client.post("/crm/hydrometers", params=default_params, json=payload)
+    response = client.post(api("/crm/hydrometers"), params=default_params, json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
@@ -34,7 +34,7 @@ def test_insert_hydrometer_single(client, default_params):
     code = _new_hydrometer_code()
     payload = _hydrometer_payload(code)
 
-    response = client.post("/crm/hydrometers", params=default_params, json=payload)
+    response = client.post(api("/crm/hydrometers"), params=default_params, json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -48,7 +48,7 @@ def test_insert_hydrometers_bulk(client, default_params):
 
     payload = [_hydrometer_payload(_new_hydrometer_code()) for _ in range(2)]
 
-    response = client.post("/crm/hydrometers", params=default_params, json=payload)
+    response = client.post(api("/crm/hydrometers"), params=default_params, json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -64,7 +64,7 @@ def test_update_hydrometer_single(client, default_params):
     _insert_hydrometers(client, default_params, _hydrometer_payload(code))
 
     update_payload = {"code": code, "hydroNumber": f"UPDATED-{code}"}
-    response = client.patch(f"/crm/hydrometers/{code}", params=default_params, json=update_payload)
+    response = client.patch(api(f"/crm/hydrometers/{code}"), params=default_params, json=update_payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -84,7 +84,7 @@ def test_update_hydrometers_bulk(client, default_params):
         {"code": codes[0], "hydroNumber": f"UPDATED-{codes[0]}"},
         {"code": codes[1], "hydroNumber": f"UPDATED-{codes[1]}"},
     ]
-    response = client.patch("/crm/hydrometers", params=default_params, json=update_payload)
+    response = client.patch(api("/crm/hydrometers"), params=default_params, json=update_payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -99,7 +99,7 @@ def test_delete_hydrometer_single(client, default_params):
     code = _new_hydrometer_code()
     _insert_hydrometers(client, default_params, _hydrometer_payload(code))
 
-    response = client.delete(f"/crm/hydrometers/{code}", params=default_params)
+    response = client.delete(api(f"/crm/hydrometers/{code}"), params=default_params)
 
     assert response.status_code == 200
     data = response.json()
@@ -115,7 +115,7 @@ def test_delete_hydrometers_bulk(client, default_params):
     payload = [_hydrometer_payload(code) for code in codes]
     _insert_hydrometers(client, default_params, payload)
 
-    response = client.request("DELETE", "/crm/hydrometers", params=default_params, json=codes)
+    response = client.request("DELETE", api("/crm/hydrometers"), params=default_params, json=codes)
 
     assert response.status_code == 200
     data = response.json()
@@ -129,7 +129,7 @@ def test_replace_all_hydrometers(client, default_params):
     assert_ready(client)
 
     payload = [_hydrometer_payload(_new_hydrometer_code()) for _ in range(2)]
-    response = client.put("/crm/hydrometers", params=default_params, json=payload)
+    response = client.put(api("/crm/hydrometers"), params=default_params, json=payload)
 
     assert response.status_code == 200
     data = response.json()

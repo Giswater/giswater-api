@@ -5,18 +5,22 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import os
 import asyncio
+import os
 import sys
 
-# Disable DB logging during tests
+# Force test-specific globals BEFORE app.main is imported so the lifespan
+# loads tenants from the fixtures directory.
+os.environ.setdefault("BASE_DOMAIN", "bgeo360.com")
+os.environ.setdefault("TENANTS_DIR", "tests/fixtures/tenants")
+os.environ.setdefault("ADMIN_USER", "admin")
+os.environ.setdefault("ADMIN_PASSWORD", "admin")
 os.environ.setdefault("LOG_DB_ENABLED", "false")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.main import app  # noqa: E402
-
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -34,5 +38,5 @@ def default_params() -> dict[str, str]:
 
 @pytest.fixture
 def client(default_headers: dict[str, str]):
-    with TestClient(app, headers=default_headers) as client:
-        yield client
+    with TestClient(app, base_url="http://test.bgeo360.com", headers=default_headers) as c:
+        yield c

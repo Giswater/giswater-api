@@ -5,9 +5,11 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+from tests.helpers import api
+
 
 def test_get_status(client):
-    response = client.get("/")
+    response = client.get(api("/"))
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
@@ -18,3 +20,24 @@ def test_health(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
+
+
+def test_tenant_health(client):
+    response = client.get(api("/health"))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+
+
+def test_admin_health(client):
+    response = client.get("/admin/health", headers={"host": "bgeo360.com"}, auth=("admin", "admin"))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+
+
+def test_example_env_not_loaded_as_tenant(client):
+    response = client.get(api("/health"), headers={"host": "example.bgeo360.com"})
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == "Unknown tenant 'example'"

@@ -7,14 +7,14 @@ or (at your option) any later version.
 
 import pytest
 
-from tests.helpers import assert_ready
+from tests.helpers import assert_ready, api
 
 
 @pytest.mark.ws
 def test_get_mincuts(client, default_params):
     assert_ready(client)
 
-    response = client.get("/om/mincuts", params=default_params)
+    response = client.get(api("/om/mincuts"), params=default_params)
 
     assert response.status_code == 200
     data = response.json()
@@ -43,7 +43,7 @@ def test_create_profile(
         "scale_ev": 1000,
     }
 
-    response = client.post("/om/profiles", params=default_params, json=payload)
+    response = client.post(api("/om/profiles"), params=default_params, json=payload)
 
     assert response.status_code == expected_status
     data = response.json()
@@ -64,7 +64,7 @@ def test_flow_success(client, default_params, direction: str, node_id: int):
     assert_ready(client)
 
     payload = {"direction": direction, "node_id": node_id}
-    response = client.post("/om/flow", params=default_params, json=payload)
+    response = client.post(api("/om/flow"), params=default_params, json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -76,7 +76,7 @@ def test_flow_success(client, default_params, direction: str, node_id: int):
 def test_flow_fails_without_node_or_coordinates(client, default_params):
     assert_ready(client)
 
-    response = client.post("/om/flow", params=default_params, json={"direction": "upstream"})
+    response = client.post(api("/om/flow"), params=default_params, json={"direction": "upstream"})
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Either node ID or coordinates must be provided"
@@ -86,7 +86,7 @@ def test_flow_fails_without_node_or_coordinates(client, default_params):
 def test_flow_fails_with_invalid_direction(client, default_params):
     assert_ready(client)
 
-    response = client.post("/om/flow", params=default_params, json={"direction": "sideways", "node_id": 35})
+    response = client.post(api("/om/flow"), params=default_params, json={"direction": "sideways", "node_id": 35})
 
     assert response.status_code == 422
     assert "detail" in response.json()
@@ -115,7 +115,7 @@ def _create_mincut(client, default_params) -> int:
         },
         "use_psectors": False,
     }
-    response = client.post("/om/mincuts", params=default_params, json=payload)
+    response = client.post(api("/om/mincuts"), params=default_params, json=payload)
     assert response.status_code == 200, f"Failed to create mincut: {response.text}"
     data = response.json()
     assert data["status"] == "Accepted"
@@ -126,7 +126,7 @@ def _create_mincut(client, default_params) -> int:
 
 def _delete_mincut(client, default_params, mincut_id: int):
     """Delete a mincut (cleanup helper)."""
-    response = client.delete(f"/om/mincuts/{mincut_id}", params=default_params)
+    response = client.delete(api(f"/om/mincuts/{mincut_id}"), params=default_params)
     assert response.status_code == 200, f"Failed to delete mincut {mincut_id}: {response.text}"
 
 
@@ -145,7 +145,7 @@ def test_mincut_lifecycle(client, default_params):
     mincut_id = _create_mincut(client, default_params)
 
     # 2. Get dialog
-    response = client.get(f"/om/mincuts/{mincut_id}", params=default_params)
+    response = client.get(api(f"/om/mincuts/{mincut_id}"), params=default_params)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
@@ -156,27 +156,27 @@ def test_mincut_lifecycle(client, default_params):
         "plan": {"anl_descript": "Updated test mincut"},
         "use_psectors": False,
     }
-    response = client.patch(f"/om/mincuts/{mincut_id}", params=default_params, json=update_payload)
+    response = client.patch(api(f"/om/mincuts/{mincut_id}"), params=default_params, json=update_payload)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
 
     # 4. Get valves
-    response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+    response = client.get(api(f"/om/mincuts/{mincut_id}/valves"), params=default_params)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
 
     # 5. Start
     start_payload = {"use_psectors": False}
-    response = client.post(f"/om/mincuts/{mincut_id}/start", params=default_params, json=start_payload)
+    response = client.post(api(f"/om/mincuts/{mincut_id}/start"), params=default_params, json=start_payload)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
 
     # 6. End
     end_payload = {"shutoff_required": True, "use_psectors": False}
-    response = client.post(f"/om/mincuts/{mincut_id}/end", params=default_params, json=end_payload)
+    response = client.post(api(f"/om/mincuts/{mincut_id}/end"), params=default_params, json=end_payload)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
@@ -189,7 +189,7 @@ def test_mincut_cancel(client, default_params):
     assert_ready(client)
 
     mincut_id = _create_mincut(client, default_params)
-    response = client.post(f"/om/mincuts/{mincut_id}/cancel", params=default_params)
+    response = client.post(api(f"/om/mincuts/{mincut_id}/cancel"), params=default_params)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"
@@ -204,7 +204,7 @@ def test_valve_toggle_unaccess(client, default_params):
     mincut_id = _create_mincut(client, default_params)
     try:
         # Get valves to find a valve_id
-        response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+        response = client.get(api(f"/om/mincuts/{mincut_id}/valves"), params=default_params)
         assert response.status_code == 200
         data = response.json()
         features = data.get("body", {}).get("data", {}).get("features", [])
@@ -214,7 +214,7 @@ def test_valve_toggle_unaccess(client, default_params):
         valve_id = features[0]["node_id"]
         toggle_payload = {"use_psectors": False}
         response = client.post(
-            f"/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-unaccess",
+            api(f"/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-unaccess"),
             params=default_params,
             json=toggle_payload,
         )
@@ -234,7 +234,7 @@ def test_valve_toggle_status(client, default_params):
     mincut_id = _create_mincut(client, default_params)
     try:
         # Get valves to find a valve_id
-        response = client.get(f"/om/mincuts/{mincut_id}/valves", params=default_params)
+        response = client.get(api(f"/om/mincuts/{mincut_id}/valves"), params=default_params)
         assert response.status_code == 200
         data = response.json()
         features = data.get("body", {}).get("data", {}).get("features", [])
@@ -244,7 +244,7 @@ def test_valve_toggle_status(client, default_params):
         valve_id = features[0]["node_id"]
         toggle_payload = {"use_psectors": False}
         response = client.post(
-            f"/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-status",
+            api(f"/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-status"),
             params=default_params,
             json=toggle_payload,
         )
@@ -264,7 +264,7 @@ def test_valve_toggle_status(client, default_params):
 def test_get_waterbalance(client, default_params):
     assert_ready(client)
 
-    response = client.get("/om/waterbalance", params=default_params)
+    response = client.get(api("/om/waterbalance"), params=default_params)
 
     assert response.status_code == 200
     data = response.json()

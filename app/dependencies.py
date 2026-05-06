@@ -5,46 +5,36 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import secrets
 from typing import Annotated, Literal
-from fastapi import Depends, Query, Header, Request, HTTPException
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+from fastapi import Depends, Header, HTTPException, Query, Request
 from fastapi_keycloak import OIDCUser
-from .config import settings
-from .keycloak import idp, get_current_user
+
+from .auth import get_current_user_dep, verify_admin
+from .tenant import Tenant
+
+
+def _get_tenant(request: Request) -> Tenant:
+    tenant: Tenant | None = getattr(request.state, "tenant", None)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not specified")
+    return tenant
 
 
 async def get_schema(
     request: Request,
     schema: str = Query(..., description="Database schema name", examples=["public"]),
 ):
-    """
-    Dependency to get and validate schema parameter.
-
-    Args:
-        schema: Schema name from query parameter
-        request: Request object to access db_manager from app.state
-
-    Returns:
-        Schema name if valid
-
-    Raises:
-        HTTPException: If schema is not found
-    """
-    if hasattr(request.app.state, "db_manager"):
-        db_manager = request.app.state.db_manager
-        if not await db_manager.validate_schema(schema):
-            raise HTTPException(
-                status_code=404,
-                detail=f"Schema '{schema}' not found",
-            )
-    # If no db_manager available (shouldn't happen in normal operation), just return schema
+    """Validate that `schema` exists in the current tenant's database."""
+    tenant = _get_tenant(request)
+    if not await tenant.db_manager.validate_schema(schema):
+        raise HTTPException(status_code=404, detail=f"Schema '{schema}' not found")
     return schema
 
 
 async def common_parameters(
     request: Request,
-    current_user: OIDCUser = Depends(get_current_user()),  # noqa: B008
+    current_user: OIDCUser = Depends(get_current_user_dep()),  # noqa: B008
     schema: str = Depends(get_schema),
     device: int = Header(
         default=5,
@@ -62,16 +52,15 @@ async def common_parameters(
         examples=["es_ES", "es_CR", "en_US", "pt_BR", "pt_PT", "fr_FR", "ca_ES"],
     ),
 ):
-    db_manager = request.app.state.db_manager
-    if not await db_manager.validate_schema(schema):
-        raise HTTPException(status_code=404, detail=f"Schema '{schema}' not found")
+    tenant = _get_tenant(request)
     return {
         "request": request,
         "user_id": current_user.preferred_username,
         "schema": schema,
         "device": device,
         "lang": lang,
-        "db_manager": db_manager,
+        "db_manager": tenant.db_manager,
+        "tenant": tenant,
         "api_version": request.app.version,
     }
 
@@ -79,28 +68,17 @@ async def common_parameters(
 CommonsDep = Annotated[dict, Depends(common_parameters)]
 
 
+def require_feature(flag: str):
+    """Router-level dep that 404s when the tenant has the API toggle off."""
+
+    async def _check(request: Request) -> None:
+        tenant = _get_tenant(request)
+        if not getattr(tenant.settings, flag, False):
+            raise HTTPException(status_code=404, detail="Feature disabled")
+
+    return _check
+
+
 def verify_log_admin():
-    """
-    Returns the appropriate auth dependency for the /logs endpoint.
-    Keycloak on  → requires 'log-admin' role.
-    Keycloak off → falls back to HTTP Basic with env credentials.
-    """
-    if idp:
-        return idp.get_current_user(required_roles=["log-admin"])
-
-    _security = HTTPBasic()
-
-    async def _check_basic(request: Request, credentials: HTTPBasicCredentials = Depends(_security)):
-        if not settings.log_admin_password:
-            raise HTTPException(status_code=403, detail="Log admin access not configured")
-        correct_user = secrets.compare_digest(credentials.username, settings.log_admin_user)
-        correct_pass = secrets.compare_digest(credentials.password, settings.log_admin_password)
-        if not correct_user or not correct_pass:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid credentials",
-                headers={"WWW-Authenticate": "Basic"},
-            )
-        request.state.user = credentials.username
-
-    return _check_basic
+    """Backward-compat wrapper around `verify_admin` for legacy /logs endpoints."""
+    return verify_admin

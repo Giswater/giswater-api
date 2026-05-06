@@ -5,299 +5,224 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+import logging
 import os
-import uuid
-import asyncio
-from datetime import date, datetime
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from importlib.metadata import version as pkg_version
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
-from psycopg import sql
-from psycopg.rows import dict_row
+from pathlib import Path
+from typing import Any
 
-from .database import DatabaseManager
-from .keycloak import idp
-from .config import settings
-from .utils import utils
-from .dependencies import verify_log_admin
+from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.routing import BaseRoute
+
+from . import state
+from .auth import verify_admin
+from .config import global_settings
+from .constants import ADMIN_PREFIX, TENANT_PREFIX
+from .dependencies import require_feature
 from .exceptions import (
     DatabaseUnavailableError,
     ProcedureError,
     database_unavailable_error_handler,
     procedure_error_handler,
 )
+from .host_middleware import host_middleware
 from .logging import request_logging_middleware
+from .models.util_models import GwErrorResponse
+from .routers import admin, system
 from .routers.basic import basic
-from .routers.om import mincut, profile, flow, waterbalance
-from .routers.om.mapzones import dma, sector, presszone, dqa, omzone, omunit
-from .routers.routing import routing
 from .routers.crm import crm
 from .routers.epa import dscenario
-from .models.util_models import GwErrorResponse
+from .routers.om import flow, mincut, profile, waterbalance
+from .routers.om.mapzones import dma, dqa, omunit, omzone, presszone, sector
+from .routers.routing import routing
+from .tenant import Tenant, TenantRegistry
+from .utils import utils
 
 TITLE = "Giswater API"
 VERSION = pkg_version("giswater-api")
 DESCRIPTION = "API for interacting with a Giswater database."
+_LOGGER = logging.getLogger(__name__)
 
-# Database manager
-db_manager = DatabaseManager()
-schema_rate_limiter = utils.create_rate_limiter(
-    max_requests=settings.rate_limit_default_max_requests,
-    window_seconds=settings.rate_limit_default_window_seconds,
-    scope="schemas_endpoint",
-)
+# Tuple list: `APIRouter` is not hashable in Python 3.13+ (cannot use as dict keys).
+ROUTER_FEATURES: list[tuple[APIRouter, str]] = [
+    (basic.router, "api_basic"),
+    (profile.router, "api_profile"),
+    (flow.router, "api_flow"),
+    (mincut.router, "api_mincut"),
+    (waterbalance.router, "api_water_balance"),
+    (routing.router, "api_routing"),
+    (crm.router, "api_crm"),
+    (dscenario.router, "api_epa"),
+    (dma.router, "api_mapzones"),
+    (sector.router, "api_mapzones"),
+    (presszone.router, "api_mapzones"),
+    (dqa.router, "api_mapzones"),
+    (omzone.router, "api_mapzones"),
+    (omunit.router, "api_mapzones"),
+]
+
+# Map endpoint callables to feature flag — used for per-tenant OpenAPI filtering.
+FEATURE_BY_ENDPOINT: dict[Callable[..., Any], str] = {}
+for _rtr, _flag in ROUTER_FEATURES:
+    for _route in _rtr.routes:
+        ep = getattr(_route, "endpoint", None)
+        if callable(ep):
+            FEATURE_BY_ENDPOINT[ep] = _flag
+
+
+def _tenant_openapi_routes(tenant: Tenant) -> list[BaseRoute]:
+    """Routes to expose in OpenAPI for this tenant (feature toggles)."""
+    out: list[BaseRoute] = []
+    for route in tenant_app.routes:
+        ep = getattr(route, "endpoint", None)
+        flag = FEATURE_BY_ENDPOINT.get(ep) if callable(ep) else None
+        if flag is None or getattr(tenant.settings, flag, False):
+            out.append(route)
+    return out
+
+
+def _register_health_route(app: FastAPI) -> None:
+    @app.get("/health", include_in_schema=False)
+    async def health():
+        """Liveness probe: process is up."""
+        return {"status": "ok"}
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    # Do not block startup if DB is down; requests will retry connections lazily.
-    try:
-        await asyncio.wait_for(db_manager.init_conn_pool(), timeout=min(settings.db_connect_timeout, 5))
-    except Exception as exc:
-        print(f"Database init skipped during startup: {exc}")
+async def lifespan(_app: FastAPI):
+    tenants_dir = Path(global_settings.tenants_dir).resolve()
+    registry = TenantRegistry(tenants_dir)
+    summary = await registry.load_all()
+    if registry.is_empty():
+        listing = sorted(p.name for p in tenants_dir.iterdir()) if tenants_dir.exists() else "<missing>"
+        _LOGGER.warning(
+            "No tenants loaded at startup (admin can create tenants). tenants_dir=%s cwd=%s entries=%s errors=%s",
+            tenants_dir,
+            os.getcwd(),
+            listing,
+            summary.get("errors"),
+        )
+    elif summary.get("errors"):
+        _LOGGER.warning("Tenant load errors: %s", summary["errors"])
+    if not registry.is_empty():
+        _LOGGER.info("Loaded tenants from %s: %s", tenants_dir, registry.ids())
 
-    if settings.log_db_enabled and db_manager.connection_pool is not None:
-        try:
-            # Keep startup responsive if DB logs schema cannot be initialized.
-            await asyncio.wait_for(utils.ensure_log_schema(db_manager), timeout=min(settings.db_connect_timeout, 5))
-        except Exception as exc:
-            print(f"Failed to initialize log schema: {exc}")
-    app_logger = utils.create_log("api")
-    api_log_date = date.today().strftime("%Y%m%d")
+    state.registry = registry
+    state.global_logger = utils.create_log("api", os.path.join(global_settings.log_dir, "_global"))
+
     try:
-        app.state.api_logger = app_logger
-        app.state.api_log_date = api_log_date
         yield
     finally:
-        await db_manager.close()
+        await registry.close_all()
+        state.registry = None
+        state.global_logger = None
 
 
-# Create FastAPI app
-app = FastAPI(
+parent = FastAPI(
     version=VERSION,
     title=TITLE,
     description=DESCRIPTION,
-    root_path="/api/v1",
+    docs_url=None,
+    openapi_url=None,
+    redoc_url=None,
+    lifespan=lifespan,
     responses={
         500: {"model": GwErrorResponse, "description": "Database function error"},
         503: {"model": GwErrorResponse, "description": "Database unavailable"},
     },
-    lifespan=lifespan,
 )
 
-# Request logging middleware
-app.middleware("http")(request_logging_middleware)
+tenant_app = FastAPI(
+    version=VERSION,
+    title=TITLE,
+    description=DESCRIPTION,
+    docs_url=None,
+    openapi_url=None,
+    redoc_url=None,
+    responses={
+        500: {"model": GwErrorResponse, "description": "Database function error"},
+        503: {"model": GwErrorResponse, "description": "Database unavailable"},
+    },
+)
 
-# Register exception handlers
-app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore
-app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore
-
-# Add Keycloak Swagger config if enabled
-if idp:
-    idp.add_swagger_config(app)
-
-# Store in app.state for access in routes
-app.state.settings = settings
-app.state.db_manager = db_manager
-
-
-# Serve static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-# Include routers conditionally based on config
-if settings.api_basic:
-    app.include_router(basic.router)
-if settings.api_profile:
-    app.include_router(profile.router)
-if settings.api_flow:
-    app.include_router(flow.router)
-if settings.api_mincut:
-    app.include_router(mincut.router)
-if settings.api_water_balance:
-    app.include_router(waterbalance.router)
-if settings.api_mapzones:
-    app.include_router(dma.router)
-    app.include_router(sector.router)
-    app.include_router(presszone.router)
-    app.include_router(dqa.router)
-    app.include_router(omzone.router)
-    app.include_router(omunit.router)
-if settings.api_routing:
-    app.include_router(routing.router)
-if settings.api_crm:
-    app.include_router(crm.router)
-if settings.api_epa:
-    app.include_router(dscenario.router)
-# Load plugins
-utils.load_plugins(app)
+for _router, _flag in ROUTER_FEATURES:
+    tenant_app.include_router(_router, dependencies=[Depends(require_feature(_flag))])
+tenant_app.include_router(system.router)
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {"status": "Accepted", "message": f"{TITLE} is running.", "version": VERSION, "description": DESCRIPTION}
+@tenant_app.get("/", summary="Service status")
+async def tenant_root():
+    return {
+        "status": "Accepted",
+        "message": f"{TITLE} is running.",
+        "version": VERSION,
+        "description": DESCRIPTION,
+    }
 
 
-@app.get("/health")
-async def health():
-    """Liveness probe: process is up."""
-    return {"status": "ok"}
-
-
-@app.get("/ready")
-async def ready():
-    """Readiness probe: process is up and dependencies are reachable."""
-    db_ready = await db_manager.is_db_available(timeout_seconds=2.0)
-    if not db_ready:
-        return JSONResponse(status_code=503, content={"status": "not_ready", "checks": {"database": "down"}})
-    return {"status": "ready", "checks": {"database": "up"}}
-
-
-def _manage_where_clauses(where_clauses: list, params: list, from_, to, endpoint, method, status, user):
-    if from_:
-        where_clauses.append("ts >= %s")
-        params.append(from_)
-    if to:
-        where_clauses.append("ts <= %s")
-        params.append(to)
-    if endpoint:
-        where_clauses.append("endpoint = %s")
-        params.append(endpoint)
-    if method:
-        where_clauses.append("method = %s")
-        params.append(method.upper())
-    if status is not None:
-        where_clauses.append("status = %s")
-        params.append(status)
-    if user:
-        where_clauses.append("user_name = %s")
-        params.append(user)
-
-
-@app.get("/logs", dependencies=[Depends(verify_log_admin())])
-async def get_logs(
-    request: Request,
-    from_: datetime | None = Query(default=None, alias="from"),
-    to: datetime | None = Query(default=None, alias="to"),
-    endpoint: str | None = Query(default=None),
-    method: str | None = Query(default=None),
-    status: int | None = Query(default=None),
-    user: str | None = Query(default=None),
-    request_id: str | None = Query(default=None),
-    limit: int = Query(default=100, ge=1, le=1000),
-    offset: int = Query(default=0, ge=0),
-):
-    db_manager = request.app.state.db_manager
-    where_clauses = []
-    params: list = []
-    _manage_where_clauses(where_clauses, params, from_, to, endpoint, method, status, user)
-    if request_id:
-        try:
-            params.append(uuid.UUID(request_id))
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Invalid request_id") from exc
-        where_clauses.append("request_id = %s")
-
-    where_sql = ""
-    if where_clauses:
-        where_sql = " WHERE " + " AND ".join(where_clauses)
-
-    query = sql.SQL(
-        f"""
-        SELECT ts, endpoint, method, status, duration_ms, user_name, request_id,
-               client_ip, query_params, body_size, response_size,
-               request_headers, request_body, response_headers, response_body,
-               EXISTS (
-                   SELECT 1 FROM {{schema}}.{{db_table}} d
-                   WHERE d.request_id = main.request_id
-               ) AS has_db_logs
-        FROM {{schema}}.{{table}} main
-        {where_sql}
-        ORDER BY ts DESC
-        LIMIT %s OFFSET %s
-        """
-    ).format(
-        schema=sql.Identifier(utils.LOG_SCHEMA),
-        table=sql.Identifier(utils.LOG_TABLE),
-        db_table=sql.Identifier(utils.LOG_DB_TABLE),
+@tenant_app.get("/openapi.json", include_in_schema=False)
+async def tenant_openapi_json(request: Request):
+    tenant: Tenant = request.state.tenant
+    routes = _tenant_openapi_routes(tenant)
+    schema = get_openapi(
+        title=TITLE,
+        version=VERSION,
+        description=DESCRIPTION,
+        routes=routes,
     )
-    params.extend([limit, offset])
-
-    async with db_manager.get_db() as conn:
-        if conn is None:
-            raise DatabaseUnavailableError()
-        try:
-            async with conn.cursor(row_factory=dict_row) as cursor:
-                await cursor.execute(query, tuple(params))
-                rows = await cursor.fetchall()
-            await conn.commit()
-        except Exception as exc:
-            await conn.rollback()
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"count": len(rows), "items": rows}
+    return JSONResponse(schema)
 
 
-@app.get("/logs/db", dependencies=[Depends(verify_log_admin())])
-async def get_db_logs(
-    request: Request,
-    request_id: str = Query(...),
-    limit: int = Query(default=50, ge=1, le=500),
-):
-    """Return database-level logs linked to a specific API request."""
-    db_manager = request.app.state.db_manager
-    try:
-        rid = uuid.UUID(request_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid request_id") from exc
-
-    query = sql.SQL(
-        """
-        SELECT ts, request_id, schema_name, function_name, sql_text,
-               response_json, duration_ms, status, error
-        FROM {schema}.{table}
-        WHERE request_id = %s
-        ORDER BY ts ASC
-        LIMIT %s
-        """
-    ).format(schema=sql.Identifier(utils.LOG_SCHEMA), table=sql.Identifier(utils.LOG_DB_TABLE))
-
-    async with db_manager.get_db() as conn:
-        if conn is None:
-            raise DatabaseUnavailableError()
-        try:
-            async with conn.cursor(row_factory=dict_row) as cursor:
-                await cursor.execute(query, (rid, limit))
-                rows = await cursor.fetchall()
-            await conn.commit()
-        except Exception as exc:
-            await conn.rollback()
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"count": len(rows), "items": rows}
+@tenant_app.get("/docs", include_in_schema=False)
+async def tenant_docs():
+    return get_swagger_ui_html(
+        openapi_url=f"{TENANT_PREFIX}/openapi.json",
+        title=f"{TITLE} - docs",
+    )
 
 
-@app.get("/logs/ui", include_in_schema=False, dependencies=[Depends(verify_log_admin())])
-async def logs_ui():
-    """Serve the log viewer UI."""
-    return FileResponse("app/static/logs.html", media_type="text/html")
-
-
-@app.get("/favicon.ico", include_in_schema=False)
+@tenant_app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Favicon endpoint."""
     favicon_path = os.path.join("app", "static", "favicon.ico")
     return FileResponse(favicon_path)
 
 
-@app.get("/schemas/{schema}", dependencies=[Depends(schema_rate_limiter)])
-async def get_schema(request: Request, schema: str):
-    """Validate if a schema exists in the database."""
-    db_manager = request.app.state.db_manager
+admin_app = FastAPI(
+    title=f"{TITLE} - Admin",
+    version=VERSION,
+    description="Platform admin API",
+    docs_url="/docs",
+    openapi_url="/openapi.json",
+    dependencies=[Depends(verify_admin)],
+    responses={
+        500: {"model": GwErrorResponse, "description": "Database function error"},
+        503: {"model": GwErrorResponse, "description": "Database unavailable"},
+    },
+)
+admin_app.include_router(admin.router)
 
-    if not await db_manager.validate_schema(schema):
-        raise HTTPException(status_code=404, detail=f"Schema '{schema}' not found")
+parent.mount(ADMIN_PREFIX, admin_app)
+parent.mount(TENANT_PREFIX, tenant_app)
+parent.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-    return {"status": "Accepted", "message": f"Schema '{schema}' is valid"}
+for _app in (parent, tenant_app, admin_app):
+    _register_health_route(_app)
+
+
+# Middleware order: Starlette runs LIFO — register host_middleware first so it runs inner.
+parent.middleware("http")(host_middleware)
+parent.middleware("http")(request_logging_middleware)
+
+for _app in (parent, tenant_app, admin_app):
+    _app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore[arg-type]
+    _app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore[arg-type]
+
+utils.load_plugins(tenant_app)
+
+app = parent

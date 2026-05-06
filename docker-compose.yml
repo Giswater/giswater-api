@@ -1,14 +1,38 @@
+# Portable across:
+#   - Fedora/RHEL + rootless podman (SELinux enforcing)
+#   - Windows / macOS + Docker Desktop
+#   - Debian/Ubuntu + Docker (production)
+#
+# `:Z` is an SELinux relabel hint. Podman/CRI-O honor it; Docker silently
+# ignores it on non-SELinux hosts, so it is portable.
+#
+# For dev hot-reload of code, use docker-compose.override.yml (gitignored)
+# to also bind-mount `.:/app`. The base file ships only the volumes the
+# app actually needs at runtime: tenant config (rw) and logs (rw).
+
 services:
   app:
     build: .
+    image: giswater-api:latest
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - .:/app
+      - ./config:/app/config:Z
+      - ./logs:/app/logs:Z
     extra_hosts:
+      # Dev only: lets the container reach Postgres on the host.
+      # Docker Desktop already supports host.docker.internal natively.
+      - "host.containers.internal:host-gateway"
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       api-network:
         ipv4_address: 172.21.1.50

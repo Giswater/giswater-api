@@ -7,9 +7,18 @@ or (at your option) any later version.
 
 from fastapi.testclient import TestClient
 
+from app.constants import TENANT_PREFIX
+
+
+def api(path: str) -> str:
+    """Build path under the tenant API prefix (mounted at `/gw-api/v1`)."""
+    if not path.startswith("/"):
+        path = "/" + path
+    return TENANT_PREFIX + path
+
 
 def assert_ready(client: TestClient) -> None:
     health = client.get("/health").json()
     assert health.get("status") == "ok", f"Health check failed: {health}"
-    ready = client.get("/ready").json()
+    ready = client.get(api("/ready")).json()
     assert ready.get("status") == "ready", f"Ready check failed: {ready}"
