@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, Request
 from starlette.responses import Response
 
+from . import state
 from .config import global_settings
-from .tenant_middleware import GLOBAL_PREFIXES
+from .constants import ADMIN_PREFIX, TENANT_PREFIX
 from .utils import utils
 
 # Endpoints where request/response bodies are not worth storing (e.g. they
@@ -44,11 +45,31 @@ async def _resolve_api_logger(request: Request):
     if tenant is not None:
         await tenant.ensure_logger_fresh()
         return tenant.api_logger
-    return getattr(request.app.state, "global_logger", None)
+    return state.global_logger
 
 
 def _is_global_path(path: str) -> bool:
-    return path == "/" or any(path == p or path.startswith(p + "/") for p in GLOBAL_PREFIXES)
+    """Paths that must not write tenant-scoped rows to the API log DB."""
+    if path == "/" or path.startswith("/health") or path.startswith("/static"):
+        return True
+    if _path_starts(path, ADMIN_PREFIX):
+        return True
+    if not _path_starts(path, TENANT_PREFIX):
+        return False
+    rest = path[len(TENANT_PREFIX) :] if path.startswith(TENANT_PREFIX) else path
+    if not rest.startswith("/"):
+        rest = "/" + rest
+    if rest.startswith("/openapi.json") or rest.startswith("/docs") or rest.startswith("/redoc"):
+        return True
+    if "/openapi.json" in path:
+        return True
+    if rest.startswith("/logs"):
+        return True
+    return False
+
+
+def _path_starts(path: str, prefix: str) -> bool:
+    return path == prefix or path.startswith(prefix + "/")
 
 
 def _get_client_ip(request: Request) -> str | None:

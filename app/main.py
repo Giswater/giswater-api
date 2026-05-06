@@ -5,16 +5,25 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+import logging
 import os
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from importlib.metadata import version as pkg_version
 from pathlib import Path
+from typing import Any
 
-from fastapi import Depends, FastAPI
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import BaseRoute
 
+from . import state
+from .auth import verify_admin
 from .config import global_settings
+from .constants import ADMIN_PREFIX, TENANT_PREFIX
 from .dependencies import require_feature
 from .exceptions import (
     DatabaseUnavailableError,
@@ -22,6 +31,7 @@ from .exceptions import (
     database_unavailable_error_handler,
     procedure_error_handler,
 )
+from .host_middleware import host_middleware
 from .logging import request_logging_middleware
 from .models.util_models import GwErrorResponse
 from .routers import admin, system
@@ -31,101 +41,185 @@ from .routers.epa import dscenario
 from .routers.om import flow, mincut, profile, waterbalance
 from .routers.om.mapzones import dma, dqa, omunit, omzone, presszone, sector
 from .routers.routing import routing
+from .tenant import Tenant
 from .tenant import TenantRegistry
-from .tenant_middleware import tenant_middleware
 from .utils import utils
 
 TITLE = "Giswater API"
 VERSION = pkg_version("giswater-api")
 DESCRIPTION = "API for interacting with a Giswater database."
+_LOGGER = logging.getLogger(__name__)
+
+# Tuple list: `APIRouter` is not hashable in Python 3.13+ (cannot use as dict keys).
+ROUTER_FEATURES: list[tuple[APIRouter, str]] = [
+    (basic.router, "api_basic"),
+    (profile.router, "api_profile"),
+    (flow.router, "api_flow"),
+    (mincut.router, "api_mincut"),
+    (waterbalance.router, "api_water_balance"),
+    (routing.router, "api_routing"),
+    (crm.router, "api_crm"),
+    (dscenario.router, "api_epa"),
+    (dma.router, "api_mapzones"),
+    (sector.router, "api_mapzones"),
+    (presszone.router, "api_mapzones"),
+    (dqa.router, "api_mapzones"),
+    (omzone.router, "api_mapzones"),
+    (omunit.router, "api_mapzones"),
+]
+
+# Map endpoint callables to feature flag — used for per-tenant OpenAPI filtering.
+FEATURE_BY_ENDPOINT: dict[Callable[..., Any], str] = {}
+for _rtr, _flag in ROUTER_FEATURES:
+    for _route in _rtr.routes:
+        ep = getattr(_route, "endpoint", None)
+        if callable(ep):
+            FEATURE_BY_ENDPOINT[ep] = _flag
+
+
+def _tenant_openapi_routes(tenant: Tenant) -> list[BaseRoute]:
+    """Routes to expose in OpenAPI for this tenant (feature toggles)."""
+    out: list[BaseRoute] = []
+    for route in tenant_app.routes:
+        ep = getattr(route, "endpoint", None)
+        flag = FEATURE_BY_ENDPOINT.get(ep) if callable(ep) else None
+        if flag is None or getattr(tenant.settings, flag, False):
+            out.append(route)
+    return out
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     tenants_dir = Path(global_settings.tenants_dir).resolve()
     registry = TenantRegistry(tenants_dir)
     summary = await registry.load_all()
     if registry.is_empty():
         listing = sorted(p.name for p in tenants_dir.iterdir()) if tenants_dir.exists() else "<missing>"
-        raise RuntimeError(
-            "No tenants loaded; aborting startup. "
-            f"tenants_dir={tenants_dir} cwd={os.getcwd()} entries={listing} "
-            f"errors={summary.get('errors')}"
+        _LOGGER.warning(
+            "No tenants loaded at startup (admin can create tenants). tenants_dir=%s cwd=%s entries=%s errors=%s",
+            tenants_dir,
+            os.getcwd(),
+            listing,
+            summary.get("errors"),
         )
-    if summary.get("errors"):
-        print(f"Tenant load errors: {summary['errors']}")
-    print(f"Loaded tenants from {tenants_dir}: {registry.ids()}")
+    elif summary.get("errors"):
+        _LOGGER.warning("Tenant load errors: %s", summary["errors"])
+    if not registry.is_empty():
+        _LOGGER.info("Loaded tenants from %s: %s", tenants_dir, registry.ids())
 
-    app.state.registry = registry
-    app.state.global_logger = utils.create_log("api", os.path.join(global_settings.log_dir, "_global"))
+    state.registry = registry
+    state.global_logger = utils.create_log("api", os.path.join(global_settings.log_dir, "_global"))
 
     try:
         yield
     finally:
         await registry.close_all()
+        state.registry = None
+        state.global_logger = None
 
 
-app = FastAPI(
+parent = FastAPI(
     version=VERSION,
     title=TITLE,
     description=DESCRIPTION,
-    root_path=global_settings.root_path,
+    docs_url=None,
+    openapi_url=None,
+    redoc_url=None,
+    lifespan=lifespan,
     responses={
         500: {"model": GwErrorResponse, "description": "Database function error"},
         503: {"model": GwErrorResponse, "description": "Database unavailable"},
     },
-    lifespan=lifespan,
 )
 
-# Middleware order: Starlette runs registered middlewares in LIFO order.
-# Register tenant middleware FIRST so it runs second (inner).
-# Register logging middleware LAST so it runs first (outer) and sees every
-# response, including 404s emitted by tenant_middleware.
-app.middleware("http")(tenant_middleware)
-app.middleware("http")(request_logging_middleware)
+tenant_app = FastAPI(
+    version=VERSION,
+    title=TITLE,
+    description=DESCRIPTION,
+    docs_url=None,
+    openapi_url=None,
+    redoc_url=None,
+    responses={
+        500: {"model": GwErrorResponse, "description": "Database function error"},
+        503: {"model": GwErrorResponse, "description": "Database unavailable"},
+    },
+)
 
-app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore
-app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore
-
-# Static files (global)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-# Routers: included unconditionally; per-tenant feature gating happens in the
-# router-level dependency.
-app.include_router(basic.router, dependencies=[Depends(require_feature("api_basic"))])
-app.include_router(profile.router, dependencies=[Depends(require_feature("api_profile"))])
-app.include_router(flow.router, dependencies=[Depends(require_feature("api_flow"))])
-app.include_router(mincut.router, dependencies=[Depends(require_feature("api_mincut"))])
-app.include_router(waterbalance.router, dependencies=[Depends(require_feature("api_water_balance"))])
-for r in (dma.router, sector.router, presszone.router, dqa.router, omzone.router, omunit.router):
-    app.include_router(r, dependencies=[Depends(require_feature("api_mapzones"))])
-app.include_router(routing.router, dependencies=[Depends(require_feature("api_routing"))])
-app.include_router(crm.router, dependencies=[Depends(require_feature("api_crm"))])
-app.include_router(dscenario.router, dependencies=[Depends(require_feature("api_epa"))])
-
-# Tenant-scoped system endpoints (/ready, /logs, /logs/db, /logs/ui, /schemas)
-app.include_router(system.router)
-
-# Admin endpoints (/admin/*) — global, no tenant context required
-app.include_router(admin.router)
-
-utils.load_plugins(app)
+for _router, _flag in ROUTER_FEATURES:
+    tenant_app.include_router(_router, dependencies=[Depends(require_feature(_flag))])
+tenant_app.include_router(system.router)
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {"status": "Accepted", "message": f"{TITLE} is running.", "version": VERSION, "description": DESCRIPTION}
+@tenant_app.get("/", summary="Service status")
+async def tenant_root():
+    return {
+        "status": "Accepted",
+        "message": f"{TITLE} is running.",
+        "version": VERSION,
+        "description": DESCRIPTION,
+    }
 
 
-@app.get("/health")
+@tenant_app.get("/openapi.json", include_in_schema=False)
+async def tenant_openapi_json(request: Request):
+    tenant: Tenant = request.state.tenant
+    routes = _tenant_openapi_routes(tenant)
+    schema = get_openapi(
+        title=TITLE,
+        version=VERSION,
+        description=DESCRIPTION,
+        routes=routes,
+    )
+    return JSONResponse(schema)
+
+
+@tenant_app.get("/docs", include_in_schema=False)
+async def tenant_docs():
+    return get_swagger_ui_html(
+        openapi_url=f"{TENANT_PREFIX}/openapi.json",
+        title=f"{TITLE} - docs",
+    )
+
+
+@tenant_app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = os.path.join("app", "static", "favicon.ico")
+    return FileResponse(favicon_path)
+
+
+admin_app = FastAPI(
+    title=f"{TITLE} - Admin",
+    version=VERSION,
+    description="Platform admin API",
+    docs_url="/docs",
+    openapi_url="/openapi.json",
+    dependencies=[Depends(verify_admin)],
+    responses={
+        500: {"model": GwErrorResponse, "description": "Database function error"},
+        503: {"model": GwErrorResponse, "description": "Database unavailable"},
+    },
+)
+admin_app.include_router(admin.router)
+
+parent.mount(ADMIN_PREFIX, admin_app)
+parent.mount(TENANT_PREFIX, tenant_app)
+parent.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+@parent.get("/health", include_in_schema=False)
 async def health():
-    """Liveness probe: process is up."""
+    """Liveness probe: process is up (bind to loopback in production; not exposed via nginx)."""
     return {"status": "ok"}
 
 
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    """Favicon endpoint."""
-    favicon_path = os.path.join("app", "static", "favicon.ico")
-    return FileResponse(favicon_path)
+# Middleware order: Starlette runs LIFO — register host_middleware first so it runs inner.
+parent.middleware("http")(host_middleware)
+parent.middleware("http")(request_logging_middleware)
+
+for _app in (parent, tenant_app, admin_app):
+    _app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore[arg-type]
+    _app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore[arg-type]
+
+utils.load_plugins(tenant_app)
+
+app = parent

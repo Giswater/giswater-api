@@ -7,9 +7,8 @@ or (at your option) any later version.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 
-from ..auth import verify_admin
 from ..config import global_settings
 from ..schemas.admin import (
     TenantCreateIn,
@@ -17,18 +16,19 @@ from ..schemas.admin import (
     TenantOut,
     build_tenant_settings_from_input,
 )
+from .. import state
 from ..tenant import RESERVED_IDS, TENANT_ID_RE, TenantRegistry, validate_tenant_id
 
-router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(verify_admin)])
+router = APIRouter(tags=["Admin"])
 
 _audit = logging.getLogger("admin.audit")
 
 
-def _registry(request: Request) -> TenantRegistry:
-    registry = getattr(request.app.state, "registry", None)
-    if registry is None:
+def _registry() -> TenantRegistry:
+    reg = state.registry
+    if reg is None:
         raise HTTPException(status_code=503, detail="Tenant registry not initialized")
-    return registry
+    return reg
 
 
 def _require_writes() -> None:
@@ -56,13 +56,13 @@ def _audit_log(request: Request, action: str, tid: str | None = None, **extra) -
 
 @router.get("/tenants", response_model=list[TenantOut])
 async def list_tenants(request: Request):
-    registry = _registry(request)
+    registry = _registry()
     return [TenantOut.from_tenant(t) for t in registry.all()]
 
 
 @router.get("/tenants/{tid}", response_model=TenantOut)
 async def get_tenant(tid: str, request: Request):
-    registry = _registry(request)
+    registry = _registry()
     tenant = registry.get(tid)
     if tenant is None:
         raise HTTPException(status_code=404, detail=f"Tenant '{tid}' not found")
@@ -72,7 +72,7 @@ async def get_tenant(tid: str, request: Request):
 @router.post("/tenants", response_model=TenantOut, status_code=201)
 async def create_tenant(payload: TenantCreateIn, request: Request):
     _require_writes()
-    registry = _registry(request)
+    registry = _registry()
     _validate_id_or_409(payload.id, registry)
     settings = build_tenant_settings_from_input(payload)
     try:
@@ -86,7 +86,7 @@ async def create_tenant(payload: TenantCreateIn, request: Request):
 @router.put("/tenants/{tid}", response_model=TenantOut)
 async def update_tenant(tid: str, payload: TenantIn, request: Request):
     _require_writes()
-    registry = _registry(request)
+    registry = _registry()
     existing = registry.get(tid)
     if existing is None:
         raise HTTPException(status_code=404, detail=f"Tenant '{tid}' not found")
@@ -102,7 +102,7 @@ async def update_tenant(tid: str, payload: TenantIn, request: Request):
 @router.delete("/tenants/{tid}", status_code=204)
 async def delete_tenant(tid: str, request: Request):
     _require_writes()
-    registry = _registry(request)
+    registry = _registry()
     try:
         await registry.delete(tid)
     except KeyError as exc:
@@ -113,7 +113,7 @@ async def delete_tenant(tid: str, request: Request):
 @router.post("/tenants/{tid}/reload", response_model=TenantOut)
 async def reload_tenant(tid: str, request: Request):
     _require_writes()
-    registry = _registry(request)
+    registry = _registry()
     try:
         validate_tenant_id(tid)
     except ValueError as exc:
@@ -130,7 +130,7 @@ async def reload_tenant(tid: str, request: Request):
 async def reload_tenants(request: Request):
     if not global_settings.admin_reload_enabled:
         raise HTTPException(status_code=403, detail="Reload disabled")
-    registry = _registry(request)
+    registry = _registry()
     result = await registry.reload()
     _audit_log(request, "reload_all", **result)
     return result

@@ -10,12 +10,8 @@ let currentLimit = 200;
 let lastFetchedCount = 0;
 
 function resolveApiBase() {
-    // The FastAPI app is mounted at root_path="/api/v1",
-    // but static files and the /logs/ui page are served at that root_path.
-    // The /logs and /logs/db endpoints live under the same root_path.
-    // We derive the base from the current page URL.
+    // API base: page is at <tenant-prefix>/logs/ui (e.g. /gw-api/v1/logs/ui); strip "/logs/ui".
     const loc = window.location;
-    // The page is served at <root_path>/logs/ui, so strip "/logs/ui"
     const path = loc.pathname.replace(/\/logs\/ui\/?$/, "");
     return `${loc.protocol}//${loc.host}${path}`;
 }

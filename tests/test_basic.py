@@ -6,7 +6,7 @@ or (at your option) any later version.
 """
 
 import pytest
-from tests.helpers import assert_ready
+from tests.helpers import api, assert_ready
 
 
 @pytest.mark.ws
@@ -22,7 +22,7 @@ def test_get_info_from_coordinates_ws(client, default_params, xcoord: float, yco
     assert_ready(client)
 
     response = client.get(
-        "/basic/getinfofromcoordinates",
+        api("/basic/getinfofromcoordinates"),
         params={
             **default_params,
             "xcoord": xcoord,
@@ -52,7 +52,7 @@ def test_get_info_from_coordinates_ud(client, default_params, xcoord: float, yco
     assert_ready(client)
 
     response = client.get(
-        "/basic/getinfofromcoordinates",
+        api("/basic/getinfofromcoordinates"),
         params={
             **default_params,
             "xcoord": xcoord,
@@ -83,7 +83,7 @@ def test_get_feature_changes(client, default_params, feature_type, action, last_
     assert_ready(client)
 
     response = client.get(
-        "/basic/getfeaturechanges",
+        api("/basic/getfeaturechanges"),
         params={
             **default_params,
             "featureType": feature_type,
@@ -115,7 +115,7 @@ def test_get_features_from_polygon(client, default_params):
     )
 
     response = client.get(
-        "/basic/getfeaturesfrompolygon",
+        api("/basic/getfeaturesfrompolygon"),
         params={
             **default_params,
             "featureType": "NODE",
@@ -134,7 +134,7 @@ def test_get_selectors(client, default_params):
     assert_ready(client)
 
     response = client.get(
-        "/basic/getselectors",
+        api("/basic/getselectors"),
         params={
             **default_params,
             "selectorType": "selector_basic",
@@ -151,7 +151,7 @@ def test_get_search(client, default_params):
     assert_ready(client)
 
     response = client.get(
-        "/basic/getsearch",
+        api("/basic/getsearch"),
         params={
             **default_params,
             "searchText": "test",
@@ -168,7 +168,7 @@ def test_get_arc_audit_values(client, default_params):
     assert_ready(client)
 
     response = client.get(
-        "/basic/getarcauditvalues",
+        api("/basic/getarcauditvalues"),
         params={
             **default_params,
             "startDate": "2020-01-01",
@@ -194,7 +194,7 @@ def test_get_list(client, default_params, table_name):
     assert_ready(client)
 
     response = client.get(
-        "/basic/getlist",
+        api("/basic/getlist"),
         params={
             **default_params,
             "tableName": table_name,

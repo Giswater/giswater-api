@@ -5,9 +5,11 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+from tests.helpers import api
+
 
 def test_get_status(client):
-    response = client.get("/")
+    response = client.get(api("/"))
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "Accepted"

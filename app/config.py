@@ -44,7 +44,6 @@ class GlobalSettings:
     # Routing
     base_domain: str = "bgeo360.com"
     tenants_dir: str = "config/tenants"
-    root_path: str = "/gw-api/v1"
 
     # Logging
     log_dir: str = "logs"
@@ -148,7 +147,6 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
     return GlobalSettings(
         base_domain=(env.get("BASE_DOMAIN") or "bgeo360.com"),
         tenants_dir=(env.get("TENANTS_DIR") or "config/tenants"),
-        root_path=(env.get("ROOT_PATH") or "/gw-api/v1"),
         log_dir=(env.get("LOG_DIR") or "logs"),
         log_level=(env.get("LOG_LEVEL") or "INFO"),
         log_rotate_days=_to_int(env.get("LOG_ROTATE_DAYS"), 14),

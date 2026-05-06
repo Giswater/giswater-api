@@ -8,7 +8,7 @@ or (at your option) any later version.
 import pytest
 from uuid import uuid4
 
-from tests.helpers import assert_ready
+from tests.helpers import assert_ready, api
 
 
 DSCENARIO_OBJECT_TYPES = [
@@ -46,7 +46,7 @@ def _create_dscenario(client, default_params) -> int:
         "active": True,
         "expl": 0,
     }
-    response = client.post("/epa/dscenarios", params=default_params, json=payload)
+    response = client.post(api("/epa/dscenarios"), params=default_params, json=payload)
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["status"] == "Accepted"
@@ -62,7 +62,7 @@ def test_get_dscenario_objects(client, default_params, object_type: str):
     assert_ready(client)
 
     # Use a generic dscenario_id; database contents will determine whether it's non-empty.
-    response = client.get(f"/epa/dscenarios/1/{object_type}", params=default_params)
+    response = client.get(api(f"/epa/dscenarios/1/{object_type}"), params=default_params)
 
     assert response.status_code == 200
     data = response.json()
@@ -76,7 +76,7 @@ def test_get_dscenario_object_not_found(client, default_params, object_type: str
     """GET single object should return 404 for non-existing ids."""
     assert_ready(client)
 
-    response = client.get(f"/epa/dscenarios/999999/{object_type}/999999", params=default_params)
+    response = client.get(api(f"/epa/dscenarios/999999/{object_type}/999999"), params=default_params)
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Object not found"
@@ -89,7 +89,7 @@ def test_delete_dscenario_object_not_found(client, default_params, object_type: 
     assert_ready(client)
 
     response = client.delete(
-        f"/epa/dscenarios/999999/{object_type}/999999",
+        api(f"/epa/dscenarios/999999/{object_type}/999999"),
         params=default_params,
     )
 
@@ -105,7 +105,7 @@ def test_create_and_delete_dscenario(client, default_params):
 
     dscenario_id = _create_dscenario(client, default_params)
 
-    response = client.delete(f"/epa/dscenarios/{dscenario_id}", params=default_params)
+    response = client.delete(api(f"/epa/dscenarios/{dscenario_id}"), params=default_params)
 
     assert response.status_code == 200
     data = response.json()
@@ -117,7 +117,7 @@ def test_delete_dscenario_not_found(client, default_params):
     """Deleting a non-existing dscenario should return 404."""
     assert_ready(client)
 
-    response = client.delete("/epa/dscenarios/999999", params=default_params)
+    response = client.delete(api("/epa/dscenarios/999999"), params=default_params)
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Dscenario not found"

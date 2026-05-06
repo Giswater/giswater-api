@@ -10,7 +10,7 @@ import warnings
 
 import pytest
 
-from tests.helpers import assert_ready
+from tests.helpers import assert_ready, api
 
 
 @pytest.mark.ws
@@ -18,7 +18,7 @@ def test_get_object_optimal_path_order(client, default_params):
     assert_ready(client)
 
     response = client.get(
-        "/routing/getobjectoptimalpathorder",
+        api("/routing/getobjectoptimalpathorder"),
         params={
             **default_params,
             "objectType": "HYDRANT",
@@ -46,7 +46,7 @@ def test_get_object_parameter_order(client, default_params):
     assert_ready(client)
 
     response = client.get(
-        "/routing/getobjectparameterorder",
+        api("/routing/getobjectparameterorder"),
         params={
             **default_params,
             "objectType": "HYDRANT",

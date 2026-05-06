@@ -17,7 +17,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./config:/app/config:Z
       - ./logs:/app/logs:Z
