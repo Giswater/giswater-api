@@ -1,0 +1,35 @@
+# Optional: native subdomain routing via Traefik. Run with:
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up
+#
+# Add to /etc/hosts (or /Windows/System32/drivers/etc/hosts) so the browser
+# resolves *.bgeo360.localhost to 127.0.0.1, e.g.:
+#   127.0.0.1 acme.bgeo360.localhost beta.bgeo360.localhost
+#
+# Most modern resolvers already map *.localhost to 127.0.0.1 automatically.
+#
+# Rootless podman note: docker.sock doesn't exist. Either start the user
+# socket (`systemctl --user start podman.socket`) and use
+# $XDG_RUNTIME_DIR/podman/podman.sock instead, or skip Traefik and use
+# the X-Tenant-ID dev header.
+
+services:
+  traefik:
+    image: traefik:v3
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --api.insecure=true
+    ports:
+      - "80:80"
+      - "8080:8080" # dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [api-network]
+
+  app:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gw.rule=HostRegexp(`{tenant:[a-z0-9-]+}.bgeo360.localhost`)"
+      - "traefik.http.routers.gw.entrypoints=web"
+      - "traefik.http.services.gw.loadbalancer.server.port=8000"

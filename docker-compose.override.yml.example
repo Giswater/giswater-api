@@ -1,0 +1,22 @@
+# Copy to docker-compose.override.yml for local dev. Compose merges
+# overrides automatically when present. NOT for production.
+#
+# Adds:
+#   - bind-mount of the whole workspace for hot code reload
+#   - uvicorn --reload
+#   - DEV_ALLOW_TENANT_HEADER=true so X-Tenant-ID works on localhost
+
+services:
+  app:
+    volumes:
+      - .:/app:Z
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    environment:
+      DEV_ALLOW_TENANT_HEADER: "true"

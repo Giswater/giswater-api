@@ -42,12 +42,19 @@ DESCRIPTION = "API for interacting with a Giswater database."
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    registry = TenantRegistry(Path(global_settings.tenants_dir))
+    tenants_dir = Path(global_settings.tenants_dir).resolve()
+    registry = TenantRegistry(tenants_dir)
     summary = await registry.load_all()
     if registry.is_empty():
-        raise RuntimeError(f"No tenants loaded; aborting startup. Errors: {summary.get('errors')}")
+        listing = sorted(p.name for p in tenants_dir.iterdir()) if tenants_dir.exists() else "<missing>"
+        raise RuntimeError(
+            "No tenants loaded; aborting startup. "
+            f"tenants_dir={tenants_dir} cwd={os.getcwd()} entries={listing} "
+            f"errors={summary.get('errors')}"
+        )
     if summary.get("errors"):
         print(f"Tenant load errors: {summary['errors']}")
+    print(f"Loaded tenants from {tenants_dir}: {registry.ids()}")
 
     app.state.registry = registry
     app.state.global_logger = utils.create_log("api", os.path.join(global_settings.log_dir, "_global"))

@@ -17,6 +17,10 @@ __pycache__/
 # Logs and temp files
 *.log
 *.tmp
+logs/
+
+# Local dev compose override (template at docker-compose.override.yml.example)
+docker-compose.override.yml
 
 # Dependency files
 Pipfile
