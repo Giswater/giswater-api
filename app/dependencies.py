@@ -6,7 +6,8 @@ or (at your option) any later version.
 """
 
 from typing import Annotated, Literal
-from fastapi import Depends, Query, Header, Request, HTTPException
+
+from fastapi import Depends, Header, HTTPException, Query, Request
 from fastapi_keycloak import OIDCUser
 
 from .auth import get_current_user_dep, verify_admin
@@ -73,7 +74,7 @@ def require_feature(flag: str):
     async def _check(request: Request) -> None:
         tenant = _get_tenant(request)
         if not getattr(tenant.settings, flag, False):
-            raise HTTPException(status_code=404, detail="Feature disabled for this tenant")
+            raise HTTPException(status_code=404, detail="Feature disabled")
 
     return _check
 
