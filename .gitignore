@@ -3,6 +3,11 @@ venv/
 .env
 *.venv
 
+# Per-tenant config (real envs); keep tracked example template
+config/tenants/*.env
+!config/tenants/example.env
+config/tenants/_archive/
+
 # Python cache
 __pycache__/
 *.pyc
@@ -16,6 +21,7 @@ __pycache__/
 # Dependency files
 Pipfile
 Pipfile.lock
+*.egg-info/
 
 # VS Code settings
 .vscode/

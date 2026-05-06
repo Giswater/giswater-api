@@ -3,12 +3,13 @@ import json
 import random
 import time
 import uuid
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request
 from starlette.responses import Response
 
-from .config import settings
+from .config import global_settings
+from .tenant_middleware import GLOBAL_PREFIXES
 from .utils import utils
 
 # Endpoints where request/response bodies are not worth storing (e.g. they
@@ -37,11 +38,17 @@ def _filter_headers(headers: dict) -> dict:
     return {key: value for key, value in headers.items() if key in LOG_HEADER_ALLOWLIST}
 
 
-def _ensure_api_logger(request: Request) -> None:
-    api_log_date = date.today().strftime("%Y%m%d")
-    if getattr(request.app.state, "api_log_date", None) != api_log_date:
-        request.app.state.api_logger = utils.create_log("api")
-        request.app.state.api_log_date = api_log_date
+async def _resolve_api_logger(request: Request):
+    """Return the appropriate file logger: tenant logger when present, else global."""
+    tenant = getattr(request.state, "tenant", None)
+    if tenant is not None:
+        await tenant.ensure_logger_fresh()
+        return tenant.api_logger
+    return getattr(request.app.state, "global_logger", None)
+
+
+def _is_global_path(path: str) -> bool:
+    return path == "/" or any(path == p or path.startswith(p + "/") for p in GLOBAL_PREFIXES)
 
 
 def _get_client_ip(request: Request) -> str | None:
@@ -76,8 +83,8 @@ def _coerce_body_bytes(body) -> bytes | None:
 
 
 def _truncate_body(body_bytes: bytes) -> bytes:
-    if settings.log_db_max_body_bytes > 0 and len(body_bytes) > settings.log_db_max_body_bytes:
-        return body_bytes[: settings.log_db_max_body_bytes] + b"...[truncated]"
+    if global_settings.log_db_max_body_bytes > 0 and len(body_bytes) > global_settings.log_db_max_body_bytes:
+        return body_bytes[: global_settings.log_db_max_body_bytes] + b"...[truncated]"
     return body_bytes
 
 
@@ -165,9 +172,9 @@ def _build_log_record(
 
 
 def _should_log_db() -> bool:
-    if not settings.log_db_enabled or settings.log_db_sample_rate <= 0.0:
+    if not global_settings.log_db_enabled or global_settings.log_db_sample_rate <= 0.0:
         return False
-    return settings.log_db_sample_rate >= 1.0 or random.random() <= settings.log_db_sample_rate
+    return global_settings.log_db_sample_rate >= 1.0 or random.random() <= global_settings.log_db_sample_rate
 
 
 async def request_logging_middleware(request: Request, call_next):
@@ -195,9 +202,9 @@ async def request_logging_middleware(request: Request, call_next):
     finally:
         utils.REQUEST_ID_CTX.reset(token)
         duration_ms = int((time.monotonic() - start) * 1000)
-        skip_body = any(prefix in request.url.path for prefix in _SKIP_BODY_PREFIXES)
+        path = request.url.path
+        skip_body = any(prefix in path for prefix in _SKIP_BODY_PREFIXES)
         response, response_body = await _capture_response_body(response)
-        _ensure_api_logger(request)
         log_record = _build_log_record(
             request=request,
             response=response,
@@ -210,12 +217,15 @@ async def request_logging_middleware(request: Request, call_next):
             skip_body=skip_body,
         )
 
-        api_logger = getattr(request.app.state, "api_logger", None)
-        if api_logger:
+        api_logger = await _resolve_api_logger(request)
+        if api_logger is not None:
             api_logger.info(json.dumps(log_record, default=str))
 
-        if _should_log_db():
-            asyncio.create_task(utils.insert_api_log(request.app.state.db_manager, log_record))
+        # DB API log: only for tenant-scoped requests. Global endpoints
+        # (admin, health, static) skip DB logging.
+        tenant = getattr(request.state, "tenant", None)
+        if tenant is not None and not _is_global_path(path) and _should_log_db():
+            asyncio.create_task(utils.insert_api_log(tenant.db_manager, log_record))
 
         if response is not None:
             response.headers["X-Request-ID"] = str(request_id)

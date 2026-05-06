@@ -25,7 +25,7 @@ from psycopg.types.json import Json
 
 from ..models.util_models import APIResponse
 from ..exceptions import DatabaseUnavailableError, ProcedureError
-from ..config import settings
+from ..config import global_settings
 
 _rate_limit_state: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 _rate_limit_lock = asyncio.Lock()
@@ -224,7 +224,7 @@ async def execute_procedure(  # noqa: C901
 
     Args:
         log: Logger instance
-        db_manager: DatabaseManager instance from request.app.state.db_manager
+        db_manager: DatabaseManager instance from request.state.tenant.db_manager
         function_name: Name of function to call
         parameters: Parameters for function (json) or (query parameters)
         set_role: Set role in database with the current user
@@ -308,7 +308,7 @@ async def execute_procedure(  # noqa: C901
         if result and "version" in result:
             result["version"] = {"db": result["version"], "api": api_version}
 
-        if settings.log_db_enabled:
+        if global_settings.log_db_enabled:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             request_id = REQUEST_ID_CTX.get()
             db_log_record = {
@@ -697,13 +697,15 @@ async def get_db_version(log, db_manager, schema: str | None = None) -> str | No
 
 
 # Create log pointer
-def create_log(class_name):
-    today = date.today()
-    today = today.strftime("%Y%m%d")
+def create_log(class_name: str, log_dir: str | None = None):
+    """Build a `TimedRotatingFileHandler`-backed logger.
 
-    # Directory where log file is saved, changes location depending on what tenant is used
-    # logs_directory = "/var/log/giswater-api-server"
-    logs_directory = settings.log_dir
+    `log_dir` is the *base* directory; today's date is appended automatically
+    so daily rotation lands in `<log_dir>/<YYYYMMDD>/`. When omitted, falls
+    back to `global_settings.log_dir` for legacy callers (transitional)."""
+    today = date.today().strftime("%Y%m%d")
+
+    logs_directory = log_dir or global_settings.log_dir
 
     logger_name = f"{class_name.split('.')[-1]}"
     log = logging.getLogger(logger_name)
@@ -715,25 +717,17 @@ def create_log(class_name):
         formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
         stream_handler.setFormatter(formatter)
         log.addHandler(stream_handler)
-        log.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+        log.setLevel(getattr(logging, global_settings.log_level.upper(), logging.INFO))
         return log
 
     try:
         if not os.path.exists(logs_directory):
-            os.makedirs(logs_directory)
+            os.makedirs(logs_directory, exist_ok=True)
 
-        # Check if today's direcotry is created
-        today_directory = f"{logs_directory}/{today}"
-        if not os.path.exists(today_directory):
-            # This shouldn't be necessary, but somehow the directory magically apears
-            # (only the first time of the day it is created)
-            try:
-                os.makedirs(today_directory)
-            except FileExistsError:
-                print("Directory already exists. wtf")
+        today_directory = os.path.join(logs_directory, today)
+        os.makedirs(today_directory, exist_ok=True)
 
         service_name = os.getcwd().split(os.sep)[-1]
-        # Select file name for the log
         log_file = f"{service_name}_{today}.log"
 
         log_path = os.path.join(today_directory, log_file)
@@ -744,20 +738,17 @@ def create_log(class_name):
             log_path,
             when="midnight",
             interval=1,
-            backupCount=settings.log_rotate_days,
+            backupCount=global_settings.log_rotate_days,
             encoding="utf-8",
             utc=False,
         )
-        # Declares how log info is added to the file
         formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
         fileh.setFormatter(formatter)
     except OSError as e:
         return _fallback_stream_logger(e)
 
-    # Removes previous handlers on root Logger
-    # Gets root Logger and add handler
     log.addHandler(fileh)
-    log.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+    log.setLevel(getattr(logging, global_settings.log_level.upper(), logging.INFO))
     return log
 
 

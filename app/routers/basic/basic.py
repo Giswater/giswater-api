@@ -6,22 +6,24 @@ or (at your option) any later version.
 """
 
 import json
-from fastapi import APIRouter, Query, HTTPException
-from pydantic import ValidationError
 from datetime import date
 from typing import Literal, Optional
-from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import ValidationError
+
 from ...dependencies import CommonsDep
 from ...models.basic.basic_models import (
-    GetInfoFromCoordinatesResponse,
-    GetFeaturesFromPolygonResponse,
-    GetSelectorsResponse,
-    GetFeatureChangesResponse,
-    GetSearchResponse,
-    GetListResponse,
     GetArcAuditValuesResponse,
+    GetFeatureChangesResponse,
+    GetFeaturesFromPolygonResponse,
+    GetInfoFromCoordinatesResponse,
+    GetListResponse,
+    GetSearchResponse,
+    GetSelectorsResponse,
 )
-from ...models.util_models import CoordinatesModel, ExtentModel, PageInfoModel, FilterFieldModel
+from ...models.util_models import CoordinatesModel, ExtentModel, FilterFieldModel, PageInfoModel
+from ...utils.utils import create_body_dict, create_log, execute_procedure, handle_procedure_result
 
 router = APIRouter(prefix="/basic", tags=["Basic"])
 
@@ -353,3 +355,9 @@ async def get_list(
         log, commons["db_manager"], "gw_fct_getlist", body, schema=commons["schema"], api_version=commons["api_version"]
     )
     return handle_procedure_result(result)
+
+
+@router.get("/exploitations/{exploitation}")
+async def get_exploitations(commons: CommonsDep, exploitation: str):
+    """Not implemented."""
+    raise HTTPException(status_code=501, detail="Method not implemented")
