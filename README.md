@@ -18,7 +18,7 @@ A lightweight, modular FastAPI application with **Swagger UI**, **Docker support
 - [Authentication](#authentication)
 - [Plugins](#plugins)
 - [Running with Docker](#running-with-docker)
-- [Deployment (Gunicorn + Uvicorn)](#deployment-gunicorn--uvicorn)
+- [Deployment Notes](#deployment-notes)
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
 - [Testing & Linting](#testing--linting)
@@ -67,23 +67,48 @@ git clone https://github.com/Giswater/giswater-api.git
 cd giswater-api
 ```
 
-### 2️⃣ **Set Up Virtual Environment**
+### 2️⃣ **Create local env files**
+
+```bash
+cp .env.example .env
+cp config/tenants/example.env config/tenants/test.env
+```
+
+### 3️⃣ **Run with Docker Compose (recommended)**
+
+```bash
+docker compose up --build -d
+```
+
+Check service health:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+📌 Tenant API docs (host-based): `http://<tenant>.<BASE_DOMAIN>:8000/gw-api/v1/docs` (example: `http://test.bgeo360.localhost:8000/gw-api/v1/docs`)
+
+Tenant routes (including `/gw-api/v1/docs`) require a tenant context. In browser, use host-based routing:
+
+- `BASE_DOMAIN=bgeo360.localhost` in `.env`
+- open `http://test.bgeo360.localhost:8000/gw-api/v1/docs` (for tenant file `config/tenants/test.env`)
+
+For API clients on localhost/IPs, set `DEV_ALLOW_TENANT_HEADER=true` and send `X-Tenant-ID: <id>`.
+
+### 4️⃣ **Stop services**
+
+```bash
+docker compose down
+```
+
+### Optional: run without Docker
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate  # for Windows PowerShell: .\venv\Scripts\activate
+source venv/bin/activate  # Windows PowerShell: .\venv\Scripts\activate
 pip install -e ".[dev]"
-```
-
-### 3️⃣ **Run Locally**
-
-```bash
 uvicorn app.main:app --reload
 ```
-
-📌 API Docs available at: [**http://127.0.0.1:8000/gw-api/v1/docs**](http://127.0.0.1:8000/gw-api/v1/docs)
-
-In dev, set `DEV_ALLOW_TENANT_HEADER=true` and pass `X-Tenant-ID: <id>` against `localhost`, or use hostnames like `acme.bgeo360.localhost` (many resolvers map `*.localhost` to 127.0.0.1). Set `BASE_DOMAIN` to match your suffix (e.g. `bgeo360.localhost` for `*.bgeo360.localhost`, or `bgeo360.com` in production).
 
 ---
 
@@ -102,6 +127,8 @@ cp .env.example .env
 .env                              # global config only
 config/tenants/<tenant_id>.env    # one file per tenant (filename stem = tenant id = subdomain)
 ```
+
+Template files named `example.env`, `sample.env`, and `template.env` are ignored by tenant discovery.
 
 Tenant id rules: `^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`. Reserved (rejected at load): `www`, `api`, `admin`, `static`, `traefik`, `localhost`.
 
@@ -186,136 +213,59 @@ Plugins are auto-loaded at startup on the **tenant** API surface (`/gw-api/v1`, 
 <a id="running-with-docker"></a>
 ## 🐳 Running with Docker
 
-### **Build the Image**
+Use Compose as the default runtime:
 
 ```bash
-docker build -t giswater-api .
+docker compose up --build -d
+docker compose ps
+docker compose logs -f app
 ```
 
-### **Run the Container**
+Dev hot reload:
 
 ```bash
-docker run -d -p 8000:8000 giswater-api
+cp docker-compose.override.yml.example docker-compose.override.yml
+docker compose up --build
 ```
 
-### **With Env File**
-
-```bash
-docker run -d -p 8000:8000 \
-  --env-file .env \
-  -v /var/log/giswater-api:/app/logs \
-  giswater-api
-```
-
-### **Environment Variables**
-
-Set the variables listed in the Configuration section (or via `--env-file`).
+The override enables:
+- bind mount `.:/app`
+- `uvicorn --reload`
+- `DEV_ALLOW_TENANT_HEADER=true`
 
 ---
 
-<a id="deployment-gunicorn--uvicorn"></a>
-## 🏗️ Deployment (Gunicorn + Uvicorn)
+<a id="deployment-notes"></a>
+## 🏗️ Deployment Notes
 
-For production, run:
-
-```bash
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
-```
+- Keep `proxy_set_header Host $host` at the reverse proxy (`deploy/nginx.conf.example`) because tenant resolution depends on `Host`.
+- Apex host (`BASE_DOMAIN`) serves only `/admin/*`; tenant hosts (`<tenant>.<BASE_DOMAIN>`) serve `/gw-api/v1/*`.
+- Base compose binds to `127.0.0.1:8000`; expose publicly through your proxy/TLS layer.
+- `gunicorn.conf.py` is currently empty; container runtime uses `uvicorn app.main:app`.
 
 ---
 
 <a id="api-endpoints"></a>
 ## 🛠️ API Endpoints
 
-### Root & Health
+- Tenant surface prefix: `/gw-api/v1`
+- Admin surface prefix: `/admin` (apex host only)
+- Health checks:
+  - `/health` (global, tenant-independent)
+  - `/gw-api/v1/health` (tenant scope)
+  - `/admin/health` (admin scope)
+- OpenAPI docs:
+  - Tenant: `/gw-api/v1/docs` on tenant host
+  - Admin: `/admin/docs` on apex host
+- Module routers are loaded from:
+  - `basic`
+  - `om` (`profile`, `flow`, `mincut`, `waterbalance`, `mapzones`)
+  - `routing`
+  - `crm`
+  - `epa` (`dscenario`)
+  - `system` (`ready`, schema validation, tenant-scoped logs)
 
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/`                               | GET    | Root endpoint (version info)                                                |
-| `/health`                         | GET    | Health check                                                                |
-| `/ready`                          | GET    | Readiness check (database connection status)                                |
-
-### Basic Module
-
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/basic/getfeaturechanges`        | GET    | Fetch GIS features modified since specified date                            |
-| `/basic/getinfofromcoordinates`   | GET    | Fetch GIS features info from coordinates                                    |
-| `/basic/getfeaturesfrompolygon`   | GET    | Fetch GIS features inside a polygon                                         |
-| `/basic/getselectors`             | GET    | Fetch current selectors                                                     |
-| `/basic/getsearch`                | GET    | Search features                                                             |
-| `/basic/getarcauditvalues`        | GET    | Fetch arc audit values                                                      |
-| `/basic/getlist`                  | GET    | Generic list query with paging and filters                                  |
-
-### CRM Module
-
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/crm/hydrometers`                | POST   | Insert hydrometers (single or bulk)                                         |
-| `/crm/hydrometers/{code}`         | PATCH  | Update single hydrometer by code                                            |
-| `/crm/hydrometers`                | PATCH  | Update multiple hydrometers in bulk                                         |
-| `/crm/hydrometers/{code}`         | DELETE | Delete single hydrometer by code                                            |
-| `/crm/hydrometers`                | DELETE | Delete multiple hydrometers in bulk                                         |
-| `/crm/hydrometers`                | PUT    | Replace all hydrometers (full sync mode)                                    |
-
-### OM - Mincut
-
-| Endpoint                                                        | Method | Description                                                                 |
-| --------------------------------------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/om/mincuts`                                                   | GET    | List mincuts                                                                |
-| `/om/mincuts/{mincut_id}`                                       | GET    | Get mincut dialog data                                                      |
-| `/om/mincuts`                                                   | POST   | Create a new mincut                                                         |
-| `/om/mincuts/{mincut_id}`                                       | PATCH  | Update an existing mincut                                                   |
-| `/om/mincuts/{mincut_id}`                                       | DELETE | Delete a mincut                                                             |
-| `/om/mincuts/{mincut_id}/valves`                                | GET    | List valves associated to a mincut                                          |
-| `/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-unaccess`     | POST   | Toggle valve unaccess status and recalculate mincut                         |
-| `/om/mincuts/{mincut_id}/valves/{valve_id}/toggle-status`       | POST   | Update valve status in a mincut                                             |
-| `/om/mincuts/{mincut_id}/start`                                 | POST   | Start mincut and interrupt supply                                           |
-| `/om/mincuts/{mincut_id}/end`                                   | POST   | End mincut and restore supply                                               |
-| `/om/mincuts/{mincut_id}/cancel`                                | POST   | Cancel mincut and keep issue recorded                                       |
-
-### OM - Profile
-
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/om/profiles`                    | POST   | Create a new profile                                                        |
-
-### OM - Flow
-
-| Endpoint                          | Method | Description                                                                 |
-| --------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/om/flow`                        | POST   | Calculate upstream/downstream flow trace                                    |
-
-### OM - District Metered Areas
-
-| Endpoint                                         | Method | Description                                                                 |
-| ----------------------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/om/dmas`                                      | GET    | Returns collection of DMAs                                                  |
-| `/om/macrodmas`                                 | GET    | Returns collection of macro DMAs                                            |
-| `/om/dmas/{dma_id}/hydrometers`                 | GET    | Retrieve DMA hydrometers data with location, status, and measurements       |
-| `/om/dmas/{dma_id}/parameters`                  | GET    | Retrieves DMA parameters for performance analysis                           |
-| `/om/dmas/{dma_id}/flowmeters`                  | GET    | Retrieve DMA flowmeters data with location, status, and flow                |
-| `/om/dmas/{dma_id}/connecs`                     | GET    | Retrieve DMA connecs data from ve_connec                                    |
-
-### OM - Mapzones
-
-| Endpoint                                         | Method | Description                                                                 |
-| ----------------------------------------------- | ------ | --------------------------------------------------------------------------- |
-| `/om/macrosectors`                               | GET    | Returns collection of macrosectors                                          |
-| `/om/sectors`                                    | GET    | Returns collection of sectors                                               |
-| `/om/presszones`                                 | GET    | Returns collection of presszones                                            |
-| `/om/macrodqas`                                  | GET    | Returns collection of macro DQAs                                            |
-| `/om/dqas`                                       | GET    | Returns collection of DQAs                                                  |
-| `/om/macroomzones`                               | GET    | Returns collection of macro OM zones                                        |
-| `/om/omzones`                                    | GET    | Returns collection of OM zones                                              |
-| `/om/omunits`                                    | GET    | Returns collection of OM units                                              |
-
-### OM - Routing
-
-| Endpoint                             | Method | Description                                                              |
-| ------------------------------------ | ------ | ------------------------------------------------------------------------ |
-| `/routing/getobjectoptimalpathorder` | GET    | Get optimal path through network points using Valhalla routing engine    |
-| `/routing/getobjectparameterorder`   | GET    | Get features ordered by parameter                                        |
+Use OpenAPI as source of truth for the full endpoint list in your running environment.
 
 ---
 
@@ -325,20 +275,21 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
 ```
 giswater-api/
 │── app/
-│   │── .env.example         # Environment variable template
-│   │
-│   │── models/              # Pydantic models (organized by module)
+│   │── models/              # Pydantic models
 │   │   │── basic/           # Basic module models
 │   │   │── crm/             # CRM module models
 │   │   │── om/              # OM (mincut, dma, mapzones) models
 │   │   │── routing/         # Routing module models
 │   │   └── util_models.py   # Shared utility models
 │   │
-│   │── routers/             # API endpoints (organized by module)
+│   │── routers/             # API endpoints
 │   │   │── basic/           # GIS feature queries
 │   │   │── crm/             # Hydrometer CRUD
 │   │   │── om/              # OM operations (mincut, profile, flow, dma, mapzones)
 │   │   │── routing/         # Optimal path routing
+│   │   │── epa/             # EPA scenarios
+│   │   │── admin.py         # Tenant lifecycle endpoints
+│   │   └── system.py        # Ready/schemas/logs endpoints
 │   │
 │   │── utils/               # Utilities and helpers
 │   │   │── utils.py         # General utilities
@@ -347,15 +298,24 @@ giswater-api/
 │   │── config.py            # Configuration loader
 │   │── database.py          # Database connection manager
 │   │── dependencies.py      # FastAPI dependencies
+│   │── host_middleware.py   # Host-based tenant resolver
+│   │── tenant.py            # Tenant registry and lifecycle
 │   │── keycloak.py          # Keycloak OAuth2/OIDC integration
+│   │── auth.py              # Admin + tenant auth validation
 │   │── main.py              # FastAPI app entry point
 │   └── static/              # Static files (favicon, etc.)
 │
+│── config/
+│   └── tenants/         # Per-tenant .env files (e.g. test.env, acme.env)
+│── deploy/
+│   └── nginx.conf.example
 │── plugins/             # Plugin directory (see plugins/readme.md)
-│── tests/               # Unit and integration tests
-│── .github/workflows/   # CI/CD (flake8 lint, pytest)
+│── tests/               # Tests
+│── .github/workflows/   # CI/CD (ruff, pytest)
 │── Dockerfile           # Docker build config
-│── gunicorn.conf.py     # Gunicorn production config
+│── docker-compose.yml
+│── docker-compose.override.yml.example
+│── gunicorn.conf.py     # Present but currently empty
 │── pyproject.toml       # Project metadata, dependencies, and tooling config
 │── scripts/
 │   │── release.sh       # Release script (bash)
@@ -408,4 +368,3 @@ The script will:
 ## 📌 License
 
 This project is free software, licensed under the GNU General Public License (GPL) version 3 or later. Refer to the [LICENSE](./LICENSE) file for details.
-

@@ -10,7 +10,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from ..config import global_settings
-from ..schemas.admin import (
+from ..models.admin_models import (
     TenantCreateIn,
     TenantIn,
     TenantOut,
