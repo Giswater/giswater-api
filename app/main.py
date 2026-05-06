@@ -41,8 +41,7 @@ from .routers.epa import dscenario
 from .routers.om import flow, mincut, profile, waterbalance
 from .routers.om.mapzones import dma, dqa, omunit, omzone, presszone, sector
 from .routers.routing import routing
-from .tenant import Tenant
-from .tenant import TenantRegistry
+from .tenant import Tenant, TenantRegistry
 from .utils import utils
 
 TITLE = "Giswater API"
@@ -86,6 +85,13 @@ def _tenant_openapi_routes(tenant: Tenant) -> list[BaseRoute]:
         if flag is None or getattr(tenant.settings, flag, False):
             out.append(route)
     return out
+
+
+def _register_health_route(app: FastAPI) -> None:
+    @app.get("/health", include_in_schema=False)
+    async def health():
+        """Liveness probe: process is up."""
+        return {"status": "ok"}
 
 
 @asynccontextmanager
@@ -205,11 +211,8 @@ parent.mount(ADMIN_PREFIX, admin_app)
 parent.mount(TENANT_PREFIX, tenant_app)
 parent.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-
-@parent.get("/health", include_in_schema=False)
-async def health():
-    """Liveness probe: process is up (bind to loopback in production; not exposed via nginx)."""
-    return {"status": "ok"}
+for _app in (parent, tenant_app, admin_app):
+    _register_health_route(_app)
 
 
 # Middleware order: Starlette runs LIFO — register host_middleware first so it runs inner.

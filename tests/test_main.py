@@ -20,3 +20,24 @@ def test_health(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
+
+
+def test_tenant_health(client):
+    response = client.get(api("/health"))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+
+
+def test_admin_health(client):
+    response = client.get("/admin/health", auth=("admin", "admin"))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+
+
+def test_example_env_not_loaded_as_tenant(client):
+    response = client.get(api("/health"), headers={"host": "example.bgeo360.com"})
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == "Unknown tenant 'example'"

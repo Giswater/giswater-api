@@ -25,6 +25,7 @@ TENANT_ID_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 RESERVED_IDS = {"www", "api", "admin", "static", "traefik", "localhost"}
 
 _logger = logging.getLogger(__name__)
+_IGNORED_TENANT_FILENAMES = frozenset({"example.env", "sample.env", "template.env"})
 
 
 def validate_tenant_id(tid: str) -> None:
@@ -144,11 +145,18 @@ class TenantRegistry:
     def all(self) -> list[Tenant]:
         return [self._tenants[tid] for tid in self.ids()]
 
+    @staticmethod
+    def _is_template_env_file(path: Path) -> bool:
+        return path.name.lower() in _IGNORED_TENANT_FILENAMES
+
+    def _tenant_files(self) -> list[Path]:
+        return sorted(p for p in self.dir.glob("*.env") if p.is_file() and not self._is_template_env_file(p))
+
     async def load_all(self) -> dict:
         """Eager-load every `.env` in `tenants_dir` in parallel."""
         if not self.dir.exists():
             self.dir.mkdir(parents=True, exist_ok=True)
-        files = sorted(p for p in self.dir.glob("*.env") if p.is_file())
+        files = self._tenant_files()
 
         async def build(path: Path):
             tid = path.stem
@@ -213,7 +221,7 @@ class TenantRegistry:
         async with self._lock:
             if not self.dir.exists():
                 self.dir.mkdir(parents=True, exist_ok=True)
-            files = {p.stem: p for p in self.dir.glob("*.env") if p.is_file()}
+            files = {p.stem: p for p in self._tenant_files()}
             existing = set(self._tenants.keys())
             wanted = set(files.keys())
 
