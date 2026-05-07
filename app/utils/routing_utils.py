@@ -215,14 +215,16 @@ def get_maneuvers(valhalla_response):
 
 
 async def get_network_points(
-    object_type, mapzone_type, mapzone_id, log, db_manager, schema
+    object_type, mapzone_type, mapzone_id, log, db_manager, schema, api_version=None
 ) -> Tuple[dict, List[Location]]:
     points = []
 
     # Get the network points from the database
     body = create_body_dict(extras={"sysType": object_type, "mapzoneType": mapzone_type, "mapzoneId": mapzone_id})
 
-    result = await execute_procedure(log, db_manager, "gw_fct_getfeatures", body, schema=schema)
+    result = await execute_procedure(
+        log, db_manager, "gw_fct_getfeatures", body, schema=schema, api_version=api_version
+    )
     if not result:
         return {}, []
 

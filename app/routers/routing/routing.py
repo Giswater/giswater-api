@@ -175,6 +175,7 @@ async def get_object_optimal_path_order(
             file_logger,
             commons["db_manager"],
             commons["schema"],
+            api_version=commons["api_version"],
         )
         features = json_result["body"]["data"]["features"]
 
@@ -215,13 +216,13 @@ async def get_object_optimal_path_order(
         except (KeyError, TypeError, IndexError):
             maneuvers = []
 
+        version = (json_result.get("version") or {}) if isinstance(json_result, dict) else {}
+        version["api"] = commons["api_version"]
+
         result = {
             "status": "Accepted",
             "message": {"level": 1, "text": status_message},
-            "version": {
-                "db": json_result.get("version") if isinstance(json_result, dict) else None,
-                "api": commons["api_version"],
-            },
+            "version": version,
             "body": {
                 "data": {
                     "distance": distance,
