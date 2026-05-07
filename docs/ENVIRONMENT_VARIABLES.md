@@ -33,7 +33,7 @@ Request logging writes JSON lines to rotating files under `LOG_DIR`, and optiona
 | `LOG_ROTATE_DAYS` | `14` | Number of rotated daily log files to retain. |
 | `LOG_DB_ENABLED` | `true` | When `true`, eligible tenant requests may insert rows into the tenant DB API log schema (subject to sample rate). |
 | `LOG_DB_SAMPLE_RATE` | `1.0` | Fraction (0–1) of tenant-scoped requests that pass random sampling for **DB** log inserts. `1.0` means every eligible request is considered (typical for QGIS plugin traffic). `0` turns off DB sampling together with `LOG_DB_ENABLED` logic; prefer `LOG_DB_ENABLED=false` to disable DB logging entirely. Lower the rate if the log table becomes a bottleneck. |
-| `LOG_HTTP_BODY_CAPTURE` | `true` | When `true`, request/response **payload text** is included in log records (still truncated). When `false`, only metadata (sizes, timing, allowlisted headers, etc.)—useful for strict data-minimization. |
+| `LOG_HTTP_BODY_CAPTURE` | `true` | When `true`, request/response **payload text** is included for failed requests (`4xx`/`5xx`) with redaction and truncation. Binary/multipart payloads are skipped. When `false`, only metadata (sizes, timing, allowlisted headers, etc.) is logged. |
 | `LOG_DB_MAX_BODY_BYTES` | `2048` | Max bytes stored per request/response body when capture is on. `0` uses an internal safe cap (same as 2048-style limit). |
 
 ### Giswater DB compatibility (readiness)

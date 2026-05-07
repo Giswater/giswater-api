@@ -7,7 +7,12 @@ BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 TENANT_HOST="${TENANT_HOST:-test.bgeo360.com}"
 APEX_HOST="${APEX_HOST:-bgeo360.com}"
 ADMIN_USER="${ADMIN_USER:-admin}"
-ADMIN_PASS="${ADMIN_PASS:-admin}"
+ADMIN_PASS="${ADMIN_PASS:-}"
+
+if [[ -z "${ADMIN_PASS}" ]]; then
+  echo "ERROR: ADMIN_PASS is required (do not rely on default credentials)." >&2
+  exit 1
+fi
 
 echo "==> GET ${BASE_URL}/health"
 curl -sS -f "${BASE_URL}/health" | (command -v jq >/dev/null && jq . || cat)

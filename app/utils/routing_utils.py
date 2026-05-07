@@ -8,12 +8,31 @@ or (at your option) any later version.
 import json
 import logging
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 from urllib.parse import quote
 from typing import List, Tuple
 from ..models.routing.routing_models import Location
 from ..utils.utils import create_body_dict, execute_procedure
 
 logger = logging.getLogger(__name__)
+_VALHALLA_CONNECT_TIMEOUT_SECONDS = 5
+_VALHALLA_READ_TIMEOUT_SECONDS = 20
+_VALHALLA_RETRY_TOTAL = 2
+
+
+def _valhalla_http_session() -> requests.Session:
+    retry = Retry(
+        total=_VALHALLA_RETRY_TOTAL,
+        backoff_factor=0.5,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset({"GET"}),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session = requests.Session()
+    session.mount("https://", adapter)
+    return session
 
 
 def decode(encoded):
@@ -143,7 +162,8 @@ def get_valhalla_route(input_parameters):
     json_string = json.dumps(input_parameters).replace(" ", "")
     encoded_json = quote(json_string, safe="[],:")
     url = f"{base_url}?json={encoded_json}"
-    response = requests.get(url)
+    with _valhalla_http_session() as session:
+        response = session.get(url, timeout=(_VALHALLA_CONNECT_TIMEOUT_SECONDS, _VALHALLA_READ_TIMEOUT_SECONDS))
     if response.status_code != 200:
         return response, {}
     response_json = response.json()
@@ -166,7 +186,8 @@ def get_valhalla_optimized_route(input_parameters):
     json_string = json.dumps(input_parameters).replace(" ", "")
     encoded_json = quote(json_string, safe="[],:")
     url = f"{base_url}?json={encoded_json}"
-    response = requests.get(url)
+    with _valhalla_http_session() as session:
+        response = session.get(url, timeout=(_VALHALLA_CONNECT_TIMEOUT_SECONDS, _VALHALLA_READ_TIMEOUT_SECONDS))
     if response.status_code != 200:
         return response, {}
     response_json = response.json()

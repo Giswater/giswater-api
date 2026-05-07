@@ -73,7 +73,9 @@ def _build_tenant_logger(tid: str) -> tuple[logging.Logger, str]:
 def _atomic_write_env(path: Path, contents: str) -> None:
     tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}.{int(time.time() * 1000)}")
     tmp.write_text(contents, encoding="utf-8")
+    os.chmod(tmp, 0o600)
     os.replace(tmp, path)
+    os.chmod(path, 0o600)
 
 
 def _format_value(value) -> str:

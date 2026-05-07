@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Literal, Optional
 import json
 import logging
+import requests
 from pydantic import ValidationError
 from ...utils.routing_utils import (
     get_network_points,
@@ -19,52 +20,16 @@ from ...utils.routing_utils import (
 from ...utils.utils import create_body_dict, execute_procedure, create_log, handle_procedure_result
 from ...dependencies import CommonsDep
 from ...models.routing.routing_models import (
-    # GetObjectHydraulicOrderResponse,
     OptimalPathParams,
     GetObjectOptimalPathOrderResponse,
     Location,
     GetObjectParameterOrderResponse,
 )
-# from ...models.util_models import CoordinatesModel, GwErrorResponse
 
 logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/routing", tags=["OM - Routing"])
-
-
-# @router.get(
-#     "/getobjecthydraulicorder",
-#     description=(
-#         "Get hydraulic order information for the specified object"
-#     ),
-#     response_model=GetObjectHydraulicOrderResponse,
-#     response_model_exclude_unset=True
-# )
-# async def get_object_hydraulic_order(
-#     schema: str = Depends(get_schema),
-#     objectType: Literal['VALVULA', 'DEPOSITO', 'TUBERIA', 'CLORADOR'] = Query(
-#         ...,
-#         title="Object type",
-#         description="Type of the object"
-#     ),
-# ):
-
-#     result = {
-#         "status": "Accepted",
-#         "message": {"level": 4, "text": "Process done successfully"},
-#         "version": {"db": "4.0.001", "api": "0.2.0"},
-#         "body": {
-#             "data": {
-#                 "hydraulicOrder": 1,
-#                 "objectId": "123",
-#                 "objectType": "VALVULA",
-#                 "parentId": None,
-#                 "children": []
-#             }
-#         }
-#     }
-#     return result
 
 
 @router.get(
@@ -253,7 +218,10 @@ async def get_object_optimal_path_order(
         result = {
             "status": "Accepted",
             "message": {"level": 1, "text": status_message},
-            "version": {"db": "4.0.001", "api": "0.2.0"},
+            "version": {
+                "db": json_result.get("version") if isinstance(json_result, dict) else None,
+                "api": commons["api_version"],
+            },
             "body": {
                 "data": {
                     "distance": distance,
@@ -268,6 +236,8 @@ async def get_object_optimal_path_order(
         raise HTTPException(
             status_code=400, detail="Invalid JSON format for initialPoint or finalPoint parameter"
         ) from e
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Routing provider unavailable: {e}") from e
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return result
@@ -341,69 +311,3 @@ async def get_object_parameter_order(
         api_version=commons["api_version"],
     )
     return handle_procedure_result(result)
-
-    # Get the network of points
-    # network_points = get_network_points(objectType, mapzone_type, mapzoneId, log, schema)
-
-    # locations_data = [initial_point, *network_points, final_point]
-    # # Create a ShortestPathParams instance to validate the input
-    # params = OptimalPathParams(
-    #     locations=locations_data,
-    #     costing=transportMode,
-    #     units=units
-    # )
-
-    # valhalla_params = {
-    #     "locations": [location.to_dict() for location in locations_data],
-    #     "costing": params.costing,
-    #     "units": params.units,
-    # }
-    # # Get the route from Valhalla API
-    # valhalla_response, legs = get_valhalla_optimized_route(valhalla_params)
-
-    # # Check if we got a valid response
-    # if not isinstance(valhalla_response, dict):
-    #     raise HTTPException(
-    #         status_code=500,
-    #         detail="Invalid response from Valhalla API"
-    #     )
-
-    # try:
-    #     # Use the new function to create GeoJSON with multiple legs
-    #     geojson_response = get_geojson_from_optimized_route(valhalla_response.get("trip", {}), params.costing)
-    # except Exception as e:
-    #     geojson_response = {}
-
-    # try:
-    #     distance = valhalla_response["trip"]["summary"]["length"]  # type: ignore
-    # except Exception:
-    #     distance = None
-    # try:
-    #     duration = valhalla_response["trip"]["summary"]["time"]  # type: ignore
-    # except Exception:
-    #     duration = None
-    # # try:
-    # #     status = valhalla_response["trip"]["status"]  # type: ignore
-    # # except Exception:
-    # #     status = None
-    # try:
-    #     status_message = valhalla_response["trip"]["status_message"]  # type: ignore
-    # except Exception:
-    #     status_message = None
-
-    # # Add leg count information
-    # leg_count = len(legs) if isinstance(legs, list) else 0
-
-    # result = {
-    #     "status": "Accepted",
-    #     "message": {"level": 1, "text": status_message},
-    #     "version": {"db": "4.0.001", "api": "0.2.0"},
-    #     "body": {
-    #         "data": {
-    #             "distance": distance,
-    #             "duration": duration,
-    #             "path": geojson_response,
-    #             "legCount": leg_count,
-    #         }
-    #     }
-    # }

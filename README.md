@@ -187,7 +187,7 @@ Each tenant has its own pool. Total connections to your Postgres ≈ `N_tenants 
 - `POST   /admin/tenants/{id}/reload`  — re-read one `.env` from disk
 - `POST   /admin/tenants/reload`       — rescan `TENANTS_DIR`
 
-All `/admin/*` endpoints require dual auth: HTTP Basic with `ADMIN_USER`/`ADMIN_PASSWORD` and/or a Bearer JWT from the platform Keycloak realm with role `platform-admin`. Either path grants access.
+All `/admin/*` endpoints support either auth path: HTTP Basic with `ADMIN_USER`/`ADMIN_PASSWORD`, or a Bearer JWT from the platform Keycloak realm with role `platform-admin`.
 
 Mutations gated by `ADMIN_WRITE_ENABLED=true`; full-dir reload also gated by `ADMIN_RELOAD_ENABLED=true`.
 
@@ -261,7 +261,7 @@ The override enables:
 
 | Variable | Default | Meaning |
 | -------- | ------- | ------- |
-| `LOG_HTTP_BODY_CAPTURE` | `true` | When `true`, request/response payload text is logged (truncated). Set `false` for metadata-only if you must avoid body retention. |
+| `LOG_HTTP_BODY_CAPTURE` | `true` | When `true`, request/response payload text is logged for failed requests (`4xx`/`5xx`) with redaction + truncation; binary/multipart payloads are skipped. |
 | `LOG_DB_MAX_BODY_BYTES` | `2048` | Max bytes per stored body (`0` uses the same safe internal cap). |
 | `LOG_DB_ENABLED` | `true` | Sample API rows into the tenant log table. |
 | `LOG_DB_SAMPLE_RATE` | `1.0` | Fraction of tenant requests logged to DB (`1.0` = all; typical for QGIS plugin workloads). |

@@ -7,6 +7,9 @@ or (at your option) any later version.
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ProcedureError(Exception):
@@ -29,10 +32,16 @@ def db_unavailable_payload() -> dict:
 
 
 async def procedure_error_handler(request: Request, exc: ProcedureError):
-    # Add your logging here - you have access to request.url, request.headers, etc.
+    logger.warning(
+        "ProcedureError on %s", request.url.path, extra={"request_id": str(getattr(request.state, "request_id", ""))}
+    )
     return JSONResponse(status_code=500, content=exc.result)
 
 
 async def database_unavailable_error_handler(request: Request, exc: DatabaseUnavailableError):
-    # Add your logging here - you have access to request.url, request.headers, etc.
+    logger.error(
+        "DatabaseUnavailableError on %s",
+        request.url.path,
+        extra={"request_id": str(getattr(request.state, "request_id", ""))},
+    )
     return JSONResponse(status_code=503, content=db_unavailable_payload())

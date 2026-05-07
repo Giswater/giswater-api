@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 from fastapi import Depends, Header, HTTPException, Query, Request
 from fastapi_keycloak import OIDCUser
 
-from .auth import get_current_user_dep, verify_admin
+from .auth import get_current_user_dep
 from .tenant import Tenant
 
 
@@ -77,8 +77,3 @@ def require_feature(flag: str):
             raise HTTPException(status_code=404, detail="Feature disabled")
 
     return _check
-
-
-def verify_log_admin():
-    """Backward-compat wrapper around `verify_admin` for legacy /logs endpoints."""
-    return verify_admin
