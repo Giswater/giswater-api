@@ -170,11 +170,13 @@ async def tenant_root():
 async def tenant_openapi_json(request: Request):
     tenant: Tenant = request.state.tenant
     routes = _tenant_openapi_routes(tenant)
+    root_path = request.scope.get("root_path") or TENANT_PREFIX
     schema = get_openapi(
         title=TITLE,
         version=VERSION,
         description=DESCRIPTION,
         routes=routes,
+        servers=[{"url": root_path}],
     )
     return JSONResponse(schema)
 
