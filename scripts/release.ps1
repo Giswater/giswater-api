@@ -18,7 +18,12 @@ $MajorMinor = ($Version -split '\.')[0..1] -join '.'
 (Get-Content pyproject.toml) -replace '^version = .*', "version = `"$Version`"" | Set-Content pyproject.toml
 
 git add -A
-git commit -m "release: v$Version"
+git diff --cached --quiet
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "No file changes to commit for v$Version (version already set)."
+} else {
+    git commit -m "release: v$Version"
+}
 git tag "v$Version"
 git checkout -b "release/$MajorMinor"
 git push origin main "release/$MajorMinor" "v$Version"

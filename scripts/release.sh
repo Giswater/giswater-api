@@ -25,7 +25,11 @@ sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
 
 # Commit, tag, branch, push
 git add -A
-git commit -m "release: v$VERSION"
+if git diff --cached --quiet; then
+  echo "No file changes to commit for v$VERSION (version already set)."
+else
+  git commit -m "release: v$VERSION"
+fi
 git tag "v$VERSION"
 git checkout -b "release/$MAJOR_MINOR"
 git push origin main "release/$MAJOR_MINOR" "v$VERSION"
