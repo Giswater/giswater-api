@@ -15,5 +15,5 @@ COPY . .
 # Expose the FastAPI default port
 EXPOSE 8000
 
-# Start the FastAPI application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Production: Gunicorn + Uvicorn workers (see gunicorn.conf.py). Override WEB_CONCURRENCY as needed.
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]

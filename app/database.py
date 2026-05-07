@@ -6,12 +6,16 @@ or (at your option) any later version.
 """
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from psycopg_pool import AsyncConnectionPool
+import psycopg
 from fastapi import HTTPException
 
 from .config import TenantSettings
 from .exceptions import DatabaseUnavailableError
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
@@ -53,12 +57,12 @@ class DatabaseManager:
                 open=False,
             )
             await asyncio.wait_for(self.connection_pool.open(), timeout=self.settings.db_connect_timeout)
-            print(f"{self._log_prefix()} Initialized connection pool for {self.dbname}")
+            logger.info("%s Initialized connection pool for %s", self._log_prefix(), self.dbname)
         except asyncio.TimeoutError:
-            print(f"{self._log_prefix()} Timed out initializing connection pool for {self.dbname}")
+            logger.warning("%s Timed out initializing connection pool for %s", self._log_prefix(), self.dbname)
             self.connection_pool = None
-        except Exception as e:
-            print(f"{self._log_prefix()} Failed to initialize connection pool for {self.dbname}: {e}")
+        except Exception:
+            logger.exception("%s Failed to initialize connection pool for %s", self._log_prefix(), self.dbname)
             self.connection_pool = None
 
     @asynccontextmanager
@@ -84,16 +88,20 @@ class DatabaseManager:
                 async with self.connection_pool.connection() as conn:
                     yield conn
                     return
-            except Exception as e:
-                print(
-                    f"{self._log_prefix()} Failed to acquire database connection (attempt {n_try + 1}/{max_tries}): {e}"
+            except (psycopg.Error, OSError, asyncio.TimeoutError) as e:
+                logger.warning(
+                    "%s Failed to acquire database connection (attempt %s/%s): %s",
+                    self._log_prefix(),
+                    n_try + 1,
+                    max_tries,
+                    e,
                 )
                 # Pool may be stale after DB restarts/outages; force recreation.
                 try:
                     if self.connection_pool is not None:
                         await self.connection_pool.close()
-                except Exception:
-                    pass
+                except OSError:
+                    logger.debug("%s Error closing stale pool", self._log_prefix(), exc_info=True)
                 self.connection_pool = None
                 if n_try < max_tries - 1:
                     await asyncio.sleep(retry_delay_seconds)
@@ -111,7 +119,7 @@ class DatabaseManager:
                         "SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (schema,)
                     )
                     return await cursor.fetchone() is not None
-            except Exception as e:
+            except psycopg.Error as e:
                 raise HTTPException(status_code=500, detail=str(e)) from e
 
     async def is_db_available(self, timeout_seconds: float = 2.0) -> bool:
@@ -119,7 +127,7 @@ class DatabaseManager:
         if self.connection_pool is None:
             try:
                 await asyncio.wait_for(self.init_conn_pool(), timeout=timeout_seconds)
-            except Exception:
+            except (asyncio.TimeoutError, OSError, psycopg.Error):
                 return False
             if self.connection_pool is None:
                 return False
@@ -130,7 +138,7 @@ class DatabaseManager:
                     await cursor.execute("SELECT 1")
                     await cursor.fetchone()
             return True
-        except Exception:
+        except (psycopg.Error, OSError, asyncio.TimeoutError):
             return False
 
     async def healthcheck(self) -> bool:
@@ -141,5 +149,5 @@ class DatabaseManager:
         """Close the connection pool."""
         if self.connection_pool:
             await self.connection_pool.close()
-            print(f"{self._log_prefix()} Closed connection pool for {self.dbname}")
+            logger.info("%s Closed connection pool for %s", self._log_prefix(), self.dbname)
             self.connection_pool = None

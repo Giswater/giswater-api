@@ -15,10 +15,12 @@ A lightweight, modular FastAPI application with **Swagger UI**, **Docker support
 - [Compatibility](#compatibility)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Environment variables reference](docs/ENVIRONMENT_VARIABLES.md)
 - [Authentication](#authentication)
 - [Plugins](#plugins)
 - [Running with Docker](#running-with-docker)
 - [Deployment Notes](#deployment-notes)
+- [Deployment checklist (v1+)](docs/DEPLOYMENT_CHECKLIST.md)
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
 - [Testing & Linting](#testing--linting)
@@ -55,7 +57,9 @@ This service is versioned alongside the Giswater database. Use matching ranges t
 | `giswater-api` version | Supported Giswater DB versions |
 | ---------------------- | ------------------------------ |
 | 0.1 – 0.7              | 4.0 – 4.7                      |
-| 0.8                    | 4.8+                           |
+| 0.8 – 1.x              | 4.8+                           |
+
+When `GISWATER_DB_VERSION_CHECK=true`, tenant readiness (`GET /gw-api/v1/ready`) returns **503** if `{DB_SCHEMA}.sys_version` does not report a `giswater` version **≥** `GISWATER_DB_MIN_VERSION` (default `4.8.0`).
 
 <a id="quick-start"></a>
 ## 🚀 Quick Start
@@ -134,7 +138,11 @@ Tenant id rules: `^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`. Reserved (rejected at
 
 ### Environment variables
 
-**Global** (`.env`) — routing, logging, admin, platform Keycloak. Highlights:
+**Full reference (tables + explanations):** [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md).
+
+**Templates:** root [.env.example](.env.example), production-oriented [.env.prod.example](.env.prod.example), per-tenant [config/tenants/example.env](config/tenants/example.env).
+
+Summary for quick orientation:
 
 ```
 BASE_DOMAIN=bgeo360.com
@@ -143,6 +151,9 @@ TENANTS_DIR=config/tenants
 LOG_DIR=logs
 LOG_LEVEL=INFO
 LOG_DB_ENABLED=true
+LOG_DB_SAMPLE_RATE=1.0
+LOG_HTTP_BODY_CAPTURE=true
+LOG_DB_MAX_BODY_BYTES=2048
 
 ADMIN_USER=admin
 ADMIN_PASSWORD=<set me>
@@ -158,7 +169,9 @@ PLATFORM_KEYCLOAK_CLIENT_ID=
 PLATFORM_KEYCLOAK_CLIENT_SECRET=
 ```
 
-**Per tenant** (`config/tenants/<id>.env`) — `API_*` toggles, DB pool, optional Keycloak. See `config/tenants/example.env`.
+Gunicorn overrides and every variable name are documented in [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md) and mirrored in [.env.example](.env.example).
+
+**Per tenant** (`config/tenants/<id>.env`) — `API_*` toggles, DB pool, optional Keycloak. See [config/tenants/example.env](config/tenants/example.env) and [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md#per-tenant-environment-files).
 
 ### Connection budget
 
@@ -241,9 +254,19 @@ The override enables:
 - Keep `proxy_set_header Host $host` at the reverse proxy (`deploy/nginx.conf.example`) because tenant resolution depends on `Host`.
 - Apex host (`BASE_DOMAIN`) serves only `/admin/*`; tenant hosts (`<tenant>.<BASE_DOMAIN>`) serve `/gw-api/v1/*`.
 - Base compose binds to `127.0.0.1:8000`; expose publicly through your proxy/TLS layer.
-- `gunicorn.conf.py` is currently empty; container runtime uses `uvicorn app.main:app`.
+- Production images start **Gunicorn** + `uvicorn.workers.UvicornWorker` (see `gunicorn.conf.py`, `Dockerfile`). Override worker count with `WEB_CONCURRENCY` if needed.
+- Tune container/Kubernetes probes: allow enough `start_period` for Postgres pool init; `/health` is fast; tenant `/gw-api/v1/ready` validates DB connectivity (and optional DB version check).
 
----
+### Logging (production)
+
+| Variable | Default | Meaning |
+| -------- | ------- | ------- |
+| `LOG_HTTP_BODY_CAPTURE` | `true` | When `true`, request/response payload text is logged (truncated). Set `false` for metadata-only if you must avoid body retention. |
+| `LOG_DB_MAX_BODY_BYTES` | `2048` | Max bytes per stored body (`0` uses the same safe internal cap). |
+| `LOG_DB_ENABLED` | `true` | Sample API rows into the tenant log table. |
+| `LOG_DB_SAMPLE_RATE` | `1.0` | Fraction of tenant requests logged to DB (`1.0` = all; typical for QGIS plugin workloads). |
+
+Detailed reference: [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md). Copy-paste templates: [.env.example](.env.example), [.env.prod.example](.env.prod.example). Operator checklist: [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md). Per-tenant template: [config/tenants/example.env](config/tenants/example.env).
 
 <a id="api-endpoints"></a>
 ## 🛠️ API Endpoints
@@ -315,11 +338,15 @@ giswater-api/
 │── Dockerfile           # Docker build config
 │── docker-compose.yml
 │── docker-compose.override.yml.example
-│── gunicorn.conf.py     # Present but currently empty
+│── gunicorn.conf.py     # Gunicorn + Uvicorn worker defaults for production images
 │── pyproject.toml       # Project metadata, dependencies, and tooling config
+│── docs/
+│   ├── DEPLOYMENT_CHECKLIST.md
+│   └── ENVIRONMENT_VARIABLES.md   # Human-readable env reference (tables + descriptions)
 │── scripts/
-│   │── release.sh       # Release script (bash)
-│   └── release.ps1      # Release script (PowerShell)
+│   │── release.sh
+│   │── release.ps1
+│   └── smoke_test.sh
 └── README.md
 ```
 
@@ -345,15 +372,16 @@ CI/CD runs both on push via GitHub Actions (`.github/workflows/`).
 <a id="releasing"></a>
 ## 🚀 Releasing
 
-1. Update `CHANGELOG.md` with the new version's changes and commit.
-2. Run the release script:
+1. Update `CHANGELOG.md` under `[Unreleased]` and move the block to a dated `## [X.Y.Z]` section; commit.
+2. Follow [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) for production cutovers.
+3. Run the release script:
 
 ```bash
 # Bash
-./scripts/release.sh 0.8.0
+./scripts/release.sh 1.0.0
 
 # PowerShell
-.\scripts\release.ps1 0.8.0
+.\scripts\release.ps1 1.0.0
 ```
 
 The script will:

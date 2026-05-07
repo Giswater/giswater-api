@@ -51,7 +51,10 @@ class GlobalSettings:
     log_rotate_days: int = 14
     log_db_enabled: bool = True
     log_db_sample_rate: float = 1.0
-    log_db_max_body_bytes: int = 0
+    # When True, request/response bodies appear in file + DB logs (truncated per LOG_DB_MAX_BODY_BYTES).
+    log_http_body_capture: bool = True
+    # Max bytes stored per body when capture is enabled; 0 means use safe default (2048).
+    log_db_max_body_bytes: int = 2048
 
     # Rate limiting
     rate_limit_default_max_requests: int = 30
@@ -73,6 +76,10 @@ class GlobalSettings:
     platform_keycloak_realm: str | None = None
     platform_keycloak_client_id: str | None = None
     platform_keycloak_client_secret: str | None = None
+
+    # DB compatibility (optional readiness gate; see GISWATER_DB_* env vars)
+    giswater_db_version_check: bool = False
+    giswater_db_min_version: str = "4.8.0"
 
     # Legacy aliases (kept for the duration of the multi-tenant migration).
     @property
@@ -152,7 +159,8 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
         log_rotate_days=_to_int(env.get("LOG_ROTATE_DAYS"), 14),
         log_db_enabled=_to_bool(env.get("LOG_DB_ENABLED"), True),
         log_db_sample_rate=_to_float(env.get("LOG_DB_SAMPLE_RATE"), 1.0),
-        log_db_max_body_bytes=_to_int(env.get("LOG_DB_MAX_BODY_BYTES"), 0),
+        log_http_body_capture=_to_bool(env.get("LOG_HTTP_BODY_CAPTURE"), True),
+        log_db_max_body_bytes=_to_int(env.get("LOG_DB_MAX_BODY_BYTES"), 2048),
         rate_limit_default_max_requests=_to_int(env.get("RATE_LIMIT_DEFAULT_MAX_REQUESTS"), 30),
         rate_limit_default_window_seconds=_to_int(env.get("RATE_LIMIT_DEFAULT_WINDOW_SECONDS"), 60),
         admin_user=(env.get("ADMIN_USER") or env.get("LOG_ADMIN_USER") or "admin"),
@@ -166,6 +174,8 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
         platform_keycloak_realm=env.get("PLATFORM_KEYCLOAK_REALM") or None,
         platform_keycloak_client_id=env.get("PLATFORM_KEYCLOAK_CLIENT_ID") or None,
         platform_keycloak_client_secret=env.get("PLATFORM_KEYCLOAK_CLIENT_SECRET") or None,
+        giswater_db_version_check=_to_bool(env.get("GISWATER_DB_VERSION_CHECK"), False),
+        giswater_db_min_version=(env.get("GISWATER_DB_MIN_VERSION") or "4.8.0"),
     )
 
 

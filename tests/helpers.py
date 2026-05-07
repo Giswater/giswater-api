@@ -18,7 +18,11 @@ def api(path: str) -> str:
 
 
 def assert_ready(client: TestClient) -> None:
-    health = client.get("/health").json()
+    health_r = client.get("/health")
+    assert health_r.status_code == 200, health_r.text
+    health = health_r.json()
     assert health.get("status") == "ok", f"Health check failed: {health}"
-    ready = client.get(api("/ready")).json()
+    ready_r = client.get(api("/ready"))
+    assert ready_r.status_code == 200, ready_r.text
+    ready = ready_r.json()
     assert ready.get("status") == "ready", f"Ready check failed: {ready}"

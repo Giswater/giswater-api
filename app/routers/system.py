@@ -5,9 +5,11 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+import logging
 import uuid
 from datetime import datetime
 
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from psycopg import sql
@@ -16,10 +18,12 @@ from psycopg.rows import dict_row
 from ..auth import verify_admin
 from ..config import global_settings
 from ..exceptions import DatabaseUnavailableError
+from ..giswater_version import db_version_at_least
 from ..tenant import Tenant
 from ..utils import utils
 
 router = APIRouter(tags=["System"])
+logger = logging.getLogger(__name__)
 
 schema_rate_limiter = utils.create_rate_limiter(
     max_requests=global_settings.rate_limit_default_max_requests,
@@ -45,7 +49,45 @@ async def ready(request: Request):
             status_code=503,
             content={"status": "not_ready", "tenant": tenant.id, "checks": {"database": "down"}},
         )
-    return {"status": "ready", "tenant": tenant.id, "checks": {"database": "up"}}
+    checks: dict = {"database": "up"}
+    if global_settings.giswater_db_version_check:
+        try:
+            gv = await utils.get_db_version(logger, tenant.db_manager, tenant.settings.db_schema)
+        except HTTPException as exc:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_ready",
+                    "tenant": tenant.id,
+                    "checks": {"database": "up", "giswater_db": "error", "detail": exc.detail},
+                },
+            )
+        if gv is None:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_ready",
+                    "tenant": tenant.id,
+                    "checks": {"database": "up", "giswater_db": "unknown"},
+                },
+            )
+        min_v = global_settings.giswater_db_min_version
+        if not db_version_at_least(gv, min_v):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_ready",
+                    "tenant": tenant.id,
+                    "checks": {
+                        "database": "up",
+                        "giswater_db": "incompatible",
+                        "giswater_db_version": gv,
+                        "giswater_db_min_required": min_v,
+                    },
+                },
+            )
+        checks["giswater_db"] = gv
+    return {"status": "ready", "tenant": tenant.id, "checks": checks}
 
 
 def _manage_where_clauses(where_clauses: list, params: list, from_, to, endpoint, method, status, user):
@@ -126,7 +168,7 @@ async def get_logs(
                 await cursor.execute(query, tuple(params))
                 rows = await cursor.fetchall()
             await conn.commit()
-        except Exception as exc:
+        except psycopg.Error as exc:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -165,7 +207,7 @@ async def get_db_logs(
                 await cursor.execute(query, (rid, limit))
                 rows = await cursor.fetchall()
             await conn.commit()
-        except Exception as exc:
+        except psycopg.Error as exc:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 

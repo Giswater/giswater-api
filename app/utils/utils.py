@@ -19,6 +19,7 @@ from logging.handlers import TimedRotatingFileHandler
 from typing import Any, Awaitable, Callable, Dict, Literal
 from datetime import date, datetime, timezone
 from fastapi import FastAPI, HTTPException, Request
+import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
@@ -26,6 +27,8 @@ from psycopg.types.json import Json
 from ..models.util_models import APIResponse
 from ..exceptions import DatabaseUnavailableError, ProcedureError
 from ..config import global_settings
+
+logger = logging.getLogger(__name__)
 
 _rate_limit_state: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 _rate_limit_lock = asyncio.Lock()
@@ -98,8 +101,8 @@ def load_plugins(app: FastAPI):
         try:
             module = import_module(f"plugins.{plugin}")
             module.register_plugin(app)
-        except Exception as e:
-            print(f"Error loading plugin {plugin}: {e}")
+        except Exception:
+            logger.exception("Failed to load plugin '%s'", plugin)
 
 
 def create_body_dict(
@@ -264,7 +267,7 @@ async def execute_procedure(  # noqa: C901
             remove_handlers()
             raise DatabaseUnavailableError()
         result = dict()
-        print(f"SERVER EXECUTION: {sql}\n")
+        log.debug("execute_procedure SQL: %s", sql)
         if user == "anonymous":
             identity = None
         else:
@@ -280,7 +283,7 @@ async def execute_procedure(  # noqa: C901
                 # Manual commit after successful execution
                 await conn.commit()
             response_msg = json.dumps(result)
-        except Exception as e:
+        except psycopg.Error as e:
             # Rollback on error
             await conn.rollback()
             db_error = str(e)
@@ -296,6 +299,17 @@ async def execute_procedure(  # noqa: C901
             if db_version:
                 result["version"]["db"] = db_version
             response_msg = str(e)
+        except Exception as e:
+            logger.exception("Non-DB error in execute_procedure")
+            await conn.rollback()
+            db_error = str(e)
+            result = {
+                "status": "Failed",
+                "message": {"level": 3, "text": str(e)},
+                "version": {"api": api_version},
+                "body": {},
+            }
+            response_msg = str(e)
 
         if not result or result.get("status") == "Failed":
             log.warning(f"{execution_msg}|||{response_msg}")
@@ -303,7 +317,7 @@ async def execute_procedure(  # noqa: C901
             log.info(f"{execution_msg}|||{response_msg}")
 
         if result:
-            print(f"SERVER RESPONSE: {json.dumps(result)}\n")
+            log.debug("execute_procedure response: %s", json.dumps(result, default=str))
 
         if result and "version" in result:
             result["version"] = {"db": result["version"], "api": api_version}
@@ -374,7 +388,7 @@ async def execute_sql_select(
                     await cursor.execute(query, parameters)
                 rows = await cursor.fetchall()
             await conn.commit()
-        except Exception as e:
+        except psycopg.Error as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -405,7 +419,7 @@ async def execute_sql(
 
     try:
         query = sql.SQL(sql_query).format(schema=sql.Identifier(schema_name))  # type: ignore
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         log.error(f"Failed to create SQL query: {e}")
         raise HTTPException(status_code=500, detail=f"Invalid SQL query or parameters: {e}") from e
 
@@ -424,7 +438,7 @@ async def execute_sql(
                     await cursor.execute(query, parameters)
                 rows = await cursor.fetchall()
             await conn.commit()
-        except Exception as e:
+        except psycopg.Error as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -478,7 +492,7 @@ async def execute_sql_insert(
                 await cursor.execute(query, tuple(values))
                 rows = await cursor.fetchall()
             await conn.commit()
-        except Exception as e:
+        except psycopg.Error as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -536,7 +550,7 @@ async def execute_sql_update(
                 await cursor.execute(query, tuple(values))
                 rows = await cursor.fetchall()
             await conn.commit()
-        except Exception as e:
+        except psycopg.Error as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -657,7 +671,7 @@ async def execute_sql_delete(
                 await cursor.execute(query, tuple(values))
                 status = True
             await conn.commit()
-        except Exception as e:
+        except psycopg.Error as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -687,7 +701,7 @@ async def get_db_version(log, db_manager, schema: str | None = None) -> str | No
                 await cursor.execute(query)
                 row = await cursor.fetchone()
             await conn.commit()
-        except Exception as e:
+        except psycopg.Error as e:
             await conn.rollback()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -712,7 +726,7 @@ def create_log(class_name: str, log_dir: str | None = None):
     remove_handlers(log)
 
     def _fallback_stream_logger(reason: Exception):
-        print(f"File logging disabled ({reason}). Falling back to stdout logging.")
+        logger.warning("File logging disabled (%s). Falling back to stdout logging.", reason)
         stream_handler = logging.StreamHandler()
         formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s", datefmt="%d/%m/%y %H:%M:%S")
         stream_handler.setFormatter(formatter)

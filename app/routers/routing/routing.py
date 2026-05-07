@@ -8,6 +8,7 @@ or (at your option) any later version.
 from fastapi import APIRouter, Query, HTTPException
 from typing import Literal, Optional
 import json
+import logging
 from pydantic import ValidationError
 from ...utils.routing_utils import (
     get_network_points,
@@ -25,6 +26,9 @@ from ...models.routing.routing_models import (
     GetObjectParameterOrderResponse,
 )
 # from ...models.util_models import CoordinatesModel, GwErrorResponse
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter(prefix="/routing", tags=["OM - Routing"])
 
@@ -180,7 +184,7 @@ async def get_object_optimal_path_order(
         ],
     ),
 ):
-    log = create_log(__name__)
+    file_logger = create_log(__name__)
 
     try:
         if final_point is None:
@@ -203,7 +207,7 @@ async def get_object_optimal_path_order(
             object_type,
             mapzone_type_value,
             mapzone_id,
-            log,
+            file_logger,
             commons["db_manager"],
             commons["schema"],
         )
@@ -221,7 +225,7 @@ async def get_object_optimal_path_order(
         }
         # Get the route from Valhalla API
         valhalla_response, legs = get_valhalla_optimized_route(valhalla_params)
-        print(json.dumps(valhalla_response))
+        logger.debug("Valhalla optimized_route response: %s", json.dumps(valhalla_response, default=str))
 
         # Check if we got a valid response
         if not isinstance(valhalla_response, dict):
@@ -230,29 +234,21 @@ async def get_object_optimal_path_order(
         try:
             # Use the new function to create GeoJSON with multiple legs
             geojson_response = get_geojson_from_optimized_route(valhalla_response.get("trip", {}), params.costing)
-        except Exception as e:
-            print(f"Error creating GeoJSON from optimized route: {e}")
+        except (KeyError, TypeError, ValueError):
+            logger.warning("Error creating GeoJSON from optimized route", exc_info=True)
             geojson_response = {}
 
-        try:
-            distance = valhalla_response["trip"]["summary"]["length"]  # type: ignore
-        except Exception:
-            distance = None
-        try:
-            duration = valhalla_response["trip"]["summary"]["time"]  # type: ignore
-        except Exception:
-            duration = None
-        # try:
-        #     status = valhalla_response["trip"]["status"]  # type: ignore
-        # except Exception:
-        #     status = None
-        try:
-            status_message = valhalla_response["trip"]["status_message"]  # type: ignore
-        except Exception:
-            status_message = None
+        trip = valhalla_response.get("trip") or {}
+        summary = trip.get("summary") or {}
+        distance = summary.get("length")
+        duration = summary.get("time")
+        status_message = trip.get("status_message")
 
         # Add maneuvers information
-        maneuvers = get_maneuvers(valhalla_response)
+        try:
+            maneuvers = get_maneuvers(valhalla_response)
+        except (KeyError, TypeError, IndexError):
+            maneuvers = []
 
         result = {
             "status": "Accepted",
@@ -317,7 +313,7 @@ async def get_object_parameter_order(
     ),
     order: Literal["asc", "desc"] = Query("asc", title="Order", description="Order of the parameter"),
 ):
-    log = create_log(__name__)
+    file_logger = create_log(__name__)
 
     mapzone_type_value = mapzone_type
     if mapzone_type_value == "EXPLOITATION":
@@ -337,7 +333,7 @@ async def get_object_parameter_order(
     )
 
     result = await execute_procedure(
-        log,
+        file_logger,
         commons["db_manager"],
         "gw_fct_getfeatures",
         body,
@@ -376,7 +372,6 @@ async def get_object_parameter_order(
     #     # Use the new function to create GeoJSON with multiple legs
     #     geojson_response = get_geojson_from_optimized_route(valhalla_response.get("trip", {}), params.costing)
     # except Exception as e:
-    #     print(f"Error creating GeoJSON from optimized route: {e}")
     #     geojson_response = {}
 
     # try:

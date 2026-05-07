@@ -16,6 +16,7 @@ os.environ.setdefault("TENANTS_DIR", "tests/fixtures/tenants")
 os.environ.setdefault("ADMIN_USER", "admin")
 os.environ.setdefault("ADMIN_PASSWORD", "admin")
 os.environ.setdefault("LOG_DB_ENABLED", "false")
+os.environ.setdefault("GISWATER_DB_VERSION_CHECK", "false")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

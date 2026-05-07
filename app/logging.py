@@ -18,6 +18,18 @@ from .utils import utils
 # Metadata (method, path, status, duration, user, IP) is still logged.
 _SKIP_BODY_PREFIXES = ("/logs", "/health", "/favicon.ico", "/docs", "/openapi.json")
 
+# When LOG_HTTP_BODY_CAPTURE is enabled but LOG_DB_MAX_BODY_BYTES=0, apply this cap (bytes).
+_DEFAULT_SAFE_BODY_CAP = 2048
+
+
+def _effective_body_byte_cap() -> int:
+    """Upper bound for stored body bytes when capture is enabled; avoids unlimited retention."""
+    cap = global_settings.log_db_max_body_bytes
+    if cap <= 0:
+        return _DEFAULT_SAFE_BODY_CAP
+    return cap
+
+
 LOG_HEADER_ALLOWLIST = {
     "accept",
     "accept-encoding",
@@ -104,8 +116,9 @@ def _coerce_body_bytes(body) -> bytes | None:
 
 
 def _truncate_body(body_bytes: bytes) -> bytes:
-    if global_settings.log_db_max_body_bytes > 0 and len(body_bytes) > global_settings.log_db_max_body_bytes:
-        return body_bytes[: global_settings.log_db_max_body_bytes] + b"...[truncated]"
+    cap = _effective_body_byte_cap()
+    if len(body_bytes) > cap:
+        return body_bytes[:cap] + b"...[truncated]"
     return body_bytes
 
 
@@ -162,15 +175,20 @@ def _build_log_record(
     duration_ms: int,
     error: Exception | None,
     request_body: bytes,
-    skip_body: bool = False,
+    *,
+    capture_bodies: bool,
+    skip_body_path: bool = False,
 ):
     request_headers = _filter_headers({key.lower(): value for key, value in request.headers.items()})
     response_headers = None
     response_body_text = None
+    request_body_text = None
     if response is not None:
         response_headers = _filter_headers({key.lower(): value for key, value in response.headers.items()})
-        if not skip_body:
+        if capture_bodies and not skip_body_path:
             response_body_text = _body_to_text(response_body)
+    if capture_bodies and not skip_body_path:
+        request_body_text = _body_to_text(request_body)
 
     return {
         "ts": datetime.now(timezone.utc),
@@ -185,9 +203,9 @@ def _build_log_record(
         "body_size": _get_body_size(request),
         "response_size": _get_response_size(response_body),
         "request_headers": request_headers,
-        "request_body": _body_to_text(request_body),
+        "request_body": request_body_text,
         "response_headers": response_headers,
-        "response_body": None if skip_body else response_body_text,
+        "response_body": response_body_text,
         "error": str(error) if error else None,
     }
 
@@ -224,8 +242,12 @@ async def request_logging_middleware(request: Request, call_next):
         utils.REQUEST_ID_CTX.reset(token)
         duration_ms = int((time.monotonic() - start) * 1000)
         path = request.url.path
-        skip_body = any(prefix in path for prefix in _SKIP_BODY_PREFIXES)
-        response, response_body = await _capture_response_body(response)
+        skip_body_path = any(prefix in path for prefix in _SKIP_BODY_PREFIXES)
+        capture_bodies = global_settings.log_http_body_capture and not skip_body_path
+        if capture_bodies:
+            response, response_body = await _capture_response_body(response)
+        else:
+            response_body = None
         log_record = _build_log_record(
             request=request,
             response=response,
@@ -235,7 +257,8 @@ async def request_logging_middleware(request: Request, call_next):
             duration_ms=duration_ms,
             error=error,
             request_body=request_body,
-            skip_body=skip_body,
+            capture_bodies=capture_bodies,
+            skip_body_path=skip_body_path,
         )
 
         api_logger = await _resolve_api_logger(request)

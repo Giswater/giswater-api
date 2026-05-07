@@ -47,7 +47,7 @@ from .utils import utils
 TITLE = "Giswater API"
 VERSION = pkg_version("giswater-api")
 DESCRIPTION = "API for interacting with a Giswater database."
-_LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 # Tuple list: `APIRouter` is not hashable in Python 3.13+ (cannot use as dict keys).
 ROUTER_FEATURES: list[tuple[APIRouter, str]] = [
@@ -101,7 +101,7 @@ async def lifespan(_app: FastAPI):
     summary = await registry.load_all()
     if registry.is_empty():
         listing = sorted(p.name for p in tenants_dir.iterdir()) if tenants_dir.exists() else "<missing>"
-        _LOGGER.warning(
+        logger.warning(
             "No tenants loaded at startup (admin can create tenants). tenants_dir=%s cwd=%s entries=%s errors=%s",
             tenants_dir,
             os.getcwd(),
@@ -109,9 +109,9 @@ async def lifespan(_app: FastAPI):
             summary.get("errors"),
         )
     elif summary.get("errors"):
-        _LOGGER.warning("Tenant load errors: %s", summary["errors"])
+        logger.warning("Tenant load errors: %s", summary["errors"])
     if not registry.is_empty():
-        _LOGGER.info("Loaded tenants from %s: %s", tenants_dir, registry.ids())
+        logger.info("Loaded tenants from %s: %s", tenants_dir, registry.ids())
 
     state.registry = registry
     state.global_logger = utils.create_log("api", os.path.join(global_settings.log_dir, "_global"))

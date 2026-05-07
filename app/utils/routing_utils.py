@@ -6,11 +6,14 @@ or (at your option) any later version.
 """
 
 import json
+import logging
 import requests
 from urllib.parse import quote
 from typing import List, Tuple
 from ..models.routing.routing_models import Location
 from ..utils.utils import create_body_dict, execute_procedure
+
+logger = logging.getLogger(__name__)
 
 
 def decode(encoded):
@@ -125,8 +128,8 @@ def get_geojson_from_optimized_route(trip_data, mode):
 
             features.append(geojson_feature)
 
-        except Exception as e:
-            print(f"Error processing leg {i}: {e}")
+        except Exception:
+            logger.warning("Error processing leg %s", i, exc_info=True)
             continue
 
     return {"type": "FeatureCollection", "features": features}
@@ -147,9 +150,11 @@ def get_valhalla_route(input_parameters):
 
     # Decode the path
     try:
-        path = decode(response_json.get("trip").get("legs")[0].get("shape"))
+        trip = response_json.get("trip") or {}
+        legs = trip.get("legs") or []
+        path = decode(legs[0].get("shape", "")) if legs else []
         return response_json, path
-    except Exception:
+    except (KeyError, IndexError, TypeError, ValueError):
         return response_json, {}
 
 
@@ -168,10 +173,12 @@ def get_valhalla_optimized_route(input_parameters):
 
     # Return the full response and all legs
     try:
-        trip_data = response_json.get("trip", {})
-        legs = trip_data.get("legs", [])
+        trip_data = response_json.get("trip") or {}
+        legs = trip_data.get("legs")
+        if not isinstance(legs, list):
+            return response_json, {}
         return response_json, legs
-    except Exception:
+    except (TypeError, ValueError):
         return response_json, {}
 
 
