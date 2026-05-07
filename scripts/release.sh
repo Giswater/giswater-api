@@ -7,7 +7,7 @@ cd "$REPO_ROOT"
 
 VERSION=$1
 if [ -z "$VERSION" ]; then
-  echo "Usage: ./scripts/release.sh <version>  (e.g. ./scripts/release.sh 0.8.0)"
+  echo "Usage: ./scripts/release.sh <version>  (e.g. ./scripts/release.sh 1.0.0)"
   exit 1
 fi
 
