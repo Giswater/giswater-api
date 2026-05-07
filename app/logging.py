@@ -4,6 +4,7 @@ import random
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import HTTPException, Request
 from starlette.responses import Response
@@ -17,6 +18,34 @@ from .utils import utils
 # return log data itself, static content, or trivial health payloads).
 # Metadata (method, path, status, duration, user, IP) is still logged.
 _SKIP_BODY_PREFIXES = ("/logs", "/health", "/favicon.ico", "/docs", "/openapi.json")
+_SKIP_BODY_CONTENT_TYPES = ("multipart/form-data", "application/octet-stream")
+_CAPTURE_FULL_BODY_STATUS_CODES = {400, 401, 403, 404, 409, 422, 429, 500, 502, 503, 504}
+_REDACTED = "***REDACTED***"
+_SENSITIVE_FIELD_MARKERS = (
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "authorization",
+    "api_key",
+    "apikey",
+    "keycloak",
+    "db_password",
+    "client_secret",
+)
+
+# When LOG_HTTP_BODY_CAPTURE is enabled but LOG_DB_MAX_BODY_BYTES=0, apply this cap (bytes).
+_DEFAULT_SAFE_BODY_CAP = 2048
+
+
+def _effective_body_byte_cap() -> int:
+    """Upper bound for stored body bytes when capture is enabled; avoids unlimited retention."""
+    cap = global_settings.log_db_max_body_bytes
+    if cap <= 0:
+        return _DEFAULT_SAFE_BODY_CAP
+    return cap
+
 
 LOG_HEADER_ALLOWLIST = {
     "accept",
@@ -37,6 +66,47 @@ LOG_HEADER_ALLOWLIST = {
 
 def _filter_headers(headers: dict) -> dict:
     return {key: value for key, value in headers.items() if key in LOG_HEADER_ALLOWLIST}
+
+
+def _is_sensitive_key(key: str) -> bool:
+    lowered = key.lower()
+    return any(marker in lowered for marker in _SENSITIVE_FIELD_MARKERS)
+
+
+def _redact_object(value: Any) -> Any:
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for key, item in value.items():
+            if _is_sensitive_key(str(key)):
+                redacted[key] = _REDACTED
+            else:
+                redacted[key] = _redact_object(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_object(item) for item in value]
+    return value
+
+
+def _sanitize_body_text(body_bytes: bytes | None) -> str | None:
+    if not body_bytes:
+        return None
+    body_text = body_bytes.decode("utf-8", errors="replace")
+    try:
+        parsed = json.loads(body_text)
+    except (TypeError, ValueError):
+        return _truncate_body(body_text.encode("utf-8", errors="replace")).decode("utf-8", errors="replace")
+    redacted = _redact_object(parsed)
+    sanitized = json.dumps(redacted, ensure_ascii=False, separators=(",", ":"))
+    return _truncate_body(sanitized.encode("utf-8", errors="replace")).decode("utf-8", errors="replace")
+
+
+def _should_capture_body_for_status(status_code: int) -> bool:
+    return status_code in _CAPTURE_FULL_BODY_STATUS_CODES
+
+
+def _should_skip_content_type(request: Request) -> bool:
+    content_type = (request.headers.get("content-type") or "").lower()
+    return any(marker in content_type for marker in _SKIP_BODY_CONTENT_TYPES)
 
 
 async def _resolve_api_logger(request: Request):
@@ -104,8 +174,9 @@ def _coerce_body_bytes(body) -> bytes | None:
 
 
 def _truncate_body(body_bytes: bytes) -> bytes:
-    if global_settings.log_db_max_body_bytes > 0 and len(body_bytes) > global_settings.log_db_max_body_bytes:
-        return body_bytes[: global_settings.log_db_max_body_bytes] + b"...[truncated]"
+    cap = _effective_body_byte_cap()
+    if len(body_bytes) > cap:
+        return body_bytes[:cap] + b"...[truncated]"
     return body_bytes
 
 
@@ -162,15 +233,21 @@ def _build_log_record(
     duration_ms: int,
     error: Exception | None,
     request_body: bytes,
-    skip_body: bool = False,
+    *,
+    capture_bodies: bool,
+    skip_body_path: bool = False,
 ):
     request_headers = _filter_headers({key.lower(): value for key, value in request.headers.items()})
     response_headers = None
     response_body_text = None
+    request_body_text = None
     if response is not None:
         response_headers = _filter_headers({key.lower(): value for key, value in response.headers.items()})
-        if not skip_body:
-            response_body_text = _body_to_text(response_body)
+        if capture_bodies and not skip_body_path:
+            response_body_text = _sanitize_body_text(response_body)
+    if capture_bodies and not skip_body_path:
+        request_body_text = _sanitize_body_text(request_body)
+    query_params = _redact_object(dict(request.query_params))
 
     return {
         "ts": datetime.now(timezone.utc),
@@ -181,13 +258,13 @@ def _build_log_record(
         "user_name": _get_user_name(request),
         "request_id": request_id,
         "client_ip": _get_client_ip(request),
-        "query_params": dict(request.query_params),
+        "query_params": query_params,
         "body_size": _get_body_size(request),
         "response_size": _get_response_size(response_body),
         "request_headers": request_headers,
-        "request_body": _body_to_text(request_body),
+        "request_body": request_body_text,
         "response_headers": response_headers,
-        "response_body": None if skip_body else response_body_text,
+        "response_body": response_body_text,
         "error": str(error) if error else None,
     }
 
@@ -224,8 +301,17 @@ async def request_logging_middleware(request: Request, call_next):
         utils.REQUEST_ID_CTX.reset(token)
         duration_ms = int((time.monotonic() - start) * 1000)
         path = request.url.path
-        skip_body = any(prefix in path for prefix in _SKIP_BODY_PREFIXES)
-        response, response_body = await _capture_response_body(response)
+        skip_body_path = any(prefix in path for prefix in _SKIP_BODY_PREFIXES)
+        capture_bodies = (
+            global_settings.log_http_body_capture
+            and not skip_body_path
+            and not _should_skip_content_type(request)
+            and _should_capture_body_for_status(status_code)
+        )
+        if capture_bodies:
+            response, response_body = await _capture_response_body(response)
+        else:
+            response_body = None
         log_record = _build_log_record(
             request=request,
             response=response,
@@ -235,7 +321,8 @@ async def request_logging_middleware(request: Request, call_next):
             duration_ms=duration_ms,
             error=error,
             request_body=request_body,
-            skip_body=skip_body,
+            capture_bodies=capture_bodies,
+            skip_body_path=skip_body_path,
         )
 
         api_logger = await _resolve_api_logger(request)

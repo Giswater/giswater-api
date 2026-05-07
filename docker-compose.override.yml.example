@@ -3,6 +3,7 @@
 #
 # Adds:
 #   - bind-mount of the whole workspace for hot code reload
+#   - keeps /app/logs on a named volume to avoid host UID/SELinux issues
 #   - uvicorn --reload
 #   - DEV_ALLOW_TENANT_HEADER=true so X-Tenant-ID works on localhost
 
@@ -10,6 +11,7 @@ services:
   app:
     volumes:
       - .:/app:Z
+      - giswater_api_logs:/app/logs
     command:
       - uvicorn
       - app.main:app
@@ -20,3 +22,6 @@ services:
       - --reload
     environment:
       DEV_ALLOW_TENANT_HEADER: "true"
+
+volumes:
+  giswater_api_logs:

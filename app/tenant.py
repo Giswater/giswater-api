@@ -24,7 +24,7 @@ from .keycloak import build_idp
 TENANT_ID_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 RESERVED_IDS = {"www", "api", "admin", "static", "traefik", "localhost"}
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 _IGNORED_TENANT_FILENAMES = frozenset({"example.env", "sample.env", "template.env"})
 
 
@@ -73,7 +73,9 @@ def _build_tenant_logger(tid: str) -> tuple[logging.Logger, str]:
 def _atomic_write_env(path: Path, contents: str) -> None:
     tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}.{int(time.time() * 1000)}")
     tmp.write_text(contents, encoding="utf-8")
+    os.chmod(tmp, 0o600)
     os.replace(tmp, path)
+    os.chmod(path, 0o600)
 
 
 def _format_value(value) -> str:
@@ -176,7 +178,7 @@ class TenantRegistry:
                 loaded.append(tid)
             else:
                 errors.append({"id": tid, "error": str(err)})
-                _logger.error("Failed to load tenant '%s': %s", tid, err)
+                logger.error("Failed to load tenant '%s': %s", tid, err)
         return {"loaded": loaded, "errors": errors}
 
     async def _build_tenant(self, tid: str, settings: TenantSettings) -> Tenant:
@@ -185,14 +187,14 @@ class TenantRegistry:
         try:
             await asyncio.wait_for(db.init_conn_pool(), timeout=max(settings.db_connect_timeout, 5.0))
         except Exception as exc:
-            _logger.warning("[%s] pool init failed; tenant kept, will retry on demand: %s", tid, exc)
+            logger.warning("[%s] pool init failed; tenant kept, will retry on demand: %s", tid, exc)
         if global_settings.log_db_enabled and db.connection_pool is not None:
             try:
                 from .utils.utils import ensure_log_schema
 
                 await asyncio.wait_for(ensure_log_schema(db), timeout=max(settings.db_connect_timeout, 5.0))
             except Exception as exc:
-                _logger.warning("[%s] log schema init failed: %s", tid, exc)
+                logger.warning("[%s] log schema init failed: %s", tid, exc)
         idp = build_idp(settings)
         api_logger, api_log_date = _build_tenant_logger(tid)
         return Tenant(
@@ -312,7 +314,7 @@ class TenantRegistry:
                 try:
                     await tenant.db_manager.close()
                 except Exception as exc:
-                    _logger.warning("[%s] close failed: %s", tid, exc)
+                    logger.warning("[%s] close failed: %s", tid, exc)
             self._tenants.clear()
 
     @staticmethod
@@ -320,4 +322,4 @@ class TenantRegistry:
         try:
             await tenant.db_manager.close()
         except Exception as exc:
-            _logger.warning("[%s] close failed: %s", tenant.id, exc)
+            logger.warning("[%s] close failed: %s", tenant.id, exc)
