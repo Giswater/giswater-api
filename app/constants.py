@@ -6,5 +6,9 @@ or (at your option) any later version.
 """
 
 # API surface prefixes (part of the public contract; not configurable at runtime).
-TENANT_PREFIX = "/gw-api/v1"
-ADMIN_PREFIX = "/admin"
+# All surface paths live under API_ROOT so they cannot clash with other apps on the same host.
+API_ROOT = "/gw-api"
+TENANT_PREFIX = f"{API_ROOT}/v1"
+ADMIN_PREFIX = f"{API_ROOT}/admin"
+GLOBAL_HEALTH_PATH = f"{API_ROOT}/health"
+STATIC_PREFIX = f"{API_ROOT}/static"

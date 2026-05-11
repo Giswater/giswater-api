@@ -5,6 +5,8 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+from app.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH
+
 from tests.helpers import api
 
 
@@ -16,7 +18,7 @@ def test_get_status(client):
 
 
 def test_health(client):
-    response = client.get("/health")
+    response = client.get(GLOBAL_HEALTH_PATH)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
@@ -30,7 +32,7 @@ def test_tenant_health(client):
 
 
 def test_admin_health(client):
-    response = client.get("/admin/health", headers={"host": "bgeo360.com"}, auth=("admin", "admin"))
+    response = client.get(f"{ADMIN_PREFIX}/health", headers={"host": "bgeo360.com"}, auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"

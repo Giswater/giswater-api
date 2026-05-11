@@ -5,6 +5,8 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+from app.constants import ADMIN_PREFIX
+
 from tests.helpers import assert_ready
 
 
@@ -12,7 +14,7 @@ def test_operability_smoke(client):
     """Post-deploy style checks: global health, tenant ready, admin list (requires DB in CI)."""
     assert_ready(client)
     r = client.get(
-        "/admin/tenants",
+        f"{ADMIN_PREFIX}/tenants",
         headers={"host": "bgeo360.com"},
         auth=("admin", "admin"),
     )

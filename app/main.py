@@ -23,7 +23,7 @@ from starlette.routing import BaseRoute
 from . import state
 from .auth import verify_admin
 from .config import global_settings
-from .constants import ADMIN_PREFIX, TENANT_PREFIX
+from .constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
 from .dependencies import require_feature
 from .exceptions import (
     DatabaseUnavailableError,
@@ -87,8 +87,8 @@ def _tenant_openapi_routes(tenant: Tenant) -> list[BaseRoute]:
     return out
 
 
-def _register_health_route(app: FastAPI) -> None:
-    @app.get("/health", include_in_schema=False)
+def _register_health_route(app: FastAPI, path: str = "/health") -> None:
+    @app.get(path, include_in_schema=False)
     async def health():
         """Liveness probe: process is up."""
         return {"status": "ok"}
@@ -211,9 +211,10 @@ admin_app.include_router(admin.router)
 
 parent.mount(ADMIN_PREFIX, admin_app)
 parent.mount(TENANT_PREFIX, tenant_app)
-parent.mount("/static", StaticFiles(directory="app/static"), name="static")
+parent.mount(STATIC_PREFIX, StaticFiles(directory="app/static"), name="static")
 
-for _app in (parent, tenant_app, admin_app):
+_register_health_route(parent, GLOBAL_HEALTH_PATH)
+for _app in (tenant_app, admin_app):
     _register_health_route(_app)
 
 

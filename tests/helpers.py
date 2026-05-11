@@ -7,7 +7,7 @@ or (at your option) any later version.
 
 from fastapi.testclient import TestClient
 
-from app.constants import TENANT_PREFIX
+from app.constants import GLOBAL_HEALTH_PATH, TENANT_PREFIX
 
 
 def api(path: str) -> str:
@@ -18,7 +18,7 @@ def api(path: str) -> str:
 
 
 def assert_ready(client: TestClient) -> None:
-    health_r = client.get("/health")
+    health_r = client.get(GLOBAL_HEALTH_PATH)
     assert health_r.status_code == 200, health_r.text
     health = health_r.json()
     assert health.get("status") == "ok", f"Health check failed: {health}"

@@ -5,12 +5,12 @@
 #   - proxy_set_header Host $host;  (the app resolves tenant from Host)
 #   - App listens at 127.0.0.1:8000 (see docker-compose.yml ports)
 
-# Apex domain: platform admin API only
+# Apex domain: Giswater platform surface under /gw-api only (admin, probes; same prefix as tenant API)
 server {
     listen 443 ssl;
     server_name bgeo360.com;
 
-    location /admin/ {
+    location /gw-api/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

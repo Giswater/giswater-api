@@ -14,16 +14,16 @@ if [[ -z "${ADMIN_PASS}" ]]; then
   exit 1
 fi
 
-echo "==> GET ${BASE_URL}/health"
-curl -sS -f "${BASE_URL}/health" | (command -v jq >/dev/null && jq . || cat)
+echo "==> GET ${BASE_URL}/gw-api/health"
+curl -sS -f "${BASE_URL}/gw-api/health" | (command -v jq >/dev/null && jq . || cat)
 echo
 
 echo "==> GET ${BASE_URL}/gw-api/v1/ready  Host: ${TENANT_HOST}"
 curl -sS -f -H "Host: ${TENANT_HOST}" "${BASE_URL}/gw-api/v1/ready" | (command -v jq >/dev/null && jq . || cat)
 echo
 
-echo "==> GET ${BASE_URL}/admin/tenants  Host: ${APEX_HOST}  (HTTP Basic)"
-curl -sS -f -u "${ADMIN_USER}:${ADMIN_PASS}" -H "Host: ${APEX_HOST}" "${BASE_URL}/admin/tenants" | (command -v jq >/dev/null && jq . || cat)
+echo "==> GET ${BASE_URL}/gw-api/admin/tenants  Host: ${APEX_HOST}  (HTTP Basic)"
+curl -sS -f -u "${ADMIN_USER}:${ADMIN_PASS}" -H "Host: ${APEX_HOST}" "${BASE_URL}/gw-api/admin/tenants" | (command -v jq >/dev/null && jq . || cat)
 echo
 
 echo "==> OK"

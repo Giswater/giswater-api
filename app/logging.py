@@ -11,7 +11,7 @@ from starlette.responses import Response
 
 from . import state
 from .config import global_settings
-from .constants import ADMIN_PREFIX, TENANT_PREFIX
+from .constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
 from .utils import utils
 
 # Endpoints where request/response bodies are not worth storing (e.g. they
@@ -120,7 +120,7 @@ async def _resolve_api_logger(request: Request):
 
 def _is_global_path(path: str) -> bool:
     """Paths that must not write tenant-scoped rows to the API log DB."""
-    if path == "/" or path.startswith("/health") or path.startswith("/static"):
+    if path == "/" or _path_starts(path, GLOBAL_HEALTH_PATH) or _path_starts(path, STATIC_PREFIX):
         return True
     if _path_starts(path, ADMIN_PREFIX):
         return True

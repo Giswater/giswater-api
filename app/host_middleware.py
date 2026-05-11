@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from . import state
 from .config import global_settings
-from .constants import ADMIN_PREFIX, TENANT_PREFIX
+from .constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
 from .tenant import RESERVED_IDS, TENANT_ID_RE
 
 
@@ -52,10 +52,10 @@ async def host_middleware(request: Request, call_next):  # noqa: C901
     path = request.url.path
 
     # Liveness: no tenant context
-    if path == "/health" or path.startswith("/health/"):
+    if path == GLOBAL_HEALTH_PATH or path.startswith(GLOBAL_HEALTH_PATH + "/"):
         return await call_next(request)
 
-    if _path_starts(path, "/static"):
+    if _path_starts(path, STATIC_PREFIX):
         return await call_next(request)
 
     apex = _is_apex_host(request)
