@@ -2,9 +2,11 @@
 # Copy and adjust server_name, SSL paths, and upstream port.
 #
 # Requirements:
-#   - proxy_set_header Host $host;  (the app resolves tenant from Host)
-#   - App listens at 127.0.0.1:8000 (see docker-compose.yml ports)
+#   - App listens at 127.0.0.1:8000 (see docker-compose.yml ports).
 #   - Forward the full API_ROOT path unchanged (no rewrites). Default API_ROOT is /giswater.
+#   - DNS multi-tenant mode: proxy_set_header Host $host; (app resolves tenant from Host).
+#   - Single-tenant mode (SINGLE_TENANT_ID=<id>): Host is ignored by the app;
+#     see the IP-only block at the bottom of this file.
 
 # Apex domain: Giswater platform surface under /giswater (admin, probes, static).
 server {
@@ -40,4 +42,19 @@ server {
     #     proxy_pass http://127.0.0.1:9000;
     #     proxy_set_header Host $host;
     # }
+}
+
+# Single-tenant mode (SINGLE_TENANT_ID=<id> in .env): IP-only or single-host
+# deployments. No DNS, no Host gymnastics — the app routes everything under
+# /giswater to the configured tenant (and /giswater/admin to the admin API).
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location /giswater/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }

@@ -6,11 +6,17 @@ or (at your option) any later version.
 """
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
 from dotenv import dotenv_values, load_dotenv
+
+# Mirror of `app.tenant.TENANT_ID_RE` / `RESERVED_IDS` (kept here to avoid a
+# circular import: `app.tenant` imports from this module).
+_TENANT_ID_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+_RESERVED_TENANT_IDS = {"www", "api", "admin", "static", "traefik", "localhost"}
 
 
 def _to_bool(value, default: bool = False) -> bool:
@@ -59,6 +65,18 @@ def _normalize_api_root(value: str | None, default: str = "/giswater") -> str:
     return candidate
 
 
+def _normalize_single_tenant_id(value: str | None) -> str | None:
+    """Validate `SINGLE_TENANT_ID`. Empty/unset → ``None`` (DNS multi-tenant mode)."""
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    if not _TENANT_ID_RE.match(raw):
+        raise ValueError(f"SINGLE_TENANT_ID must match tenant id rules, got {value!r}")
+    if raw in _RESERVED_TENANT_IDS:
+        raise ValueError(f"SINGLE_TENANT_ID is reserved: {value!r}")
+    return raw
+
+
 @dataclass(frozen=True)
 class GlobalSettings:
     """Process-wide configuration. One instance lives in `global_settings`."""
@@ -90,6 +108,12 @@ class GlobalSettings:
     admin_reload_enabled: bool = True
     admin_write_enabled: bool = True
     admin_archive_on_delete: bool = True
+
+    # Single-tenant routing (IP-only or single-host deployments). When set,
+    # all `${API_ROOT}/v1/*` requests resolve to this tenant regardless of Host,
+    # and `${API_ROOT}/admin/*` is reachable on the same host. When unset, the
+    # app uses DNS-based multi-tenant routing via `BASE_DOMAIN`.
+    single_tenant_id: str | None = None
 
     # Dev
     dev_allow_tenant_header: bool = False
@@ -193,6 +217,7 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
         admin_reload_enabled=_to_bool(env.get("ADMIN_RELOAD_ENABLED"), True),
         admin_write_enabled=_to_bool(env.get("ADMIN_WRITE_ENABLED"), True),
         admin_archive_on_delete=_to_bool(env.get("ADMIN_ARCHIVE_ON_DELETE"), True),
+        single_tenant_id=_normalize_single_tenant_id(env.get("SINGLE_TENANT_ID")),
         dev_allow_tenant_header=_to_bool(env.get("DEV_ALLOW_TENANT_HEADER"), False),
         platform_keycloak_enabled=_to_bool(env.get("PLATFORM_KEYCLOAK_ENABLED"), False),
         platform_keycloak_url=env.get("PLATFORM_KEYCLOAK_URL") or None,

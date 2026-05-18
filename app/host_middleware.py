@@ -48,6 +48,18 @@ def _path_starts(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(prefix + "/")
 
 
+def _resolve_tenant(request: Request, tid: str):
+    """Attach the loaded tenant or return an error response."""
+    reg = state.registry
+    if reg is None:
+        return JSONResponse(status_code=503, content={"detail": "Tenant registry not initialized"})
+    tenant = reg.get(tid)
+    if tenant is None:
+        return JSONResponse(status_code=404, content={"detail": f"Unknown tenant '{tid}'"})
+    request.state.tenant = tenant
+    return None
+
+
 async def host_middleware(request: Request, call_next):  # noqa: C901
     path = request.url.path
 
@@ -58,6 +70,21 @@ async def host_middleware(request: Request, call_next):  # noqa: C901
     if _path_starts(path, STATIC_PREFIX):
         return await call_next(request)
 
+    # Single-tenant mode: path-based routing, no Host requirement.
+    single_tid = global_settings.single_tenant_id
+    if single_tid:
+        if _path_starts(path, ADMIN_PREFIX):
+            return await call_next(request)
+
+        if _path_starts(path, TENANT_PREFIX):
+            err = _resolve_tenant(request, single_tid)
+            if err is not None:
+                return err
+            return await call_next(request)
+
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+    # DNS multi-tenant mode.
     apex = _is_apex_host(request)
 
     if _path_starts(path, ADMIN_PREFIX):
@@ -75,15 +102,9 @@ async def host_middleware(request: Request, call_next):  # noqa: C901
         if not _is_valid_tenant_id(tid):
             return JSONResponse(status_code=404, content={"detail": f"Invalid tenant id '{tid}'"})
 
-        reg = state.registry
-        if reg is None:
-            return JSONResponse(status_code=503, content={"detail": "Tenant registry not initialized"})
-
-        tenant = reg.get(tid)
-        if tenant is None:
-            return JSONResponse(status_code=404, content={"detail": f"Unknown tenant '{tid}'"})
-
-        request.state.tenant = tenant
+        err = _resolve_tenant(request, tid)
+        if err is not None:
+            return err
         return await call_next(request)
 
     return JSONResponse(status_code=404, content={"detail": "Not found"})

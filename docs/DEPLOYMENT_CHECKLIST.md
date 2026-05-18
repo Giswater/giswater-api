@@ -5,8 +5,9 @@ Use with [.env.prod.example](../.env.prod.example), [Environment variables](ENVI
 ## Before go-live
 
 - [ ] **TLS** terminates at reverse proxy; certificates valid and auto-renewed.
-- [ ] **Host routing**: `proxy_set_header Host $host;` (tenant id is the left label of the Host).
-- [ ] **Apex vs tenant**: apex `BASE_DOMAIN` → `${API_ROOT}/admin/*` only; `*.BASE_DOMAIN` → `${API_ROOT}/v1/*` (default `API_ROOT=/giswater`).
+- [ ] **Routing mode** picked: either DNS multi-tenant (`BASE_DOMAIN` set, `SINGLE_TENANT_ID` empty) or single-tenant (`SINGLE_TENANT_ID=<id>`, no DNS required). `DEV_ALLOW_TENANT_HEADER` stays `false` in production.
+- [ ] **DNS multi-tenant only**: `proxy_set_header Host $host;` (tenant id is the left label of the Host); apex `BASE_DOMAIN` → `${API_ROOT}/admin/*`; `*.BASE_DOMAIN` → `${API_ROOT}/v1/*` (default `API_ROOT=/giswater`).
+- [ ] **Single-tenant only**: `SINGLE_TENANT_ID` matches an existing `config/tenants/<id>.env`; admin and tenant API both reachable on the same host/IP under `${API_ROOT}/admin/*` and `${API_ROOT}/v1/*`.
 - [ ] **Secrets**: `ADMIN_PASSWORD` set; Keycloak secrets not in git; DB password least-privilege.
 - [ ] **Postgres**: version matches [compatibility table](../README.md#compatibility); backup/restore tested.
 - [ ] **Pool budget**: `N_tenants × DB_POOL_MAX_SIZE` within Postgres `max_connections`.

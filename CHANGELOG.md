@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Single-tenant routing mode** (`SINGLE_TENANT_ID`): when set, all `${API_ROOT}/v1/*` requests resolve to that tenant regardless of `Host`, and `${API_ROOT}/admin/*` is reachable on the same host/IP. Enables IP-only or single-host production deployments without DNS or fake `Host` headers. `BASE_DOMAIN` is ignored for routing in this mode. When unset, DNS-based multi-tenant routing via `BASE_DOMAIN` is unchanged.
+
 ### Changed
 
 - **Configurable API root**: all surfaces now live under a single env-driven prefix (`API_ROOT`, default `/giswater`). Tenant API at `${API_ROOT}/v1`, admin at `${API_ROOT}/admin`, global health at `${API_ROOT}/health`, static at `${API_ROOT}/static`. Set `API_ROOT=/gw-api` to keep legacy v1.1 URLs.
@@ -231,7 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.0.0...main
+[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.1.0...main
+[1.1.0]: https://github.com/Giswater/giswater-api/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Giswater/giswater-api/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/Giswater/giswater-api/compare/v0.8.3...v0.9.0
 [0.8.3]: https://github.com/Giswater/giswater-api/compare/v0.8.2...v0.8.3

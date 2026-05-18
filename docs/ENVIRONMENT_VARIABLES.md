@@ -15,11 +15,21 @@ Boolean env vars accept: `true`, `t`, `yes`, `y`, `1`, `on` (case-insensitive). 
 
 These apply to the whole Python process: routing, logging, admin API, platform Keycloak, and (when using the production Docker image) Gunicorn.
 
+### Deployment modes
+
+Two supported production modes (mutually exclusive):
+
+- **DNS multi-tenant** (default): set `BASE_DOMAIN=example.com`, leave `SINGLE_TENANT_ID` empty. Each tenant lives on `<tenant>.example.com`; admin lives on the apex `example.com`. Requires real DNS.
+- **Single tenant** (IP-only or single host): set `SINGLE_TENANT_ID=<id>` (e.g. `main`). All `${API_ROOT}/v1/*` requests resolve to that tenant and `${API_ROOT}/admin/*` is reachable on the same host. `BASE_DOMAIN` is ignored for routing. No DNS required.
+
+`DEV_ALLOW_TENANT_HEADER` is **not** a deployment mode; it is a local/dev convenience and must stay `false` in production.
+
 ### Routing
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `BASE_DOMAIN` | `bgeo360.com` | Apex domain: the bare host (`BASE_DOMAIN`) serves `${API_ROOT}/admin/*`; `tenant.BASE_DOMAIN` serves `${API_ROOT}/v1/*`. Tenant id is the leftmost DNS label (subdomain). |
+| `BASE_DOMAIN` | `bgeo360.com` | Apex domain (DNS multi-tenant mode only): the bare host (`BASE_DOMAIN`) serves `${API_ROOT}/admin/*`; `tenant.BASE_DOMAIN` serves `${API_ROOT}/v1/*`. Tenant id is the leftmost DNS label (subdomain). Ignored when `SINGLE_TENANT_ID` is set. |
+| `SINGLE_TENANT_ID` | _(empty)_ | Enable single-tenant routing for IP-only or single-host deployments. When set (e.g. `main`), every `${API_ROOT}/v1/*` request resolves to this tenant regardless of `Host`, and `${API_ROOT}/admin/*` is reachable on the same host. The value must satisfy the tenant id rules and must not be one of the reserved ids. When unset, the app uses DNS-based multi-tenant routing via `BASE_DOMAIN`. |
 | `TENANTS_DIR` | `config/tenants` | Directory containing one `\<id\>.env` per tenant. Files named `example.env`, `sample.env`, `template.env` are ignored for discovery. |
 | `API_ROOT` | `/giswater` | Public URL root for every API surface. Tenant API is `${API_ROOT}/v1`, admin `${API_ROOT}/admin`, global liveness `${API_ROOT}/health`, static assets `${API_ROOT}/static`. Accepts `giswater`, `/giswater`, or `/giswater/` (all normalized). Must not be `/`, contain `//`, whitespace, `?`, `#`, or `..`. Set `/gw-api` to keep legacy URLs. Process-wide; change requires restart. |
 
@@ -69,7 +79,7 @@ Applied by dependencies on selected routes (see [`app/utils/utils.py`](../app/ut
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `DEV_ALLOW_TENANT_HEADER` | `false` | When `true`, non-apex hosts may send `X-Tenant-ID` to pick a tenant without DNS-based host matching (local/dev only). |
+| `DEV_ALLOW_TENANT_HEADER` | `false` | When `true`, non-apex hosts may send `X-Tenant-ID` to pick a tenant without DNS-based host matching. **Local/dev only**: never enable in production — use `SINGLE_TENANT_ID` for IP-only single-tenant deployments or DNS routing for multi-tenant. Ignored when `SINGLE_TENANT_ID` is set. |
 
 ### Platform Keycloak (admin Bearer auth)
 
