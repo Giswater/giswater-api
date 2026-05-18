@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Post-deploy smoke: run against a live instance (default http://127.0.0.1:8000).
-# Usage: BASE_URL=... TENANT_HOST=... APEX_HOST=... ./scripts/smoke_test.sh
+# Usage: BASE_URL=... TENANT_HOST=... APEX_HOST=... API_ROOT=... ./scripts/smoke_test.sh
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 TENANT_HOST="${TENANT_HOST:-test.bgeo360.com}"
 APEX_HOST="${APEX_HOST:-bgeo360.com}"
+API_ROOT="${API_ROOT:-/giswater}"
 ADMIN_USER="${ADMIN_USER:-admin}"
 ADMIN_PASS="${ADMIN_PASS:-}"
 
@@ -14,16 +15,20 @@ if [[ -z "${ADMIN_PASS}" ]]; then
   exit 1
 fi
 
-echo "==> GET ${BASE_URL}/gw-api/health"
-curl -sS -f "${BASE_URL}/gw-api/health" | (command -v jq >/dev/null && jq . || cat)
+# Normalize: ensure leading slash, drop trailing slash.
+[[ "${API_ROOT}" == /* ]] || API_ROOT="/${API_ROOT}"
+API_ROOT="${API_ROOT%/}"
+
+echo "==> GET ${BASE_URL}${API_ROOT}/health"
+curl -sS -f "${BASE_URL}${API_ROOT}/health" | (command -v jq >/dev/null && jq . || cat)
 echo
 
-echo "==> GET ${BASE_URL}/gw-api/v1/ready  Host: ${TENANT_HOST}"
-curl -sS -f -H "Host: ${TENANT_HOST}" "${BASE_URL}/gw-api/v1/ready" | (command -v jq >/dev/null && jq . || cat)
+echo "==> GET ${BASE_URL}${API_ROOT}/v1/ready  Host: ${TENANT_HOST}"
+curl -sS -f -H "Host: ${TENANT_HOST}" "${BASE_URL}${API_ROOT}/v1/ready" | (command -v jq >/dev/null && jq . || cat)
 echo
 
-echo "==> GET ${BASE_URL}/gw-api/admin/tenants  Host: ${APEX_HOST}  (HTTP Basic)"
-curl -sS -f -u "${ADMIN_USER}:${ADMIN_PASS}" -H "Host: ${APEX_HOST}" "${BASE_URL}/gw-api/admin/tenants" | (command -v jq >/dev/null && jq . || cat)
+echo "==> GET ${BASE_URL}${API_ROOT}/admin/tenants  Host: ${APEX_HOST}  (HTTP Basic)"
+curl -sS -f -u "${ADMIN_USER}:${ADMIN_PASS}" -H "Host: ${APEX_HOST}" "${BASE_URL}${API_ROOT}/admin/tenants" | (command -v jq >/dev/null && jq . || cat)
 echo
 
 echo "==> OK"

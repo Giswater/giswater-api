@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Configurable API root**: all surfaces now live under a single env-driven prefix (`API_ROOT`, default `/giswater`). Tenant API at `${API_ROOT}/v1`, admin at `${API_ROOT}/admin`, global health at `${API_ROOT}/health`, static at `${API_ROOT}/static`. Set `API_ROOT=/gw-api` to keep legacy v1.1 URLs.
+- Log viewer (`/logs/ui`) now resolves its static asset URLs from `STATIC_PREFIX` instead of hardcoded `/gw-api/static`.
+- `deploy/nginx.conf.example`, `scripts/smoke_test.sh`, and `docker-compose.yml` healthcheck updated to use `${API_ROOT}` (default `/giswater`).
+- Public URLs moved from `/gw-api/...` to `/giswater/...` by default. Deployments that need the old paths must set `API_ROOT=/gw-api`; clients, Keycloak callbacks, probes, and any hardcoded URLs must be updated accordingly.
+
 ## [1.1.0] - 2026-05-11
 
 ### Changed

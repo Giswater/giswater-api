@@ -19,8 +19,9 @@ These apply to the whole Python process: routing, logging, admin API, platform K
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `BASE_DOMAIN` | `bgeo360.com` | Apex domain: the bare host (`BASE_DOMAIN`) serves `/admin/*`; `tenant.BASE_DOMAIN` serves `/gw-api/v1/*`. Tenant id is the leftmost DNS label (subdomain). |
+| `BASE_DOMAIN` | `bgeo360.com` | Apex domain: the bare host (`BASE_DOMAIN`) serves `${API_ROOT}/admin/*`; `tenant.BASE_DOMAIN` serves `${API_ROOT}/v1/*`. Tenant id is the leftmost DNS label (subdomain). |
 | `TENANTS_DIR` | `config/tenants` | Directory containing one `\<id\>.env` per tenant. Files named `example.env`, `sample.env`, `template.env` are ignored for discovery. |
+| `API_ROOT` | `/giswater` | Public URL root for every API surface. Tenant API is `${API_ROOT}/v1`, admin `${API_ROOT}/admin`, global liveness `${API_ROOT}/health`, static assets `${API_ROOT}/static`. Accepts `giswater`, `/giswater`, or `/giswater/` (all normalized). Must not be `/`, contain `//`, whitespace, `?`, `#`, or `..`. Set `/gw-api` to keep legacy URLs. Process-wide; change requires restart. |
 
 ### Logging
 
@@ -38,7 +39,7 @@ Request logging writes JSON lines to rotating files under `LOG_DIR`, and optiona
 
 ### Giswater DB compatibility (readiness)
 
-Used only when evaluating tenant **`GET /gw-api/v1/ready`** (after the database is reachable).
+Used only when evaluating tenant **`GET ${API_ROOT}/v1/ready`** (after the database is reachable).
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
@@ -54,7 +55,7 @@ Applied by dependencies on selected routes (see [`app/utils/utils.py`](../app/ut
 | `RATE_LIMIT_DEFAULT_MAX_REQUESTS` | `30` | Max requests per client IP per window for default-scoped limiters. |
 | `RATE_LIMIT_DEFAULT_WINDOW_SECONDS` | `60` | Sliding window length in seconds. Set `max_requests` or `window_seconds` ≤ `0` in code contexts that honor those knobs to disable (see usages). |
 
-### Admin API (`/admin/*`)
+### Admin API (`${API_ROOT}/admin/*`)
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
@@ -72,7 +73,7 @@ Applied by dependencies on selected routes (see [`app/utils/utils.py`](../app/ut
 
 ### Platform Keycloak (admin Bearer auth)
 
-Separate from **per-tenant** Keycloak. Used to validate **`Authorization: Bearer`** on `/admin/*` when enabled. Required realm role: **`platform-admin`**. HTTP Basic (`ADMIN_*`) can still be used in parallel.
+Separate from **per-tenant** Keycloak. Used to validate **`Authorization: Bearer`** on `${API_ROOT}/admin/*` when enabled. Required realm role: **`platform-admin`**. HTTP Basic (`ADMIN_*`) can still be used in parallel.
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
@@ -106,7 +107,7 @@ The [`Dockerfile`](../Dockerfile) starts **`gunicorn -c gunicorn.conf.py`**. The
 
 ## Per-tenant environment files
 
-One file per tenant: `config/tenants/<tenant_id>.env`. The filename stem is the tenant id and must match the subdomain (`acme` → `https://acme.<BASE_DOMAIN>/gw-api/v1/...`).
+One file per tenant: `config/tenants/<tenant_id>.env`. The filename stem is the tenant id and must match the subdomain (`acme` → `https://acme.<BASE_DOMAIN>${API_ROOT}/v1/...`).
 
 **Template with inline comments:** [`config/tenants/example.env`](../config/tenants/example.env).
 
@@ -153,7 +154,7 @@ When **`KEYCLOAK_ENABLED=true`**, tenant routes expect a valid Bearer JWT for th
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `KEYCLOAK_ENABLED` | `false` | Enable JWT enforcement for this tenant’s `/gw-api/v1/*`. |
+| `KEYCLOAK_ENABLED` | `false` | Enable JWT enforcement for this tenant’s `${API_ROOT}/v1/*`. |
 | `KEYCLOAK_URL` | _(required if enabled)_ | Keycloak base URL. |
 | `KEYCLOAK_REALM` | _(required if enabled)_ | Realm. |
 | `KEYCLOAK_CLIENT_ID` | _(required if enabled)_ | Client id. |

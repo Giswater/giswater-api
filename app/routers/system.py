@@ -10,17 +10,23 @@ import uuid
 from datetime import datetime
 
 import psycopg
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from psycopg import sql
 from psycopg.rows import dict_row
 
 from ..auth import verify_admin
 from ..config import global_settings
+from ..constants import STATIC_PREFIX
 from ..exceptions import DatabaseUnavailableError
 from ..giswater_version import db_version_at_least
 from ..tenant import Tenant
 from ..utils import utils
+
+_LOGS_UI_PATH = Path("app/static/logs.html")
+_LOGS_UI_HTML = _LOGS_UI_PATH.read_text(encoding="utf-8").replace("__STATIC_PREFIX__", STATIC_PREFIX)
 
 router = APIRouter(tags=["System"])
 logger = logging.getLogger(__name__)
@@ -216,8 +222,8 @@ async def get_db_logs(
 
 @router.get("/logs/ui", include_in_schema=False, dependencies=[Depends(verify_admin)])
 async def logs_ui():
-    """Serve the log viewer UI."""
-    return FileResponse("app/static/logs.html", media_type="text/html")
+    """Serve the log viewer UI with the resolved STATIC_PREFIX baked in."""
+    return HTMLResponse(_LOGS_UI_HTML)
 
 
 @router.get("/schemas/{schema}", dependencies=[Depends(schema_rate_limiter)])

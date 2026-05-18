@@ -43,7 +43,7 @@ Giswater API exposes a clean HTTP surface to query and operate a Giswater databa
 - Keeps API surface modular and controllable per deployment.
 
 **How to use it**
-- Base path: `/gw-api/v1` (Swagger at `/gw-api/v1/docs` on each tenant host). Platform admin API: `/admin` (Swagger at `/admin/docs` on the apex host only).
+- Base path: `${API_ROOT}/v1` (default `/giswater/v1`; Swagger at `${API_ROOT}/v1/docs` on each tenant host). Platform admin API: `${API_ROOT}/admin` (Swagger at `${API_ROOT}/admin/docs` on the apex host only). Override `API_ROOT` to remount everything (e.g. `/gw-api` for legacy URLs).
 - Deploy behind nginx on the host: see `deploy/nginx.conf.example`. The compose file binds the app to `127.0.0.1:8000`.
 - Tenants are resolved from the leftmost host label of `<tenant>.<BASE_DOMAIN>` (e.g. `acme.bgeo360.com`).
 - Each tenant owns its own DB pool, Keycloak IDP, file/DB logger, and `API_*` toggles via `config/tenants/<tenant>.env`.
@@ -59,7 +59,7 @@ This service is versioned alongside the Giswater database. Use matching ranges t
 | 0.1 – 0.7              | 4.0 – 4.7                      |
 | 0.8 – 1.x              | 4.8+                           |
 
-When `GISWATER_DB_VERSION_CHECK=true`, tenant readiness (`GET /gw-api/v1/ready`) returns **503** if `{DB_SCHEMA}.sys_version` does not report a `giswater` version **≥** `GISWATER_DB_MIN_VERSION` (default `4.8.0`).
+When `GISWATER_DB_VERSION_CHECK=true`, tenant readiness (`GET ${API_ROOT}/v1/ready`) returns **503** if `{DB_SCHEMA}.sys_version` does not report a `giswater` version **≥** `GISWATER_DB_MIN_VERSION` (default `4.8.0`).
 
 <a id="quick-start"></a>
 ## 🚀 Quick Start
@@ -87,15 +87,15 @@ docker compose up --build -d
 Check service health:
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/giswater/health
 ```
 
-📌 Tenant API docs (host-based): `http://<tenant>.<BASE_DOMAIN>:8000/gw-api/v1/docs` (example: `http://test.bgeo360.localhost:8000/gw-api/v1/docs`)
+📌 Tenant API docs (host-based): `http://<tenant>.<BASE_DOMAIN>:8000/giswater/v1/docs` (example: `http://test.bgeo360.localhost:8000/giswater/v1/docs`)
 
-Tenant routes (including `/gw-api/v1/docs`) require a tenant context. In browser, use host-based routing:
+Tenant routes (including `/giswater/v1/docs`) require a tenant context. In browser, use host-based routing:
 
 - `BASE_DOMAIN=bgeo360.localhost` in `.env`
-- open `http://test.bgeo360.localhost:8000/gw-api/v1/docs` (for tenant file `config/tenants/test.env`)
+- open `http://test.bgeo360.localhost:8000/giswater/v1/docs` (for tenant file `config/tenants/test.env`)
 
 For API clients on localhost/IPs, set `DEV_ALLOW_TENANT_HEADER=true` and send `X-Tenant-ID: <id>`.
 
@@ -147,6 +147,7 @@ Summary for quick orientation:
 ```
 BASE_DOMAIN=bgeo360.com
 TENANTS_DIR=config/tenants
+API_ROOT=/giswater
 
 LOG_DIR=logs
 LOG_LEVEL=INFO
@@ -219,7 +220,7 @@ plugins/
     └── ...
 ```
 
-Plugins are auto-loaded at startup on the **tenant** API surface (`/gw-api/v1`, same feature toggles and OpenAPI as core routers). See [example plugin](https://github.com/Giswater/giswater-api-example-plugin).
+Plugins are auto-loaded at startup on the **tenant** API surface (`${API_ROOT}/v1`, default `/giswater/v1`; same feature toggles and OpenAPI as core routers). See [example plugin](https://github.com/Giswater/giswater-api-example-plugin).
 
 ---
 
@@ -252,10 +253,10 @@ The override enables:
 ## 🏗️ Deployment Notes
 
 - Keep `proxy_set_header Host $host` at the reverse proxy (`deploy/nginx.conf.example`) because tenant resolution depends on `Host`.
-- Apex host (`BASE_DOMAIN`) serves only `/admin/*`; tenant hosts (`<tenant>.<BASE_DOMAIN>`) serve `/gw-api/v1/*`.
+- Apex host (`BASE_DOMAIN`) serves only `${API_ROOT}/admin/*`; tenant hosts (`<tenant>.<BASE_DOMAIN>`) serve `${API_ROOT}/v1/*`.
 - Base compose binds to `127.0.0.1:8000`; expose publicly through your proxy/TLS layer.
 - Production images start **Gunicorn** + `uvicorn.workers.UvicornWorker` (see `gunicorn.conf.py`, `Dockerfile`). Override worker count with `WEB_CONCURRENCY` if needed.
-- Tune container/Kubernetes probes: allow enough `start_period` for Postgres pool init; `/health` is fast; tenant `/gw-api/v1/ready` validates DB connectivity (and optional DB version check).
+- Tune container/Kubernetes probes: allow enough `start_period` for Postgres pool init; `${API_ROOT}/health` is fast; tenant `${API_ROOT}/v1/ready` validates DB connectivity (and optional DB version check).
 
 ### Logging (production)
 
@@ -271,15 +272,17 @@ Detailed reference: [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.m
 <a id="api-endpoints"></a>
 ## 🛠️ API Endpoints
 
-- Tenant surface prefix: `/gw-api/v1`
-- Admin surface prefix: `/admin` (apex host only)
+All surfaces live under `${API_ROOT}` (default `/giswater`; override via the `API_ROOT` env var).
+
+- Tenant surface prefix: `${API_ROOT}/v1` (default `/giswater/v1`)
+- Admin surface prefix: `${API_ROOT}/admin` (default `/giswater/admin`, apex host only)
 - Health checks:
-  - `/health` (global, tenant-independent)
-  - `/gw-api/v1/health` (tenant scope)
-  - `/admin/health` (admin scope)
+  - `${API_ROOT}/health` (global, tenant-independent)
+  - `${API_ROOT}/v1/health` (tenant scope)
+  - `${API_ROOT}/admin/health` (admin scope)
 - OpenAPI docs:
-  - Tenant: `/gw-api/v1/docs` on tenant host
-  - Admin: `/admin/docs` on apex host
+  - Tenant: `${API_ROOT}/v1/docs` on tenant host
+  - Admin: `${API_ROOT}/admin/docs` on apex host
 - Module routers are loaded from:
   - `basic`
   - `om` (`profile`, `flow`, `mincut`, `waterbalance`, `mapzones`)

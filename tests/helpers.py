@@ -11,7 +11,7 @@ from app.constants import GLOBAL_HEALTH_PATH, TENANT_PREFIX
 
 
 def api(path: str) -> str:
-    """Build path under the tenant API prefix (mounted at `/gw-api/v1`)."""
+    """Build path under the tenant API prefix (mounted at `${API_ROOT}/v1`, default `/giswater/v1`)."""
     if not path.startswith("/"):
         path = "/" + path
     return TENANT_PREFIX + path

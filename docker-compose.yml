@@ -28,7 +28,8 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/gw-api/health', timeout=2).status==200 else 1)"]
+      # Uses API_ROOT from .env (default /giswater); override in compose env if you change API_ROOT.
+      test: ["CMD", "python", "-c", "import os,urllib.request,sys; root=(os.environ.get('API_ROOT') or '/giswater').rstrip('/'); sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:8000{root}/health', timeout=2).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3

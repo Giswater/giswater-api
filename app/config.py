@@ -37,6 +37,28 @@ def _to_float(value, default: float) -> float:
         return default
 
 
+def _normalize_api_root(value: str | None, default: str = "/giswater") -> str:
+    """Normalize and validate the public API root prefix (e.g. ``/giswater``).
+
+    Accepts ``giswater``, ``/giswater``, ``/giswater/``. Rejects empty roots
+    (``/``), embedded ``//``, whitespace, query/fragment markers, and path
+    traversal. The result always starts with ``/`` and has no trailing slash.
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return default
+    candidate = raw if raw.startswith("/") else f"/{raw}"
+    candidate = candidate.rstrip("/")
+    if not candidate or candidate == "/":
+        raise ValueError(f"API_ROOT must be a non-empty path, got {value!r}")
+    forbidden = ("//", "?", "#", " ", "\t", "\n")
+    if any(token in candidate for token in forbidden):
+        raise ValueError(f"API_ROOT contains forbidden characters: {value!r}")
+    if ".." in candidate.split("/"):
+        raise ValueError(f"API_ROOT must not contain path traversal: {value!r}")
+    return candidate
+
+
 @dataclass(frozen=True)
 class GlobalSettings:
     """Process-wide configuration. One instance lives in `global_settings`."""
@@ -44,6 +66,8 @@ class GlobalSettings:
     # Routing
     base_domain: str = "bgeo360.com"
     tenants_dir: str = "config/tenants"
+    # Public URL root prefix for all API surfaces (e.g. "/giswater" → "/giswater/v1", "/giswater/admin").
+    api_root: str = "/giswater"
 
     # Logging
     log_dir: str = "logs"
@@ -154,6 +178,7 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
     return GlobalSettings(
         base_domain=(env.get("BASE_DOMAIN") or "bgeo360.com"),
         tenants_dir=(env.get("TENANTS_DIR") or "config/tenants"),
+        api_root=_normalize_api_root(env.get("API_ROOT")),
         log_dir=(env.get("LOG_DIR") or "logs"),
         log_level=(env.get("LOG_LEVEL") or "INFO"),
         log_rotate_days=_to_int(env.get("LOG_ROTATE_DAYS"), 14),

@@ -10,7 +10,7 @@ let currentLimit = 200;
 let lastFetchedCount = 0;
 
 function resolveApiBase() {
-    // API base: page is at <tenant-prefix>/logs/ui (e.g. /gw-api/v1/logs/ui); strip "/logs/ui".
+    // API base: page is at <tenant-prefix>/logs/ui (e.g. /giswater/v1/logs/ui); strip "/logs/ui".
     const loc = window.location;
     const path = loc.pathname.replace(/\/logs\/ui\/?$/, "");
     return `${loc.protocol}//${loc.host}${path}`;

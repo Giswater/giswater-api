@@ -5,9 +5,12 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-# API surface prefixes (part of the public contract; not configurable at runtime).
-# All surface paths live under API_ROOT so they cannot clash with other apps on the same host.
-API_ROOT = "/gw-api"
+# API surface prefixes (part of the public contract; computed once at import time
+# from ``global_settings.api_root``). Override with the ``API_ROOT`` env var; changes
+# require a process restart.
+from .config import global_settings
+
+API_ROOT = global_settings.api_root
 TENANT_PREFIX = f"{API_ROOT}/v1"
 ADMIN_PREFIX = f"{API_ROOT}/admin"
 GLOBAL_HEALTH_PATH = f"{API_ROOT}/health"
