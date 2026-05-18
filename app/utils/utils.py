@@ -251,21 +251,14 @@ async def execute_procedure(  # noqa: C901
         return create_response(status=False, message=f"Schema '{schema_name}' not found")
 
     sql_params: tuple[Any, ...] = ()
-    placeholder_sql = sql.SQL("")
     if parameters is not None:
-        if isinstance(parameters, (list, tuple)):
-            sql_params = tuple(parameters)
-        else:
-            sql_params = (parameters,)
-        placeholder_sql = sql.SQL(", ").join(sql.Placeholder() for _ in sql_params)
+        sql_params = tuple(parameters) if isinstance(parameters, (list, tuple)) else (parameters,)
 
     query = sql.SQL("SELECT {}.{}({})").format(
         sql.Identifier(schema_name),
         sql.Identifier(function_name),
-        placeholder_sql,
+        sql.SQL(", ").join(sql.Placeholder() for _ in sql_params),
     )
-    sql_preview = f"SELECT {schema_name}.{function_name}(...)"
-    execution_msg = sql_preview
     response_msg = ""
 
     start_time = time.monotonic()
@@ -273,6 +266,16 @@ async def execute_procedure(  # noqa: C901
         if conn is None:
             log.error("No connection to database")
             raise DatabaseUnavailableError()
+        # Full SQL with inlined args, for logging only; execution still uses placeholders.
+        sql_preview = (
+            sql.SQL("SELECT {}.{}({})")
+            .format(
+                sql.Identifier(schema_name),
+                sql.Identifier(function_name),
+                sql.SQL(", ").join(sql.Literal(p) for p in sql_params),
+            )
+            .as_string(conn)
+        )
         result = dict()
         log.debug("execute_procedure SQL: %s", sql_preview)
         if user == "anonymous":
@@ -322,9 +325,9 @@ async def execute_procedure(  # noqa: C901
             response_msg = str(e)
 
         if not result or result.get("status") == "Failed":
-            log.warning(f"{execution_msg}|||{response_msg}")
+            log.warning(f"{sql_preview}|||{response_msg}")
         else:
-            log.info(f"{execution_msg}|||{response_msg}")
+            log.info(f"{sql_preview}|||{response_msg}")
 
         if result:
             log.debug("execute_procedure response: %s", json.dumps(result, default=str))
