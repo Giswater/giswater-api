@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+Run tests with skills `run-tests-ws` and/or `run-tests-ud`, instead of using pytest.
