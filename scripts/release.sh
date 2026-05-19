@@ -20,6 +20,13 @@ fi
 
 MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
 
+# Abort if CHANGELOG.md has no '## [$VERSION]' section.
+if ! grep -qE "^## \\[${VERSION//./\\.}\\]" CHANGELOG.md; then
+  echo "ERROR: CHANGELOG.md has no '## [$VERSION]' section."
+  echo "       Move [Unreleased] content into ## [$VERSION] - <date> and update footer links first."
+  exit 1
+fi
+
 # Update version in pyproject.toml
 sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
 
