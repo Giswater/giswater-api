@@ -31,8 +31,15 @@ def test_get_object_optimal_path_order(client, default_params):
         },
     )
 
-    if response.status_code == 500 and "Valhalla" in response.text:
-        warnings.warn("Valhalla API not available, skipping assertion", stacklevel=2)
+    if (
+        response.status_code in (502, 503)
+        or (response.status_code == 500 and "Valhalla" in response.text)
+        or "Routing provider unavailable" in response.text
+    ):
+        warnings.warn(
+            f"Valhalla API not available ({response.status_code}), skipping assertion",
+            stacklevel=2,
+        )
         return
 
     assert response.status_code == 200
