@@ -338,13 +338,17 @@ async def execute_procedure(  # noqa: C901
         if global_settings.log_db_enabled:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             request_id = REQUEST_ID_CTX.get()
+            cap = global_settings.log_db_response_max_bytes
+            stored_response = response_msg
+            if cap > 0 and stored_response is not None and len(stored_response) > cap:
+                stored_response = stored_response[:cap] + "...[truncated]"
             db_log_record = {
                 "ts": datetime.now(timezone.utc),
                 "request_id": request_id,
                 "schema_name": schema_name,
                 "function_name": function_name,
                 "sql_text": sql_preview,
-                "response_json": response_msg,
+                "response_json": stored_response,
                 "duration_ms": duration_ms,
                 "status": result.get("status") if isinstance(result, dict) else None,
                 "error": db_error,

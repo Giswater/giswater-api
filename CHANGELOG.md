@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-19
+
+### Added
+
+- **`LOG_DB_RESPONSE_MAX_BYTES`** (default `8192`): truncate the raw DB function payload stored in `log.gw_api_logs_db.response_json` (captured by `execute_procedure`). Prevents huge JSON responses from bloating the API DB log table. Set to `0` to disable truncation. Independent from `LOG_DB_MAX_BODY_BYTES`, which only caps HTTP request/response bodies in `log.gw_api_logs`.
+
 ## [1.2.0] - 2026-05-19
 
 ### Added
@@ -237,7 +243,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.2.0...main
+[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.3.0...main
+[1.3.0]: https://github.com/Giswater/giswater-api/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Giswater/giswater-api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Giswater/giswater-api/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Giswater/giswater-api/compare/v0.9.0...v1.0.0

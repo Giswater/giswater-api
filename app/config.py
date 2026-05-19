@@ -97,6 +97,10 @@ class GlobalSettings:
     log_http_body_capture: bool = True
     # Max bytes stored per body when capture is enabled; 0 means use safe default (2048).
     log_db_max_body_bytes: int = 2048
+    # Max bytes stored for `log.gw_api_logs_db.response_json` (raw DB function output).
+    # DB responses can be much larger than HTTP form bodies, so this is a separate knob.
+    # 0 (or negative) disables truncation (full payload stored).
+    log_db_response_max_bytes: int = 8192
 
     # Rate limiting
     rate_limit_default_max_requests: int = 30
@@ -210,6 +214,7 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
         log_db_sample_rate=_to_float(env.get("LOG_DB_SAMPLE_RATE"), 1.0),
         log_http_body_capture=_to_bool(env.get("LOG_HTTP_BODY_CAPTURE"), True),
         log_db_max_body_bytes=_to_int(env.get("LOG_DB_MAX_BODY_BYTES"), 2048),
+        log_db_response_max_bytes=_to_int(env.get("LOG_DB_RESPONSE_MAX_BYTES"), 8192),
         rate_limit_default_max_requests=_to_int(env.get("RATE_LIMIT_DEFAULT_MAX_REQUESTS"), 30),
         rate_limit_default_window_seconds=_to_int(env.get("RATE_LIMIT_DEFAULT_WINDOW_SECONDS"), 60),
         admin_user=(env.get("ADMIN_USER") or env.get("LOG_ADMIN_USER") or "admin"),
