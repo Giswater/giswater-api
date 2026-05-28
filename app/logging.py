@@ -133,7 +133,7 @@ def _is_global_path(path: str) -> bool:
         return True
     if "/openapi.json" in path:
         return True
-    if rest.startswith("/logs"):
+    if rest.startswith("/logs") or _path_starts(rest, "/health"):
         return True
     return False
 
