@@ -46,7 +46,7 @@ class Sector(BaseMapzone):
 
 class Presszone(BaseMapzone):
     presszone_id: int = Field(..., description="Presszone ID")
-    sector_id: Optional[int] = Field(None, description="Sector ID")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
     presszone_type: Optional[str] = Field(None, description="Presszone type")
     avg_press: Optional[float] = Field(None, description="Average pressure")
     graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
@@ -55,17 +55,17 @@ class Presszone(BaseMapzone):
 
 class Macrodma(BaseMapzone):
     macrodma_id: int = Field(..., description="Macro DMA ID")
-    sector_id: Optional[int] = Field(None, description="Sector ID")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
 
 
 class Macrodqa(BaseMapzone):
     macrodqa_id: int = Field(..., description="Macro DQA ID")
-    sector_id: Optional[int] = Field(None, description="Sector ID")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
 
 
 class Dqa(BaseMapzone):
     dqa_id: int = Field(..., description="DQA ID")
-    sector_id: Optional[int] = Field(None, description="Sector ID")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
     graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
     avg_press: Optional[float] = Field(None, description="Average pressure")
     pattern_id: Optional[str] = Field(None, description="Pattern ID")
@@ -75,12 +75,12 @@ class Dqa(BaseMapzone):
 
 class Macroomzone(BaseMapzone):
     macroomzone_id: int = Field(..., description="Macro roomzone ID")
-    sector_id: Optional[int] = Field(None, description="Sector ID")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
 
 
 class Omzone(BaseMapzone):
     omzone_id: int = Field(..., description="OM zone ID")
-    sector_id: Optional[int] = Field(None, description="Sector ID")
+    sector_id: Optional[List[int]] = Field(None, description="List of sector IDs")
     graphconfig: Optional[Dict] = Field(None, description="Graph configuration")
     omzone_type: Optional[str] = Field(None, description="OM zone type")
     macroomzone_id: Optional[int] = Field(None, description="Macroomzone ID")

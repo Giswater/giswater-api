@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Sector and expl ID fields are lists of integers
+
 ## [1.3.1] - 2026-05-28
 
 ### Fixed
