@@ -14,7 +14,7 @@ from ..util_models import BaseAPIResponse, Body
 class Dma(BaseModel):
     dmaId: int = Field(..., description="DMA ID")
     dmaName: str = Field(..., description="DMA name")
-    explId: List[int] = Field(..., description="List of exploration IDs")
+    explId: List[int] = Field(..., description="List of exploitation IDs")
     macroDmaId: Optional[int] = Field(None, description="Macro DMA ID")
     description: Optional[str] = Field(None, description="DMA description")
     active: bool = Field(..., description="Whether the DMA is active")
