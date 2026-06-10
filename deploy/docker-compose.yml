@@ -1,0 +1,43 @@
+# Production Compose for /opt/giswater-api (or any install dir).
+# Uses the published Docker Hub image — no local build.
+#
+# Generated/managed by deploy/install.sh. Pulls config from the host:
+#   .env                    process + compose image tag
+#   config/tenants/*.env    per-tenant DB / Keycloak
+#   docker-entrypoint.sh    fixes log volume permissions at startup
+#
+# Binds API to loopback; put nginx/Caddy/Traefik in front (see nginx.conf.example).
+
+services:
+  app:
+    image: ${GISWATER_API_IMAGE:-bgeoopengis/giswater-api}:${GISWATER_API_TAG:-latest}
+    env_file:
+      - .env
+    user: "0:0"
+    entrypoint: ["/docker-entrypoint.sh"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - giswater_api_logs:/app/logs
+      - ./docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    extra_hosts:
+      # Reach Postgres on the Docker host (Debian/Ubuntu production default).
+      - "host.docker.internal:host-gateway"
+      - "host.containers.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,urllib.request,sys; root=(os.environ.get('API_ROOT') or '/giswater').rstrip('/'); sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:8000{root}/health', timeout=2).status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  giswater_api_logs:

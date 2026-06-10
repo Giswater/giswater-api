@@ -9,6 +9,9 @@
 # For dev hot-reload of code, use docker-compose.override.yml (gitignored)
 # to also bind-mount `.:/app`. The base file ships only the mounts the
 # app actually needs at runtime: tenant config on host + logs in named volume.
+#
+# Production on a remote server: use deploy/docker-compose.yml + deploy/install.sh
+# (published image, log volume entrypoint, no local build).
 
 services:
   app:

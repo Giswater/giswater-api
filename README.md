@@ -140,7 +140,7 @@ Tenant id rules: `^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`. Reserved (rejected at
 
 **Full reference (tables + explanations):** [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md).
 
-**Templates:** root [.env.example](.env.example), production-oriented [.env.prod.example](.env.prod.example), per-tenant [config/tenants/example.env](config/tenants/example.env).
+**Templates:** root [.env.example](.env.example), production [deploy/.env.prod.example](deploy/.env.prod.example) + [deploy/main.env.example](deploy/main.env.example), per-tenant [config/tenants/example.env](config/tenants/example.env).
 
 Summary for quick orientation:
 
@@ -252,6 +252,18 @@ The override enables:
 <a id="deployment-notes"></a>
 ## 🏗️ Deployment Notes
 
+### Production installer (single-tenant)
+
+On a Debian/Ubuntu server with Docker:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Giswater/giswater-api/main/deploy/install.sh | sudo bash
+```
+
+Creates `/opt/giswater-api` with production Compose, `.env` (`SINGLE_TENANT_ID=main`), and `config/tenants/main.env`. See [deploy/README.md](deploy/README.md).
+
+Pin a release: `GISWATER_API_REF=v1.3.2 curl -fsSL ... | sudo bash`
+
 - Keep `proxy_set_header Host $host` at the reverse proxy (`deploy/nginx.conf.example`) because tenant resolution depends on `Host`.
 - Apex host (`BASE_DOMAIN`) serves only `${API_ROOT}/admin/*`; tenant hosts (`<tenant>.<BASE_DOMAIN>`) serve `${API_ROOT}/v1/*`.
 - Base compose binds to `127.0.0.1:8000`; expose publicly through your proxy/TLS layer.
@@ -267,7 +279,7 @@ The override enables:
 | `LOG_DB_ENABLED` | `true` | Sample API rows into the tenant log table. |
 | `LOG_DB_SAMPLE_RATE` | `1.0` | Fraction of tenant requests logged to DB (`1.0` = all; typical for QGIS plugin workloads). |
 
-Detailed reference: [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md). Copy-paste templates: [.env.example](.env.example), [.env.prod.example](.env.prod.example). Operator checklist: [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md). Per-tenant template: [config/tenants/example.env](config/tenants/example.env).
+Detailed reference: [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md). Production installer: [deploy/install.sh](deploy/install.sh). Copy-paste templates: [.env.example](.env.example), [deploy/.env.prod.example](deploy/.env.prod.example). Operator checklist: [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md). Per-tenant template: [config/tenants/example.env](config/tenants/example.env).
 
 <a id="api-endpoints"></a>
 ## 🛠️ API Endpoints
