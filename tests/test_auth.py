@@ -13,6 +13,7 @@ import warnings
 
 from app.config import _build_tenant, _resolve_auth_mode
 from app.models.auth_models import ApiUser
+from app.utils.utils import DB_IDENTITY_CTX, DbIdentity, _resolve_db_identity
 
 
 def test_resolve_auth_mode_explicit_none():
@@ -59,3 +60,21 @@ def test_api_user_anonymous():
     user = ApiUser.anonymous()
     assert user.is_anonymous
     assert not user.roles
+
+
+def test_resolve_db_identity_without_context():
+    assert _resolve_db_identity() is None
+    assert _resolve_db_identity("alice") == "alice"
+    assert _resolve_db_identity("alice", "postgres") == "postgres"
+
+
+def test_resolve_db_identity_from_context():
+    token = DB_IDENTITY_CTX.set(DbIdentity(username="alice", db_role="postgres"))
+    try:
+        assert _resolve_db_identity() == "postgres"
+        assert _resolve_db_identity("anonymous") == "postgres"
+        assert _resolve_db_identity("bob") == "bob"
+        assert _resolve_db_identity("alice") == "postgres"
+        assert _resolve_db_identity("alice", "other") == "other"
+    finally:
+        DB_IDENTITY_CTX.reset(token)

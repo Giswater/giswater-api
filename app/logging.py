@@ -280,6 +280,7 @@ async def request_logging_middleware(request: Request, call_next):
     request_id = uuid.uuid4()
     request.state.request_id = request_id
     token = utils.REQUEST_ID_CTX.set(request_id)
+    utils.DB_IDENTITY_CTX.set(None)
     request_body = await request.body()
 
     response = None
@@ -299,6 +300,7 @@ async def request_logging_middleware(request: Request, call_next):
         raise
     finally:
         utils.REQUEST_ID_CTX.reset(token)
+        utils.DB_IDENTITY_CTX.set(None)
         duration_ms = int((time.monotonic() - start) * 1000)
         path = request.url.path
         skip_body_path = any(prefix in path for prefix in _SKIP_BODY_PREFIXES)

@@ -14,6 +14,7 @@ from typing import Any
 
 import bcrypt
 from psycopg import sql
+from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
 
 from .config import TenantSettings
@@ -204,10 +205,11 @@ async def create_user(
                         (user_id, role_name),
                     )
             await conn.commit()
-        except Exception as exc:
+        except UniqueViolation as exc:
             await conn.rollback()
-            if "duplicate key" in str(exc).lower():
-                raise GwapiUserError(f"User '{username}' already exists") from exc
+            raise GwapiUserError(f"User '{username}' already exists") from exc
+        except Exception:
+            await conn.rollback()
             raise
     record = await get_user(db_manager, username)
     if record is None:

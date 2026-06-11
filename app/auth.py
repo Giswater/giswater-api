@@ -106,17 +106,8 @@ def get_current_user_dep():
     return get_current_user
 
 
-def require_authenticated():
-    async def _check(user: Annotated[ApiUser, Depends(get_current_user)]) -> ApiUser:
-        if user.is_anonymous:
-            raise HTTPException(status_code=403, detail="Authentication required")
-        return user
-
-    return _check
-
-
 def require_role(*roles: str):
-    """403 when the current user lacks any of the given roles (skipped for anonymous)."""
+    """403 when the current user lacks any of the given roles (skipped for anonymous users)."""
 
     async def _check(user: Annotated[ApiUser, Depends(get_current_user)]) -> ApiUser:
         if user.is_anonymous:

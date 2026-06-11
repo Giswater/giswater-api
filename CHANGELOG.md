@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Per-tenant **`AUTH_MODE`** (`none` | `basic` | `keycloak`) for tenant API authentication.
 - **`basic`** mode: HTTP Basic auth backed by the `gwapi` schema (`gwapi.users`, roles, user CRUD via admin API).
-- Unified **`ApiUser`** identity with **`require_role()`** / **`require_authenticated()`** FastAPI dependencies.
+- Unified **`ApiUser`** identity with **`require_role()`** FastAPI dependency.
 - [`app/schemas.py`](app/schemas.py) centralizes DDL bootstrap for `log` and `gwapi` schemas.
 - Install script for production deployment (single-tenant)
 

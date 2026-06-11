@@ -16,6 +16,7 @@ import uuid
 from collections import defaultdict, deque
 from logging.handlers import TimedRotatingFileHandler
 
+from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Literal
 from datetime import date, datetime, timezone
 from fastapi import FastAPI, HTTPException, Request
@@ -34,10 +35,34 @@ logger = logging.getLogger(__name__)
 REQUEST_ID_CTX: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVar("request_id", default=None)
 
 
+@dataclass(frozen=True)
+class DbIdentity:
+    """Request-scoped DB user for SET ROLE (set by common_parameters)."""
+
+    username: str | None
+    db_role: str | None
+
+
+DB_IDENTITY_CTX: contextvars.ContextVar[DbIdentity | None] = contextvars.ContextVar("db_identity", default=None)
+
+
 def _db_identity(user: str | None, db_role: str | None = None) -> str | None:
     if user == "anonymous" or user is None:
         return None
     return db_role if db_role is not None else user
+
+
+def _resolve_db_identity(user: str | None = "anonymous", db_role: str | None = None) -> str | None:
+    """Merge explicit args with DB_IDENTITY_CTX; used by execute_* for SET ROLE."""
+    ctx = DB_IDENTITY_CTX.get()
+    if ctx is not None:
+        if user is None or user == "anonymous":
+            user = ctx.username if ctx.username is not None else "anonymous"
+            if db_role is None:
+                db_role = ctx.db_role
+        elif db_role is None and user == ctx.username:
+            db_role = ctx.db_role
+    return _db_identity(user, db_role)
 
 
 _rate_limit_state: dict[tuple[str, str], deque[float]] = defaultdict(deque)
@@ -289,7 +314,7 @@ async def execute_procedure(  # noqa: C901
         )
         result = dict()
         log.debug("execute_procedure SQL: %s", sql_preview)
-        identity = _db_identity(user, db_role)
+        identity = _resolve_db_identity(user, db_role)
         db_error = None
         try:
             async with conn.cursor() as cursor:
@@ -405,7 +430,7 @@ async def execute_sql_select(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = _db_identity(user, db_role)
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 if parameters is None:
@@ -456,7 +481,7 @@ async def execute_sql(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = _db_identity(user, db_role)
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 if parameters is None:
@@ -514,7 +539,7 @@ async def execute_sql_insert(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = _db_identity(user, db_role)
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
@@ -573,7 +598,7 @@ async def execute_sql_update(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = _db_identity(user, db_role)
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
@@ -700,7 +725,7 @@ async def execute_sql_delete(
                 if not rows:
                     return False
 
-                identity = _db_identity(user, db_role)
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
