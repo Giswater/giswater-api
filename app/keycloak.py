@@ -12,7 +12,7 @@ from .config import TenantSettings
 
 def build_idp(tenant_settings: TenantSettings) -> FastAPIKeycloak | None:
     """Build a Keycloak IDP for a tenant, or return None when disabled."""
-    if not tenant_settings.keycloak_enabled:
+    if tenant_settings.auth_mode != "keycloak":
         return None
     return FastAPIKeycloak(
         server_url=tenant_settings.keycloak_url,

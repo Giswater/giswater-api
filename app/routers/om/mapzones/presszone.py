@@ -30,6 +30,7 @@ async def get_presszones(commons: CommonsDep):
         columns=None,
         schema=commons["schema"],
         user=commons["user_id"],
+        db_role=commons["db_role"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

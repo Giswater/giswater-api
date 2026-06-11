@@ -63,6 +63,7 @@ async def get_macrodmas(
         columns=None,
         schema=commons["schema"],
         user=commons["user_id"],
+        db_role=commons["db_role"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
@@ -300,6 +301,7 @@ async def get_dma_connecs(
         parameters=(dma_id,),
         schema=commons["schema"],
         user=commons["user_id"],
+        db_role=commons["db_role"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

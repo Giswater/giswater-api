@@ -1,6 +1,7 @@
 #!/bin/sh
-# Production entrypoint: named Docker volumes mount as root-owned; ensure /app/logs
-# is writable by the app user before dropping privileges.
+# Production entrypoint: fix log volume ownership, then drop to the app user.
+# Tenant config under /app/config is bind-mounted read-only from the host;
+# install.sh sets config/tenants/*.env to mode 644 so the app user can read them.
 set -e
 
 mkdir -p /app/logs

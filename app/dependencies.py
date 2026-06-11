@@ -8,9 +8,9 @@ or (at your option) any later version.
 from typing import Annotated, Literal
 
 from fastapi import Depends, Header, HTTPException, Query, Request
-from fastapi_keycloak import OIDCUser
 
-from .auth import get_current_user_dep
+from .auth import get_current_user
+from .models.auth_models import ApiUser
 from .tenant import Tenant
 
 
@@ -32,9 +32,15 @@ async def get_schema(
     return schema
 
 
+def _db_role_for_user(user: ApiUser) -> str | None:
+    if user.is_anonymous:
+        return None
+    return user.db_role or user.preferred_username
+
+
 async def common_parameters(
     request: Request,
-    current_user: OIDCUser = Depends(get_current_user_dep()),  # noqa: B008
+    current_user: Annotated[ApiUser, Depends(get_current_user)],
     schema: str = Depends(get_schema),
     device: int = Header(
         default=5,
@@ -55,7 +61,9 @@ async def common_parameters(
     tenant = _get_tenant(request)
     return {
         "request": request,
+        "user": current_user,
         "user_id": current_user.preferred_username,
+        "db_role": _db_role_for_user(current_user),
         "schema": schema,
         "device": device,
         "lang": lang,
