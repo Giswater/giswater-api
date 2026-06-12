@@ -5,12 +5,14 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from ..config import TenantSettings
 from ..tenant import Tenant
+
+AuthMode = Literal["none", "basic", "keycloak"]
 
 _REDACTED = "***"
 
@@ -52,7 +54,7 @@ class DbSettingsOut(BaseModel):
 
 
 class KeycloakSettingsIn(BaseModel):
-    enabled: bool = False
+    enabled: bool = False  # DEPRECATED #22: use auth.mode; remove in 2.0.0
     url: Optional[str] = None
     realm: Optional[str] = None
     client_id: Optional[str] = None
@@ -63,7 +65,7 @@ class KeycloakSettingsIn(BaseModel):
 
 
 class KeycloakSettingsOut(BaseModel):
-    enabled: bool
+    enabled: bool  # DEPRECATED #22: use auth.mode; remove in 2.0.0
     url: Optional[str] = None
     realm: Optional[str] = None
     client_id: Optional[str] = None
@@ -73,10 +75,29 @@ class KeycloakSettingsOut(BaseModel):
     callback_uri: Optional[str] = None
 
 
+class AuthSettingsIn(BaseModel):
+    mode: AuthMode = "none"
+    bootstrap_user: Optional[str] = Field(default=None, alias="bootstrapUser")
+    bootstrap_password: Optional[str] = Field(default=None, alias="bootstrapPassword")
+    keycloak: Optional[KeycloakSettingsIn] = None
+
+    model_config = {"populate_by_name": True}
+
+
+class AuthSettingsOut(BaseModel):
+    mode: AuthMode
+    bootstrap_user: Optional[str] = Field(default=None, alias="bootstrapUser")
+    bootstrap_password: Optional[str] = None  # _REDACTED or null
+    keycloak: Optional[KeycloakSettingsOut] = None
+
+    model_config = {"populate_by_name": True}
+
+
 class TenantIn(BaseModel):
     api: dict[str, bool] = Field(default_factory=dict)
     db: DbSettingsIn
-    keycloak: Optional[KeycloakSettingsIn] = None
+    auth: Optional[AuthSettingsIn] = None
+    keycloak: Optional[KeycloakSettingsIn] = None  # DEPRECATED #22: use auth.keycloak
 
 
 class TenantCreateIn(TenantIn):
@@ -93,7 +114,8 @@ class TenantOut(BaseModel):
     id: str
     api: dict[str, bool]
     db: DbSettingsOut
-    keycloak: Optional[KeycloakSettingsOut] = None
+    auth: AuthSettingsOut
+    keycloak: Optional[KeycloakSettingsOut] = None  # DEPRECATED #22: use auth.keycloak
     pool: PoolStatus
 
     @classmethod
@@ -125,8 +147,8 @@ class TenantOut(BaseModel):
             pool_max_idle=s.db_pool_max_idle,
             connect_timeout=s.db_connect_timeout,
         )
-        keycloak: Optional[KeycloakSettingsOut] = None
-        if s.keycloak_enabled or any(
+        keycloak_out: Optional[KeycloakSettingsOut] = None
+        if s.auth_mode == "keycloak" or any(
             (
                 s.keycloak_url,
                 s.keycloak_realm,
@@ -135,7 +157,7 @@ class TenantOut(BaseModel):
                 s.keycloak_callback_uri,
             )
         ):
-            keycloak = KeycloakSettingsOut(
+            keycloak_out = KeycloakSettingsOut(
                 enabled=s.keycloak_enabled,
                 url=s.keycloak_url,
                 realm=s.keycloak_realm,
@@ -145,13 +167,26 @@ class TenantOut(BaseModel):
                 admin_client_secret=_REDACTED if s.keycloak_admin_client_secret else None,
                 callback_uri=s.keycloak_callback_uri,
             )
+        auth = AuthSettingsOut(
+            mode=s.auth_mode,
+            bootstrapUser=s.auth_basic_bootstrap_user,
+            bootstrap_password=_REDACTED if s.auth_basic_bootstrap_password else None,
+            keycloak=keycloak_out if s.auth_mode == "keycloak" else None,
+        )
         pool = tenant.db_manager.connection_pool
         pool_status = PoolStatus(
             size=getattr(pool, "max_size", None) if pool is not None else None,
             in_use=None,
             healthy=pool is not None,
         )
-        return cls(id=tenant.id, api=api, db=db, keycloak=keycloak, pool=pool_status)
+        return cls(
+            id=tenant.id,
+            api=api,
+            db=db,
+            auth=auth,
+            keycloak=keycloak_out,  # DEPRECATED #22: duplicate of auth.keycloak; remove in 2.0.0
+            pool=pool_status,
+        )
 
 
 def build_tenant_settings_from_input(
@@ -171,10 +206,27 @@ def build_tenant_settings_from_input(
         return bool(getattr(existing, f"api_{name}", False)) if existing else False
 
     db = payload.db
-    kc = payload.keycloak
+    auth = payload.auth
+    # DEPRECATED #22: payload.keycloak fallback; remove in 2.0.0
+    kc = auth.keycloak if auth and auth.keycloak else payload.keycloak
 
     def _kept(new, old):
         return new if new is not None else old
+
+    if auth is not None:
+        auth_mode = auth.mode
+    elif kc and kc.enabled:
+        auth_mode = "keycloak"  # DEPRECATED #22: legacy keycloak.enabled; remove in 2.0.0
+    elif existing is not None:
+        auth_mode = existing.auth_mode
+    else:
+        auth_mode = "none"
+
+    bootstrap_user = auth.bootstrap_user if auth else None
+    bootstrap_password = auth.bootstrap_password if auth else None
+    if existing is not None:
+        bootstrap_user = _kept(bootstrap_user, existing.auth_basic_bootstrap_user)
+        bootstrap_password = _kept(bootstrap_password, existing.auth_basic_bootstrap_password)
 
     return TenantSettings(
         api_basic=_api("basic"),
@@ -199,7 +251,9 @@ def build_tenant_settings_from_input(
         db_pool_max_waiting=db.pool_max_waiting,
         db_pool_max_idle=db.pool_max_idle,
         db_connect_timeout=db.connect_timeout,
-        keycloak_enabled=bool(kc.enabled) if kc else False,
+        auth_mode=auth_mode,
+        auth_basic_bootstrap_user=bootstrap_user,
+        auth_basic_bootstrap_password=bootstrap_password,
         keycloak_url=kc.url if kc else None,
         keycloak_realm=kc.realm if kc else None,
         keycloak_client_id=kc.client_id if kc else None,

@@ -5,13 +5,20 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+import logging
 import os
 import re
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import Literal, Mapping
 
 from dotenv import dotenv_values, load_dotenv
+
+from .auth_constants import AUTH_MODES, DEPRECATED_KEYCLOAK_ENABLED_ISSUE
+
+logger = logging.getLogger(__name__)
+AuthMode = Literal["none", "basic", "keycloak"]
 
 # Mirror of `app.tenant.TENANT_ID_RE` / `RESERVED_IDS` (kept here to avoid a
 # circular import: `app.tenant` imports from this module).
@@ -173,8 +180,12 @@ class TenantSettings:
     db_pool_max_idle: float = 300.0
     db_connect_timeout: float = 5.0
 
-    # Keycloak
-    keycloak_enabled: bool = False
+    # Tenant API authentication
+    auth_mode: AuthMode = "none"
+    auth_basic_bootstrap_user: str | None = None
+    auth_basic_bootstrap_password: str | None = None
+
+    # Keycloak (required when auth_mode == "keycloak")
     keycloak_url: str | None = None
     keycloak_realm: str | None = None
     keycloak_client_id: str | None = None
@@ -183,8 +194,12 @@ class TenantSettings:
     keycloak_admin_client_secret: str | None = None
     keycloak_callback_uri: str | None = None
 
+    @property
+    def keycloak_enabled(self) -> bool:
+        return self.auth_mode == "keycloak"
+
     def validate(self) -> None:
-        if self.keycloak_enabled:
+        if self.auth_mode == "keycloak":
             missing = [
                 name
                 for name, value in (
@@ -200,6 +215,32 @@ class TenantSettings:
             ]
             if missing:
                 raise ValueError(f"Keycloak configuration is incomplete: {', '.join(missing)}")
+        if self.auth_mode not in AUTH_MODES:
+            raise ValueError(f"Invalid AUTH_MODE '{self.auth_mode}'")
+
+
+def _resolve_auth_mode(env: Mapping[str, str | None]) -> AuthMode:
+    auth_mode_raw = (env.get("AUTH_MODE") or "").strip().lower()
+    if auth_mode_raw in AUTH_MODES:
+        return auth_mode_raw  # type: ignore[return-value]
+
+    # DEPRECATED #22: entire block below (KEYCLOAK_ENABLED env fallback); remove in 2.0.0
+    if env.get("AUTH_MODE") is None and env.get("KEYCLOAK_ENABLED") is not None:
+        warnings.warn(
+            "KEYCLOAK_ENABLED is deprecated; set AUTH_MODE=keycloak|basic|none. "
+            f"Removal in giswater-api 2.0.0 (#{DEPRECATED_KEYCLOAK_ENABLED_ISSUE}).",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        logger.info(
+            "KEYCLOAK_ENABLED is deprecated; set AUTH_MODE explicitly. Removal in giswater-api 2.0.0 (#%s).",
+            DEPRECATED_KEYCLOAK_ENABLED_ISSUE,
+        )
+    if _to_bool(env.get("KEYCLOAK_ENABLED"), False):
+        return "keycloak"
+    # END DEPRECATED #22
+
+    return "none"
 
 
 def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
@@ -258,7 +299,9 @@ def _build_tenant(env: Mapping[str, str | None]) -> TenantSettings:
         db_pool_max_waiting=_to_int(env.get("DB_POOL_MAX_WAITING"), 0),
         db_pool_max_idle=_to_float(env.get("DB_POOL_MAX_IDLE"), 300.0),
         db_connect_timeout=_to_float(env.get("DB_CONNECT_TIMEOUT"), 5.0),
-        keycloak_enabled=_to_bool(env.get("KEYCLOAK_ENABLED"), False),
+        auth_mode=_resolve_auth_mode(env),
+        auth_basic_bootstrap_user=env.get("AUTH_BASIC_BOOTSTRAP_USER") or None,
+        auth_basic_bootstrap_password=env.get("AUTH_BASIC_BOOTSTRAP_PASSWORD") or None,
         keycloak_url=env.get("KEYCLOAK_URL") or None,
         keycloak_realm=env.get("KEYCLOAK_REALM") or None,
         keycloak_client_id=env.get("KEYCLOAK_CLIENT_ID") or None,

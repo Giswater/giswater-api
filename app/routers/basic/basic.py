@@ -65,7 +65,6 @@ async def get_feature_changes(
         body,
         schema=commons["schema"],
         api_version=commons["api_version"],
-        user=commons["user_id"],
     )
     if not result:
         return {
@@ -288,7 +287,6 @@ async def get_arc_audit_values(
         body,
         schema=commons["schema"],
         api_version=commons["api_version"],
-        user=commons["user_id"],
     )
     return handle_procedure_result(result)
 

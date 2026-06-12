@@ -29,7 +29,6 @@ async def get_macrosectors(commons: CommonsDep):
         table_name="macrosector",
         columns=None,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
@@ -57,7 +56,6 @@ async def get_sectors(commons: CommonsDep):
         table_name="sector",
         columns=None,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

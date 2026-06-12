@@ -29,7 +29,6 @@ async def get_macroomzones(commons: CommonsDep):
         table_name="macroomzone",
         columns=None,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
@@ -57,7 +56,6 @@ async def get_omzones(commons: CommonsDep):
         table_name="omzone",
         columns=None,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

@@ -197,11 +197,27 @@ Mutations gated by `ADMIN_WRITE_ENABLED=true`; full-dir reload also gated by `AD
 <a id="authentication"></a>
 ## 🔐 Authentication
 
-Keycloak integration is **per tenant** and optional. When the tenant has `KEYCLOAK_ENABLED=true`:
+Tenant API auth is controlled per tenant by **`AUTH_MODE`**:
+
+| Mode | Behavior |
+|------|----------|
+| `none` (default) | Anonymous access — same as 1.3.x with `KEYCLOAK_ENABLED=false` |
+| `keycloak` | Bearer JWT from the tenant Keycloak realm |
+| `basic` | HTTP Basic (`Authorization: Basic …`) validated against `gwapi.users` in the tenant DB |
+
+**Migration from 1.3.x:** no config change required. `KEYCLOAK_ENABLED=true` → `keycloak`, `false` → `none`. Set `AUTH_MODE` explicitly when convenient; `KEYCLOAK_ENABLED` is deprecated (removed in 2.0.0).
+
+**Basic auth:** users live in the tenant Postgres (`gwapi` schema). Each user has a `db_role` that must exist as a PostgreSQL role (`SET ROLE`). Manage users via admin API: `${API_ROOT}/admin/tenants/{id}/users` (requires tenant `AUTH_MODE=basic`).
+
+Optional bootstrap: `AUTH_BASIC_BOOTSTRAP_USER` / `AUTH_BASIC_BOOTSTRAP_PASSWORD` create the first user when the table is empty.
+
+**Role checks:** inject `Depends(require_role("role_om", "role_master"))` on routes; roles come from Keycloak JWT claims or `gwapi.user_roles` in basic mode.
+
+Keycloak integration details (unchanged for `AUTH_MODE=keycloak`):
 - Endpoints require a valid `Authorization: Bearer <token>` issued by the tenant's realm.
 - Tokens are decoded against the tenant idp's RS256 public key (no realm round-trip per request).
 
-When disabled, endpoints accept anonymous requests for that tenant.
+When disabled (`AUTH_MODE=none`), endpoints accept anonymous requests for that tenant.
 
 `/admin/*` uses a separate **platform** Keycloak realm (`PLATFORM_KEYCLOAK_*`) plus HTTP Basic, with `platform-admin` as the required role.
 
@@ -262,7 +278,7 @@ curl -fsSL https://raw.githubusercontent.com/Giswater/giswater-api/main/deploy/i
 
 Creates `/opt/giswater-api` with production Compose, `.env` (`SINGLE_TENANT_ID=main`), and `config/tenants/main.env`. See [deploy/README.md](deploy/README.md).
 
-Pin a release: `GISWATER_API_REF=v1.3.2 curl -fsSL ... | sudo bash`
+Pin deploy templates: `GISWATER_API_REF=v1.3.2 curl -fsSL ... | sudo bash` (Docker image tag is prompted separately).
 
 - Keep `proxy_set_header Host $host` at the reverse proxy (`deploy/nginx.conf.example`) because tenant resolution depends on `Host`.
 - Apex host (`BASE_DOMAIN`) serves only `${API_ROOT}/admin/*`; tenant hosts (`<tenant>.<BASE_DOMAIN>`) serve `${API_ROOT}/v1/*`.

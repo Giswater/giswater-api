@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Per-tenant **`AUTH_MODE`** (`none` | `basic` | `keycloak`) for tenant API authentication.
+- **`basic`** mode: HTTP Basic auth backed by the `gwapi` schema (`gwapi.users`, roles, user CRUD via admin API).
+- Unified **`ApiUser`** identity with **`require_role()`** FastAPI dependency.
+- [`app/schemas.py`](app/schemas.py) centralizes DDL bootstrap for `log` and `gwapi` schemas.
 - Install script for production deployment (single-tenant)
+
+### Deprecated
+
+- **`KEYCLOAK_ENABLED`** per-tenant env var (shim maps to `AUTH_MODE`; removal in **2.0.0**, `# DEPRECATED #22`).
+- Admin API top-level **`keycloak`** block (use **`auth.mode`** + **`auth.keycloak`**).
 
 ## [1.3.2] - 2026-06-08
 

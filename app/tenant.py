@@ -112,6 +112,10 @@ def serialize_tenant_settings(settings: TenantSettings) -> str:
         ("DB_POOL_MAX_WAITING", settings.db_pool_max_waiting),
         ("DB_POOL_MAX_IDLE", settings.db_pool_max_idle),
         ("DB_CONNECT_TIMEOUT", settings.db_connect_timeout),
+        ("AUTH_MODE", settings.auth_mode),
+        ("AUTH_BASIC_BOOTSTRAP_USER", settings.auth_basic_bootstrap_user),
+        ("AUTH_BASIC_BOOTSTRAP_PASSWORD", settings.auth_basic_bootstrap_password),
+        # DEPRECATED #22: stop writing KEYCLOAK_ENABLED on admin serialize; remove in 2.0.0
         ("KEYCLOAK_ENABLED", settings.keycloak_enabled),
         ("KEYCLOAK_URL", settings.keycloak_url),
         ("KEYCLOAK_REALM", settings.keycloak_realm),
@@ -188,13 +192,16 @@ class TenantRegistry:
             await asyncio.wait_for(db.init_conn_pool(), timeout=max(settings.db_connect_timeout, 5.0))
         except Exception as exc:
             logger.warning("[%s] pool init failed; tenant kept, will retry on demand: %s", tid, exc)
-        if global_settings.log_db_enabled and db.connection_pool is not None:
+        if db.connection_pool is not None:
             try:
-                from .utils.utils import ensure_log_schema
+                from .schemas import ensure_tenant_schemas
 
-                await asyncio.wait_for(ensure_log_schema(db), timeout=max(settings.db_connect_timeout, 5.0))
+                await asyncio.wait_for(
+                    ensure_tenant_schemas(db, settings),
+                    timeout=max(settings.db_connect_timeout, 5.0),
+                )
             except Exception as exc:
-                logger.warning("[%s] log schema init failed: %s", tid, exc)
+                logger.warning("[%s] tenant schema init failed: %s", tid, exc)
         idp = build_idp(settings)
         api_logger, api_log_date = _build_tenant_logger(tid)
         return Tenant(

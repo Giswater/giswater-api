@@ -16,6 +16,7 @@ import uuid
 from collections import defaultdict, deque
 from logging.handlers import TimedRotatingFileHandler
 
+from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Literal
 from datetime import date, datetime, timezone
 from fastapi import FastAPI, HTTPException, Request
@@ -27,8 +28,42 @@ from psycopg.types.json import Json
 from ..models.util_models import APIResponse
 from ..exceptions import DatabaseUnavailableError, ProcedureError
 from ..config import global_settings
+from ..schemas import LOG_DB_TABLE, LOG_SCHEMA, LOG_TABLE, ensure_log_partition
 
 logger = logging.getLogger(__name__)
+
+REQUEST_ID_CTX: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVar("request_id", default=None)
+
+
+@dataclass(frozen=True)
+class DbIdentity:
+    """Request-scoped DB user for SET ROLE (set by common_parameters)."""
+
+    username: str | None
+    db_role: str | None
+
+
+DB_IDENTITY_CTX: contextvars.ContextVar[DbIdentity | None] = contextvars.ContextVar("db_identity", default=None)
+
+
+def _db_identity(user: str | None, db_role: str | None = None) -> str | None:
+    if user == "anonymous" or user is None:
+        return None
+    return db_role if db_role is not None else user
+
+
+def _resolve_db_identity(user: str | None = "anonymous", db_role: str | None = None) -> str | None:
+    """Merge explicit args with DB_IDENTITY_CTX; used by execute_* for SET ROLE."""
+    ctx = DB_IDENTITY_CTX.get()
+    if ctx is not None:
+        if user is None or user == "anonymous":
+            user = ctx.username if ctx.username is not None else "anonymous"
+            if db_role is None:
+                db_role = ctx.db_role
+        elif db_role is None and user == ctx.username:
+            db_role = ctx.db_role
+    return _db_identity(user, db_role)
+
 
 _rate_limit_state: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 _rate_limit_lock = asyncio.Lock()
@@ -220,6 +255,7 @@ async def execute_procedure(  # noqa: C901
     needs_write=False,
     schema=None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
     api_version=None,
 ):
     """
@@ -278,10 +314,7 @@ async def execute_procedure(  # noqa: C901
         )
         result = dict()
         log.debug("execute_procedure SQL: %s", sql_preview)
-        if user == "anonymous":
-            identity = None
-        else:
-            identity = user
+        identity = _resolve_db_identity(user, db_role)
         db_error = None
         try:
             async with conn.cursor() as cursor:
@@ -368,6 +401,7 @@ async def execute_sql_select(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
 ):
     """
     Execute a SELECT query on a table and return rows as dicts.
@@ -396,7 +430,7 @@ async def execute_sql_select(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = None if user == "anonymous" else user
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 if parameters is None:
@@ -420,6 +454,7 @@ async def execute_sql(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
 ):
     """
     Execute a raw SQL query and return rows as dicts.
@@ -446,7 +481,7 @@ async def execute_sql(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = None if user == "anonymous" else user
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 if parameters is None:
@@ -470,6 +505,7 @@ async def execute_sql_insert(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
 ):
     """
     Execute an INSERT on a table and return inserted rows as dicts.
@@ -503,7 +539,7 @@ async def execute_sql_insert(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = None if user == "anonymous" else user
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
@@ -525,6 +561,7 @@ async def execute_sql_update(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
 ):
     """
     Execute an UPDATE on a table and return updated rows as dicts.
@@ -561,7 +598,7 @@ async def execute_sql_update(
             raise DatabaseUnavailableError()
         try:
             async with conn.cursor(row_factory=dict_row) as cursor:
-                identity = None if user == "anonymous" else user
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
@@ -583,6 +620,7 @@ async def execute_sql_upsert(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
 ) -> tuple[list[dict], Literal["inserted", "updated"]]:
     """
     Try UPDATE first; if no row matched, INSERT with where_data + data.
@@ -599,6 +637,7 @@ async def execute_sql_upsert(
             set_role=set_role,
             schema=schema,
             user=user,
+            db_role=db_role,
         )
         if rows:
             return rows, "updated"
@@ -613,6 +652,7 @@ async def execute_sql_upsert(
             set_role=set_role,
             schema=schema,
             user=user,
+            db_role=db_role,
         )
         if rows:
             return rows, "updated"
@@ -626,6 +666,7 @@ async def execute_sql_upsert(
         set_role=set_role,
         schema=schema,
         user=user,
+        db_role=db_role,
     )
     return rows, "inserted"
 
@@ -638,6 +679,7 @@ async def execute_sql_delete(
     set_role: bool = True,
     schema: str | None = None,
     user: str | None = "anonymous",
+    db_role: str | None = None,
 ) -> bool:
     """
     Execute a DELETE on a table and return True if successful, False otherwise.
@@ -678,11 +720,12 @@ async def execute_sql_delete(
                     parameters=tuple(values),
                     schema=schema_name,
                     user=user,
+                    db_role=db_role,
                 )
                 if not rows:
                     return False
 
-                identity = None if user == "anonymous" else user
+                identity = _resolve_db_identity(user, db_role)
                 if set_role and identity:
                     await cursor.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(identity)))
                 await cursor.execute(query, tuple(values))
@@ -789,184 +832,6 @@ def remove_handlers(log=None):
         log = logging.getLogger()
     for hdlr in log.handlers[:]:
         log.removeHandler(hdlr)
-
-
-LOG_SCHEMA = "log"
-LOG_TABLE = "gw_api_logs"
-LOG_DB_TABLE = "gw_api_logs_db"
-REQUEST_ID_CTX: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVar("request_id", default=None)
-
-
-async def ensure_log_schema(db_manager) -> None:
-    async with db_manager.get_db() as conn:
-        if conn is None:
-            return
-        try:
-            async with conn.cursor() as cursor:
-                await cursor.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(LOG_SCHEMA)))
-                await cursor.execute(
-                    sql.SQL(
-                        """
-                        CREATE TABLE IF NOT EXISTS {}.{} (
-                            ts timestamptz NOT NULL,
-                            id bigserial NOT NULL,
-                            method text NOT NULL,
-                            endpoint text NOT NULL,
-                            status integer NOT NULL,
-                            duration_ms integer,
-                            user_name text,
-                            request_id uuid,
-                            client_ip inet,
-                            query_params jsonb,
-                            body_size integer,
-                            response_size integer,
-                            request_headers jsonb,
-                            request_body text,
-                            response_headers jsonb,
-                            response_body text,
-                            PRIMARY KEY (ts, id)
-                        ) PARTITION BY RANGE (ts)
-                        """
-                    ).format(sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE))
-                )
-                await cursor.execute(
-                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS request_headers jsonb").format(
-                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS request_body text").format(
-                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS response_headers jsonb").format(
-                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS response_body text").format(
-                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("ALTER TABLE {}.{} DROP COLUMN IF EXISTS user_agent").format(
-                        sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_TABLE)
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (ts DESC)").format(
-                        sql.Identifier("gw_api_logs_ts_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (endpoint)").format(
-                        sql.Identifier("gw_api_logs_endpoint_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (method)").format(
-                        sql.Identifier("gw_api_logs_method_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (status)").format(
-                        sql.Identifier("gw_api_logs_status_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (user_name)").format(
-                        sql.Identifier("gw_api_logs_user_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (request_id)").format(
-                        sql.Identifier("gw_api_logs_request_id_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL(
-                        """
-                        CREATE TABLE IF NOT EXISTS {}.{} (
-                            ts timestamptz NOT NULL,
-                            id bigserial NOT NULL,
-                            request_id uuid,
-                            schema_name text,
-                            function_name text,
-                            sql_text text,
-                            response_json text,
-                            duration_ms integer,
-                            status text,
-                            error text,
-                            PRIMARY KEY (ts, id)
-                        ) PARTITION BY RANGE (ts)
-                        """
-                    ).format(sql.Identifier(LOG_SCHEMA), sql.Identifier(LOG_DB_TABLE))
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (ts DESC)").format(
-                        sql.Identifier("gw_api_logs_db_ts_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_DB_TABLE),
-                    )
-                )
-                await cursor.execute(
-                    sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {}.{} (request_id)").format(
-                        sql.Identifier("gw_api_logs_db_request_id_idx"),
-                        sql.Identifier(LOG_SCHEMA),
-                        sql.Identifier(LOG_DB_TABLE),
-                    )
-                )
-            await conn.commit()
-            await ensure_log_partition(conn, datetime.now(timezone.utc), LOG_TABLE)
-            await ensure_log_partition(conn, datetime.now(timezone.utc), LOG_DB_TABLE)
-            await conn.commit()
-        except Exception:
-            await conn.rollback()
-            raise
-
-
-def _month_range(ts: datetime, table_name: str) -> tuple[datetime, datetime, str]:
-    month_start = datetime(ts.year, ts.month, 1, tzinfo=ts.tzinfo)
-    if ts.month == 12:
-        month_end = datetime(ts.year + 1, 1, 1, tzinfo=ts.tzinfo)
-    else:
-        month_end = datetime(ts.year, ts.month + 1, 1, tzinfo=ts.tzinfo)
-    partition_name = f"{table_name}_{month_start.year}_{month_start.month:02d}"
-    return month_start, month_end, partition_name
-
-
-async def ensure_log_partition(conn, ts: datetime, table_name: str) -> None:
-    month_start, month_end, partition_name = _month_range(ts, table_name)
-    async with conn.cursor() as cursor:
-        await cursor.execute(
-            sql.SQL(
-                """
-                CREATE TABLE IF NOT EXISTS {}.{}
-                PARTITION OF {}.{}
-                FOR VALUES FROM ({}) TO ({})
-                """
-            ).format(
-                sql.Identifier(LOG_SCHEMA),
-                sql.Identifier(partition_name),
-                sql.Identifier(LOG_SCHEMA),
-                sql.Identifier(table_name),
-                sql.Literal(month_start),
-                sql.Literal(month_end),
-            ),
-        )
 
 
 async def insert_api_log(db_manager, record: Dict[str, Any]) -> None:

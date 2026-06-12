@@ -103,7 +103,6 @@ async def get_waterbalance(
         sql,
         parameters=parameters,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

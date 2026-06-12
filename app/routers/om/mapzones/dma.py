@@ -62,7 +62,6 @@ async def get_macrodmas(
         table_name="macrodma",
         columns=None,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
@@ -299,7 +298,6 @@ async def get_dma_connecs(
         where_clause="dma_id = %s",
         parameters=(dma_id,),
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])

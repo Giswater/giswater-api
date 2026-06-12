@@ -34,7 +34,7 @@ from .exceptions import (
 from .host_middleware import host_middleware
 from .logging import request_logging_middleware
 from .models.util_models import GwErrorResponse
-from .routers import admin, system
+from .routers import admin, admin_users, system
 from .routers.basic import basic
 from .routers.crm import crm
 from .routers.epa import dscenario
@@ -208,6 +208,7 @@ admin_app = FastAPI(
     },
 )
 admin_app.include_router(admin.router)
+admin_app.include_router(admin_users.router)
 
 parent.mount(ADMIN_PREFIX, admin_app)
 parent.mount(TENANT_PREFIX, tenant_app)

@@ -52,7 +52,7 @@ def _materialize_tenants_dir() -> str:
         f'DATABASE_URL="{db_url}"\n'
         "DB_POOL_MIN_SIZE=1\nDB_POOL_MAX_SIZE=5\nDB_POOL_TIMEOUT=10\n"
         "DB_POOL_MAX_WAITING=0\nDB_POOL_MAX_IDLE=60\nDB_CONNECT_TIMEOUT=5\n"
-        "KEYCLOAK_ENABLED=false\n"
+        "AUTH_MODE=none\n"
     )
     return str(tmp)
 

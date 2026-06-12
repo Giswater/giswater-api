@@ -73,7 +73,6 @@ async def create_dscenario(
         "gw_fct_create_dscenario_empty",
         body,
         schema=commons["schema"],
-        user=commons["user_id"],
         api_version=commons["api_version"],
     )
 
@@ -128,7 +127,6 @@ async def select_dscenario(
         data={"dscenario_id": dscenario_id},
         where_data={"cur_user": commons["user_id"]},
         schema=commons["schema"],
-        user=commons["user_id"],
     )
     db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
     return {
@@ -167,7 +165,6 @@ async def delete_dscenario(
         table_name=table_name,
         where_data=where_data,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     if not status:
@@ -259,7 +256,6 @@ async def insert_dscenario_objects(
             table_name=table_name,
             data=obj,
             schema=commons["schema"],
-            user=commons["user_id"],
         )
         all_rows.extend(rows)
 
@@ -321,7 +317,6 @@ async def upsert_dscenario_objects(
             data=row,
             where_data=where_data,
             schema=commons["schema"],
-            user=commons["user_id"],
         )
         all_rows.extend(rows)
 
@@ -367,7 +362,6 @@ async def get_dscenario_object(
         where_clause="dscenario_id = %s AND {} = %s".format(id_column),
         parameters=(dscenario_id, object_id),
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     if not rows:
@@ -426,7 +420,6 @@ async def update_dscenario_object(
         data=update_data,
         where_data=where_data,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     if not rows:
@@ -479,7 +472,6 @@ async def upsert_dscenario_object(
         data=upsert_data,
         where_data=where_data,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
     message_text = "Object inserted" if op == "inserted" else "Object updated"
 
@@ -526,7 +518,6 @@ async def delete_dscenario_object(
         table_name=table_name,
         where_data=where_data,
         schema=commons["schema"],
-        user=commons["user_id"],
     )
 
     if not status:

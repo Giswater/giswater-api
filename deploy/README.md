@@ -15,7 +15,7 @@ From any directory on the server:
 curl -fsSL https://raw.githubusercontent.com/Giswater/giswater-api/main/deploy/install.sh | sudo bash
 ```
 
-Pin a release:
+Pin deploy templates to a release (`docker-compose.yml`, entrypoint, env examples — separate from the Docker image tag prompt):
 
 ```bash
 GISWATER_API_REF=v1.3.2 curl -fsSL https://raw.githubusercontent.com/Giswater/giswater-api/main/deploy/install.sh | sudo bash
@@ -34,12 +34,19 @@ sudo GISWATER_API_REF=v1.3.2 ./install.sh
 | Prompt | Purpose |
 |--------|---------|
 | Public URL / IP | Printed endpoints; default Keycloak callback |
-| Docker image tag | `GISWATER_API_TAG` (default `latest`) |
+| Docker image tag | `GISWATER_API_TAG` — which image to pull from Docker Hub (default `latest`) |
 | Admin password | HTTP Basic for `${API_ROOT}/admin/*` |
 | DB connection | Host, port, name, user, password, schema |
 | Keycloak (optional) | Per-tenant auth for `${API_ROOT}/v1/*` |
 
 When Postgres runs on the same host as Docker, use **`host.docker.internal`** as DB host (default).
+
+**Existing install with `Permission denied` on `main.env`?** The tenant file must be readable by the container user:
+
+```bash
+sudo chmod 644 /opt/giswater-api/config/tenants/main.env
+cd /opt/giswater-api && docker compose restart app
+```
 
 ## Manual setup
 
@@ -50,6 +57,9 @@ cd /opt/giswater-api
 #       deploy/.env.prod.example → .env,
 #       deploy/main.env.example → config/tenants/main.env
 # edit secrets, then:
+chmod 600 .env
+chmod 755 config config/tenants
+chmod 644 config/tenants/*.env
 docker compose pull && docker compose up -d
 ```
 

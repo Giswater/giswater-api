@@ -8,15 +8,17 @@ or (at your option) any later version.
 import asyncio
 import secrets
 import time
-from typing import Optional
+from typing import Annotated, Optional
 
 import httpx
 import jwt
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi_keycloak import FastAPIKeycloak, OIDCUser
+from fastapi_keycloak import FastAPIKeycloak
 
 from .config import global_settings
+from .gwapi_users import verify_credentials
+from .models.auth_models import ApiUser
 
 _basic = HTTPBasic(auto_error=False)
 
@@ -26,10 +28,18 @@ _platform_jwks_cache: dict[str, tuple[float, dict]] = {}
 _platform_jwks_lock = asyncio.Lock()
 
 
-def verify_token(token: str, idp: FastAPIKeycloak) -> OIDCUser:
-    """Decode a tenant-issued JWT against the tenant's Keycloak public key.
+def _roles_from_jwt_payload(payload: dict, client_id: str | None) -> frozenset[str]:
+    roles: set[str] = set()
+    realm_roles = (payload.get("realm_access") or {}).get("roles") or []
+    roles.update(realm_roles)
+    if client_id:
+        resource = (payload.get("resource_access") or {}).get(client_id) or {}
+        roles.update(resource.get("roles") or [])
+    return frozenset(roles)
 
-    Avoids the lib's private `_decode_token` so we don't depend on internals."""
+
+def verify_token(token: str, idp: FastAPIKeycloak) -> ApiUser:
+    """Decode a tenant-issued JWT against the tenant's Keycloak public key."""
     try:
         payload = jwt.decode(
             token,
@@ -39,30 +49,74 @@ def verify_token(token: str, idp: FastAPIKeycloak) -> OIDCUser:
         )
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
-    return OIDCUser.model_validate(payload)
+    username = payload.get("preferred_username") or payload.get("sub") or "unknown"
+    return ApiUser(
+        sub=str(payload.get("sub") or username),
+        preferred_username=str(username),
+        auth_method="keycloak",
+        roles=_roles_from_jwt_payload(payload, idp.client_id),
+        db_role=str(username),
+    )
 
 
-def get_current_user_dep():
-    """Return a dependency that resolves the current user from the per-tenant idp."""
+async def get_current_user(
+    request: Request,
+    credentials: Optional[HTTPBasicCredentials] = Depends(_basic),
+) -> ApiUser:
+    """Resolve the authenticated tenant API user."""
+    tenant = getattr(request.state, "tenant", None)
+    if tenant is None:
+        return ApiUser.anonymous()
 
-    async def _resolve(request: Request) -> OIDCUser:
-        tenant = getattr(request.state, "tenant", None)
-        if tenant is None or tenant.idp is None:
-            return OIDCUser(
-                sub="anonymous",
-                iat=0,
-                exp=0,
-                email=None,
-                email_verified=False,
-                preferred_username="anonymous",
-            )
+    auth_mode = tenant.settings.auth_mode
+    if auth_mode == "none":
+        return ApiUser.anonymous()
+
+    if auth_mode == "keycloak":
+        if tenant.idp is None:
+            raise HTTPException(status_code=500, detail="Keycloak not configured for tenant")
         auth = request.headers.get("authorization") or ""
         if not auth.lower().startswith("bearer "):
             raise HTTPException(status_code=401, detail="Missing bearer token")
         token = auth.split(" ", 1)[1].strip()
         return verify_token(token, tenant.idp)
 
-    return _resolve
+    if auth_mode == "basic":
+        if credentials is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Missing basic credentials",
+                headers={"WWW-Authenticate": 'Basic realm="tenant"'},
+            )
+        user = await verify_credentials(tenant.db_manager, credentials.username, credentials.password)
+        if user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid credentials",
+                headers={"WWW-Authenticate": 'Basic realm="tenant"'},
+            )
+        return user
+
+    raise HTTPException(status_code=500, detail=f"Unsupported auth mode '{auth_mode}'")
+
+
+# DEPRECATED #22: remove in 2.0.0; use Depends(get_current_user) directly
+def get_current_user_dep():
+    """Backward-compatible factory; prefer Depends(get_current_user)."""
+    return get_current_user
+
+
+def require_role(*roles: str):
+    """403 when the current user lacks any of the given roles (skipped for anonymous users)."""
+
+    async def _check(user: Annotated[ApiUser, Depends(get_current_user)]) -> ApiUser:
+        if user.is_anonymous:
+            return user
+        if not user.has_any_role(roles):
+            raise HTTPException(status_code=403, detail="Insufficient role")
+        return user
+
+    return _check
 
 
 async def _platform_jwks() -> dict:

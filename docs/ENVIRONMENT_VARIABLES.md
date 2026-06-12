@@ -159,13 +159,21 @@ One file per tenant: `config/tenants/<tenant_id>.env`. The filename stem is the 
 | `DB_POOL_MAX_IDLE` | `300` | Seconds before idle connections may be dropped. |
 | `DB_CONNECT_TIMEOUT` | `5` | Seconds for initial pool open / connectivity checks. |
 
-### Keycloak (tenant API)
-
-When **`KEYCLOAK_ENABLED=true`**, tenant routes expect a valid Bearer JWT for that realm. When `false`, anonymous access is allowed for that tenant (still subject to feature toggles).
+### Tenant API authentication
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `KEYCLOAK_ENABLED` | `false` | Enable JWT enforcement for this tenant’s `${API_ROOT}/v1/*`. |
+| `AUTH_MODE` | `none` | `none`, `basic`, or `keycloak`. Primary auth mode for `${API_ROOT}/v1/*`. |
+| `AUTH_BASIC_BOOTSTRAP_USER` | _(empty)_ | When `AUTH_MODE=basic`, optional first user if `gwapi.users` is empty. |
+| `AUTH_BASIC_BOOTSTRAP_PASSWORD` | _(empty)_ | Password for bootstrap user. |
+
+### Keycloak (tenant API)
+
+When **`AUTH_MODE=keycloak`**, tenant routes expect a valid Bearer JWT for that realm. When `none`, anonymous access is allowed for that tenant (still subject to feature toggles).
+
+| Variable | Default | Description |
+| -------- | ------- | ----------- |
+| `KEYCLOAK_ENABLED` | `false` | **Deprecated** (2.0.0). Shim: `true` → `AUTH_MODE=keycloak`. Prefer `AUTH_MODE`. |
 | `KEYCLOAK_URL` | _(required if enabled)_ | Keycloak base URL. |
 | `KEYCLOAK_REALM` | _(required if enabled)_ | Realm. |
 | `KEYCLOAK_CLIENT_ID` | _(required if enabled)_ | Client id. |

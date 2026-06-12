@@ -8,14 +8,14 @@
 #   wget -O install.sh https://raw.githubusercontent.com/Giswater/giswater-api/main/deploy/install.sh
 #   chmod +x install.sh && sudo ./install.sh
 #
-# Pin a release:
+# Pin deploy templates to a release (docker-compose.yml, entrypoint, env examples):
 #   GISWATER_API_REF=v1.3.2 curl -fsSL .../deploy/install.sh | sudo bash
 #
 # Environment overrides (optional):
 #   GISWATER_API_INSTALL_DIR   default /opt/giswater-api
 #   GISWATER_API_REF           git ref for deploy assets (default main)
 #   GISWATER_API_IMAGE         Docker image (default bgeoopengis/giswater-api)
-#   GISWATER_API_TAG           Docker tag (default latest; prompted interactively)
+#   GISWATER_API_TAG           default for the image-tag prompt (default latest)
 
 set -euo pipefail
 
@@ -138,6 +138,16 @@ normalize_public_url() {
   printf '%s' "$url"
 }
 
+# .env is read by Docker Compose on the host (600). Tenant env files are read
+# inside the container by the non-root app user, so they must be world-readable
+# (config is bind-mounted read-only — the entrypoint cannot fix this).
+fix_permissions() {
+  local dir="$1"
+  chmod 600 "${dir}/.env"
+  chmod 755 "${dir}/config" "${dir}/config/tenants"
+  chmod 644 "${dir}/config/tenants/"*.env 2>/dev/null || true
+}
+
 main() {
   require_root
   require_commands
@@ -224,7 +234,6 @@ main() {
   download_file "main.env.example" "${INSTALL_DIR}/config/tenants/${TENANT_ID}.env"
 
   chmod 755 "${INSTALL_DIR}/docker-entrypoint.sh"
-  chmod 600 "${INSTALL_DIR}/.env" "${INSTALL_DIR}/config/tenants/${TENANT_ID}.env"
 
   # --- .env ---
   set_env_value "${INSTALL_DIR}/.env" "GISWATER_API_IMAGE" "$DEFAULT_IMAGE"
@@ -247,6 +256,8 @@ main() {
   set_env_value "$tenant_file" "KEYCLOAK_CLIENT_ID" "$keycloak_client_id"
   set_env_value "$tenant_file" "KEYCLOAK_CLIENT_SECRET" "$keycloak_client_secret"
   set_env_value "$tenant_file" "KEYCLOAK_CALLBACK_URI" "$keycloak_callback"
+
+  fix_permissions "$INSTALL_DIR"
 
   if [[ "$START_NOW" == "true" ]]; then
     info "Starting containers"
@@ -281,7 +292,7 @@ main() {
   echo "    docker compose pull && docker compose up -d   # upgrade"
   echo
   echo "  Reverse proxy: see deploy/nginx.conf.example in the repo."
-  echo "  Pin version:   GISWATER_API_REF=v1.3.2 bash install.sh"
+  echo "  Pin deploy templates: GISWATER_API_REF=v1.3.2 curl -fsSL .../deploy/install.sh | sudo bash"
   echo
 }
 
