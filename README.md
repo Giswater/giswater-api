@@ -329,35 +329,22 @@ Use OpenAPI as source of truth for the full endpoint list in your running enviro
 ```
 giswater-api/
 │── app/
-│   │── models/              # Pydantic models
-│   │   │── basic/           # Basic module models
-│   │   │── crm/             # CRM module models
-│   │   │── om/              # OM (mincut, dma, mapzones) models
-│   │   │── routing/         # Routing module models
-│   │   └── util_models.py   # Shared utility models
+│   │── main.py              # FastAPI app entry point (lifespan, sub-app mounts, middleware)
+│   │── api/                 # HTTP layer
+│   │   │── deps.py          # Shared FastAPI dependencies (common_parameters, get_schema, require_feature)
+│   │   │── v1/              # Versioned tenant API
+│   │   │   │── router.py    # Router wiring + per-tenant OpenAPI filter
+│   │   │   └── endpoints/   # basic, crm, system, om/, epa/, routing/
+│   │   └── admin/           # Platform-admin API (tenants.py, users.py, router.py)
 │   │
-│   │── routers/             # API endpoints
-│   │   │── basic/           # GIS feature queries
-│   │   │── crm/             # Hydrometer CRUD
-│   │   │── om/              # OM operations (mincut, profile, flow, dma, mapzones)
-│   │   │── routing/         # Optimal path routing
-│   │   │── epa/             # EPA scenarios
-│   │   │── admin.py         # Tenant lifecycle endpoints
-│   │   └── system.py        # Ready/schemas/logs endpoints
-│   │
-│   │── utils/               # Utilities and helpers
-│   │   │── utils.py         # General utilities
-│   │   └── routing_utils.py # Valhalla routing helpers
-│   │
-│   │── config.py            # Configuration loader
-│   │── database.py          # Database connection manager
-│   │── dependencies.py      # FastAPI dependencies
-│   │── host_middleware.py   # Host-based tenant resolver
-│   │── tenant.py            # Tenant registry and lifecycle
-│   │── keycloak.py          # Keycloak OAuth2/OIDC integration
-│   │── auth.py              # Admin + tenant auth validation
-│   │── main.py              # FastAPI app entry point
-│   └── static/              # Static files (favicon, etc.)
+│   │── core/                # Dependency-free leaf: config.py, constants.py, exceptions.py
+│   │── auth/                # session.py, keycloak.py, users.py, schemas.py, constants.py
+│   │── db/                  # manager.py, context.py, execution.py, version.py, log_store.py, bootstrap/
+│   │── tenancy/             # registry.py, state.py, host_middleware.py
+│   │── middleware/          # request_logging.py
+│   │── schemas/             # Pydantic request/response models (basic/, crm/, om/, routing/, epa/, admin.py, common.py)
+│   │── utils/               # body.py, version.py, rate_limit.py, plugins.py, log_setup.py, routing.py
+│   └── static/              # Static files (favicon, logs UI, etc.)
 │
 │── config/
 │   └── tenants/         # Per-tenant .env files (e.g. test.env, acme.env)
@@ -372,6 +359,8 @@ giswater-api/
 │── gunicorn.conf.py     # Gunicorn + Uvicorn worker defaults for production images
 │── pyproject.toml       # Project metadata, dependencies, and tooling config
 │── docs/
+│   ├── ARCHITECTURE.md            # Package map, dependency rules, where to add code
+│   ├── VERSIONING.md              # API + per-tenant DB versioning policy
 │   ├── DEPLOYMENT_CHECKLIST.md
 │   └── ENVIRONMENT_VARIABLES.md   # Human-readable env reference (tables + descriptions)
 │── scripts/

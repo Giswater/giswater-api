@@ -39,7 +39,7 @@ os.environ.setdefault("LOG_DB_ENABLED", "false")
 os.environ.setdefault("GISWATER_DB_VERSION_CHECK", "false")
 
 from fastapi.testclient import TestClient
-from app.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, TENANT_PREFIX
+from app.core.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, TENANT_PREFIX
 from app.main import app
 """
 
@@ -152,7 +152,7 @@ def test_single_tenant_id_invalid_or_reserved_fails_fast(bad):
 import os, json, sys
 os.environ["SINGLE_TENANT_ID"] = {bad!r}
 try:
-    from app.config import load_global_settings
+    from app.core.config import load_global_settings
     load_global_settings()
     print(json.dumps({{"ok": True}}))
 except ValueError as exc:

@@ -7,7 +7,7 @@ or (at your option) any later version.
 
 import pytest
 
-from app.giswater_version import db_version_at_least, version_tuple_from_string
+from app.utils.version import db_version_at_least, version_tuple_from_string
 
 
 @pytest.mark.parametrize(

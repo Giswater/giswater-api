@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **FastAPI-aligned internal layout** (no HTTP path, env var, or behavior changes). `app/` is now split into standard subpackages:
+  - `app/api/` — `deps.py` (was `dependencies.py`), `v1/` (`router.py` wiring + `endpoints/` tenant routers), and `admin/` (`tenants.py`, `users.py`, `router.py`).
+  - `app/core/` — `config.py`, `constants.py`, `exceptions.py` (dependency-free leaf). `AUTH_MODES` / `DEPRECATED_KEYCLOAK_ENABLED_ISSUE` now live in `core/config.py`, fixing a latent `config`<=>`auth` import cycle.
+  - `app/auth/` — `session.py` (was `auth.py`), `keycloak.py`, `users.py` (was `gwapi_users.py`), `schemas.py` (`ApiUser` + gwapi user DTOs), `constants.py`.
+  - `app/db/` — `manager.py` (was `database.py`), `context.py`, `execution.py`, `version.py`, `log_store.py`, and `bootstrap/{log,gwapi}.py` (the old `app/schemas.py` DDL).
+  - `app/tenancy/` — `registry.py` (was `tenant.py`), `state.py`, `host_middleware.py`.
+  - `app/middleware/request_logging.py` (was `app/logging.py`, no longer shadows stdlib `logging`).
+  - `app/schemas/` now holds all Pydantic request/response models (was `app/models/`).
+  - `app/utils/` slimmed into focused modules: `body.py`, `version.py` (merges `giswater_version.py`), `rate_limit.py`, `plugins.py`, `log_setup.py`, `routing.py`.
+- Added [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (package map + where-to-add-code) and [`docs/VERSIONING.md`](docs/VERSIONING.md) (API/DB versioning policy).
+
 ## [1.4.0] - 2026-06-12
 
 ### Added

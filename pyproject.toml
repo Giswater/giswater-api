@@ -1,6 +1,6 @@
 [project]
 name = "giswater-api"
-version = "1.4.0"
+version = "1.5.0"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.135.2",
@@ -66,5 +66,5 @@ extend-immutable-calls = [
 
 [tool.ruff.lint.per-file-ignores]
 # Pydantic models use camelCase for JSON serialization.
-"app/models/*.py" = ["N815"]
-"app/models/**/*.py" = ["N815"]
+"app/schemas/*.py" = ["N815"]
+"app/schemas/**/*.py" = ["N815"]

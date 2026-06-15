@@ -13,7 +13,7 @@ import tempfile
 import textwrap
 from urllib.parse import quote
 
-from app.constants import ADMIN_PREFIX
+from app.core.constants import ADMIN_PREFIX
 
 from tests.helpers import assert_ready
 
@@ -78,7 +78,7 @@ def _auth_subprocess_script(auth_mode: str, request_snippet: str) -> str:
         os.environ.setdefault("GISWATER_DB_VERSION_CHECK", "false")
 
         from fastapi.testclient import TestClient
-        from app.constants import TENANT_PREFIX
+        from app.core.constants import TENANT_PREFIX
         from app.main import app
 
         with TestClient(

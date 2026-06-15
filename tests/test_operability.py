@@ -5,7 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from app.constants import ADMIN_PREFIX
+from app.core.constants import ADMIN_PREFIX
 
 from tests.helpers import assert_ready
 
