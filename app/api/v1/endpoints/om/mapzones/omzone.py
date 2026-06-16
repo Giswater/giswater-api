@@ -8,10 +8,10 @@ or (at your option) any later version.
 from fastapi import APIRouter
 
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
 from app.schemas.om.mapzone_models import GetMacroomzonesResponse, GetOmzonesResponse
-from app.db.execution import execute_sql_select
-from app.db.version import get_db_version
-from app.utils.log_setup import create_log
+from app.services.context import service_context_from_commons
+from app.services.om.mapzones_service import MapzonesService
 
 router = APIRouter(prefix="/om", tags=["OM - Mapzones"])
 
@@ -23,24 +23,11 @@ router = APIRouter(prefix="/om", tags=["OM - Mapzones"])
     response_model_exclude_unset=True,
 )
 async def get_macroomzones(commons: CommonsDep):
-    log = create_log(__name__)
-
-    macroomzones = await execute_sql_select(
-        log,
-        commons["db_manager"],
-        table_name="macroomzone",
-        columns=None,
-        schema=commons["schema"],
-    )
-
-    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
-
-    return {
-        "status": "Accepted",
-        "message": {"level": 3, "text": "Fetched macroomzones successfully"},
-        "version": {"api": commons["api_version"], "db": db_version},
-        "body": {"form": {}, "feature": {}, "data": {"macroomzones": macroomzones}},
-    }
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MapzonesService(ctx).get_macroomzones()
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -50,21 +37,8 @@ async def get_macroomzones(commons: CommonsDep):
     response_model_exclude_unset=True,
 )
 async def get_omzones(commons: CommonsDep):
-    log = create_log(__name__)
-
-    omzones = await execute_sql_select(
-        log,
-        commons["db_manager"],
-        table_name="omzone",
-        columns=None,
-        schema=commons["schema"],
-    )
-
-    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
-
-    return {
-        "status": "Accepted",
-        "message": {"level": 3, "text": "Fetched omzones successfully"},
-        "version": {"api": commons["api_version"], "db": db_version},
-        "body": {"form": {}, "feature": {}, "data": {"omzones": omzones}},
-    }
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MapzonesService(ctx).get_omzones()
+    except Exception as exc:
+        raise map_service_error(exc) from exc

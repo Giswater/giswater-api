@@ -5,14 +5,13 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import json
 from datetime import date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import ValidationError
 
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
 from app.schemas.basic.basic_models import (
     GetArcAuditValuesResponse,
     GetFeatureChangesResponse,
@@ -22,10 +21,9 @@ from app.schemas.basic.basic_models import (
     GetSearchResponse,
     GetSelectorsResponse,
 )
-from app.schemas.common import CoordinatesModel, ExtentModel, FilterFieldModel, PageInfoModel
-from app.db.execution import execute_procedure
-from app.utils.body import create_body_dict, handle_procedure_result
-from app.utils.log_setup import create_log
+from app.schemas.common import CoordinatesModel
+from app.services.basic_service import BasicService
+from app.services.context import service_context_from_commons
 
 router = APIRouter(prefix="/basic", tags=["Basic"])
 
@@ -52,30 +50,11 @@ async def get_feature_changes(
         examples=["2024-11-11"],
     ),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"],
-        feature={"feature_type": feature_type},
-        extras={"action": action, "lastFeeding": last_feeding.strftime("%Y-%m-%d")},
-        cur_user=commons["user_id"],
-    )
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_featurechanges",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    if not result:
-        return {
-            "status": "Failed",
-            "message": {"level": 4, "text": "No feature changes found"},
-            "version": {"api": commons["api_version"]},
-            "body": {"feature": []},
-        }
-    return result
+    try:
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_feature_changes(feature_type, action, last_feeding)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -87,61 +66,11 @@ async def get_feature_changes(
 async def get_info_from_coordinates(
     commons: CommonsDep, coordinates: CoordinatesModel = Query(..., description="Coordinates of the info")
 ):
-    log = create_log(__name__)
-
-    coordinates_dict = coordinates.model_dump()
-
-    body = create_body_dict(
-        device=commons["device"],
-        form={"editable": "False"},
-        feature={},
-        extras={
-            "activeLayer": "ve_node",
-            "visibleLayers": [
-                "ve_cat_feature_node",
-                "ve_cat_feature_arc",
-                "ve_cat_feature_connec",
-                "ve_cat_feature_gully",
-                "ve_cat_feature_link",
-                "ve_cat_feature_element",
-                "cat_node",
-                "cat_arc",
-                "cat_connec",
-                "cat_gully",
-                "cat_link",
-                "cat_element",
-                "cat_material",
-                "ve_node",
-                "ve_man_frelem",
-                "ve_arc",
-                "ve_connec",
-                "ve_gully",
-                "ve_link",
-                "ve_pol_node",
-                "ve_pol_connec",
-                "ve_pol_gully",
-                "ve_dimensions",
-                "v_ext_municipality",
-                "v_ext_plot",
-                "v_ext_streetaxis",
-                "cat_feature",
-                "sys_feature_type",
-                "v_value_relation",
-            ],
-            "coordinates": coordinates_dict,
-        },
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getinfofromcoordinates",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_info_from_coordinates(coordinates)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -165,22 +94,11 @@ async def get_features_from_polygon(
         ],  # noqa: E501
     ),
 ):
-    log = create_log(__name__)
-
-    parameters = {"featureType": feature_type, "polygonGeom": polygon_geom}
-    body = create_body_dict(
-        device=commons["device"], form={}, feature={}, extras={"parameters": parameters}, cur_user=commons["user_id"]
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getfeaturesfrompolygon",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_features_from_polygon(feature_type, polygon_geom)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -201,25 +119,11 @@ async def get_selectors(
         None, alias="currentTab", title="Current tab", description="Current tab to fetch"
     ),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"],
-        form={"currentTab": current_tab},
-        feature={},
-        extras={"selectorType": selector_type, "filterText": filter_text},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getselectors",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_selectors(selector_type, filter_text, current_tab)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -229,23 +133,11 @@ async def get_search(
     commons: CommonsDep,
     search_text: str = Query("", alias="searchText", title="Search text", description="Text to search for"),
 ):
-    log = create_log(__name__)
-
-    parameters = {"searchText": search_text}
-
-    body = create_body_dict(
-        device=commons["device"], form={}, feature={}, extras={"parameters": parameters}, cur_user=commons["user_id"]
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getsearch",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_search(search_text)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -271,26 +163,11 @@ async def get_arc_audit_values(
         examples=["2026-01-31"],
     ),
 ):
-    log = create_log(__name__)
-
-    parameters = {"startDate": start_date.strftime("%Y-%m-%d"), "endDate": end_date.strftime("%Y-%m-%d")}
-    body = create_body_dict(
-        device=commons["device"],
-        form={},
-        feature={},
-        extras={"parameters": parameters},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getarcauditvalues",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_arc_audit_values(start_date, end_date)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -315,46 +192,13 @@ async def get_list(
     ),
 ):
     """Get list"""
-    log = create_log(__name__)
-
-    # Parse JSON strings into models
     try:
-        coordinates_data = None
-        if coordinates:
-            coords_obj = ExtentModel(**json.loads(coordinates))
-            coordinates_data = coords_obj.model_dump(mode="json", exclude_unset=True)
-
-        page_info_data = None
-        if page_info:
-            page_obj = PageInfoModel(**json.loads(page_info))
-            page_info_data = page_obj.model_dump(mode="json", exclude_unset=True)
-
-        filter_fields_data = None
-        if filter_fields:
-            filter_fields_raw = json.loads(filter_fields)
-            filter_fields_data = {
-                k: FilterFieldModel(**v).model_dump(mode="json", exclude_unset=True)
-                for k, v in filter_fields_raw.items()
-            }
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
-
-    data = {"tableName": table_name}
-    if coordinates:
-        data["canvasExtend"] = coordinates_data
-
-    # Build the body
-    body = create_body_dict(
-        extras=data,
-        filter_fields=filter_fields_data if filter_fields_data else {},
-        page_info=page_info_data if page_info_data else {},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log, commons["db_manager"], "gw_fct_getlist", body, schema=commons["schema"], api_version=commons["api_version"]
-    )
-    return handle_procedure_result(result)
+        ctx = service_context_from_commons(commons)
+        return await BasicService(ctx).get_list(table_name, coordinates, page_info, filter_fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get("/exploitations/{exploitation}")

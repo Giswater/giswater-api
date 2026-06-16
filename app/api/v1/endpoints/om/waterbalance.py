@@ -8,10 +8,10 @@ or (at your option) any later version.
 from fastapi import APIRouter, Query
 
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
 from app.schemas.om.waterbalance_models import GetWaterbalanceResponse
-from app.db.execution import execute_sql
-from app.db.version import get_db_version
-from app.utils.log_setup import create_log
+from app.services.context import service_context_from_commons
+from app.services.om.waterbalance_service import WaterbalanceService
 
 router = APIRouter(prefix="/om", tags=["OM - Water Balance"])
 
@@ -26,92 +26,8 @@ async def get_waterbalance(
     commons: CommonsDep,
     dma_id: list[int] | None = Query(None, title="DMA ID", description="Filter by DMA ID(s)", examples=[1]),
 ):
-    log = create_log(__name__)
-
-    sql = """
-    WITH sel_expl AS (
-            SELECT selector_expl.expl_id
-            FROM {schema}.selector_expl
-            WHERE selector_expl.cur_user = CURRENT_USER
-        )
-        SELECT
-            w.node_id,
-            w.mapzone_id AS dma_id,
-            w.flow_sign,
-            json_build_object(
-                'node_id', w.node_id,
-                'node_type', cn.node_type,
-                'node_geometry', jsonb_build_object(
-                    'type', 'FeatureCollection',
-                    'features', jsonb_build_array(
-                        jsonb_build_object(
-                            'type', 'Feature',
-                            'geometry', ST_AsGeoJSON(st_transform(n.the_geom, 4326))::jsonb,
-                            'properties', jsonb_build_object()
-                        )
-                    )
-                )
-            ) AS node,
-            json_build_object(
-                'dma_id', d.dma_id,
-                'dma_stylesheet', d.stylesheet::json ->> 'featureColor'::text,
-                'dma_geometry', jsonb_build_object(
-                    'type', 'FeatureCollection',
-                    'features', jsonb_build_array(
-                        jsonb_build_object(
-                            'type', 'Feature',
-                            'geometry', ST_AsGeoJSON(st_transform(d.the_geom, 4326))::jsonb,
-                            'properties', jsonb_build_object()
-                        )
-                    )
-                )
-            ) AS dma,
-            jsonb_build_object(
-                'type', 'FeatureCollection',
-                'features', jsonb_build_array(
-                    jsonb_build_object(
-                        'type', 'Feature',
-                        'geometry',
-                        ST_AsGeoJSON(
-                            st_transform(
-                                st_makeline(n.the_geom, st_centroid(d.the_geom)), 4326
-                            )
-                        )::jsonb,
-                        'properties', jsonb_build_object()
-                    )
-                )
-            ) AS line
-        FROM {schema}.ve_dma d
-        JOIN {schema}.mapzone_graph w ON w.mapzone_id = d.dma_id
-        JOIN {schema}.node n ON w.node_id = n.node_id
-        JOIN {schema}.cat_node cn ON cn.id = n.nodecat_id
-        WHERE EXISTS (
-            SELECT 1
-            FROM sel_expl
-            WHERE sel_expl.expl_id = ANY (d.expl_id)
-        )
-        AND w.mapzone_type = 'DMA'
-        AND d.dma_id > 0
-        AND n.the_geom IS NOT NULL
-        AND d.the_geom IS NOT NULL
-    """
-    parameters = None
-    if dma_id:
-        sql += " AND w.dma_id = ANY(%s)"
-        parameters = (dma_id,)
-    waterbalance = await execute_sql(
-        log,
-        commons["db_manager"],
-        sql,
-        parameters=parameters,
-        schema=commons["schema"],
-    )
-
-    db_version = await get_db_version(log, commons["db_manager"], schema=commons["schema"])
-
-    return {
-        "status": "Accepted",
-        "message": {"level": 3, "text": "Fetched waterbalance successfully"},
-        "version": {"api": commons["api_version"], "db": db_version},
-        "body": {"form": {}, "feature": {}, "data": {"waterbalance": waterbalance}},
-    }
+    try:
+        ctx = service_context_from_commons(commons)
+        return await WaterbalanceService(ctx).get_waterbalance(dma_id)
+    except Exception as exc:
+        raise map_service_error(exc) from exc

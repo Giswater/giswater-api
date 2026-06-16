@@ -7,11 +7,12 @@ or (at your option) any later version.
 
 from fastapi import APIRouter, Body
 from typing import Union, List
-from app.db.execution import execute_procedure
-from app.utils.body import create_body_dict, handle_procedure_result
-from app.utils.log_setup import create_log
+
 from app.schemas.crm.crm_models import HydrometerCreate, HydrometerUpdate, HydrometerResponse
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
+from app.services.context import service_context_from_commons
+from app.services.crm_service import CrmService
 
 router = APIRouter(prefix="/crm", tags=["CRM"])
 
@@ -29,29 +30,12 @@ async def insert_hydrometers(
     ),
 ):
     """Insert one or multiple hydrometers"""
-    log = create_log(__name__)
-
-    # Convert single object to list for uniform processing
-    hydrometers_list = hydrometers if isinstance(hydrometers, list) else [hydrometers]
-
-    # Convert to dict and handle date serialization
-    hydrometers_data = [h.model_dump(mode="json", exclude_unset=True) for h in hydrometers_list]
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "INSERT", "hydrometers": hydrometers_data},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_set_hydrometers",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        hydrometers_list = hydrometers if isinstance(hydrometers, list) else [hydrometers]
+        return await CrmService(ctx).insert_hydrometers(hydrometers_list)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.patch(
@@ -68,27 +52,11 @@ async def update_hydrometer(
     ),
 ):
     """Update a single hydrometer identified by code"""
-    log = create_log(__name__)
-
-    # Override the code from path parameter
-    hydrometer_dict = hydrometer.model_dump(mode="json", exclude_unset=True)
-    hydrometer_dict["code"] = code
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "UPDATE", "hydrometers": [hydrometer_dict]},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_set_hydrometers",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await CrmService(ctx).update_hydrometer(code, hydrometer)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.patch(
@@ -104,25 +72,11 @@ async def update_hydrometers_bulk(
     ),
 ):
     """Update multiple hydrometers. Each must include 'code' as identifier"""
-    log = create_log(__name__)
-
-    hydrometers_data = [h.model_dump(mode="json", exclude_unset=True) for h in hydrometers]
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "UPDATE", "hydrometers": hydrometers_data},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_set_hydrometers",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await CrmService(ctx).update_hydrometers_bulk(hydrometers)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.delete(
@@ -131,28 +85,13 @@ async def update_hydrometers_bulk(
     response_model=HydrometerResponse,
     response_model_exclude_unset=True,
 )
-async def delete_hydrometer(
-    commons: CommonsDep,
-    code: str,
-):
+async def delete_hydrometer(commons: CommonsDep, code: str):
     """Delete a single hydrometer identified by code"""
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "DELETE", "hydrometers": [{"code": code}]},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_set_hydrometers",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await CrmService(ctx).delete_hydrometer(code)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.delete(
@@ -166,25 +105,11 @@ async def delete_hydrometers_bulk(
     codes: List[str] = Body(..., title="Codes", description="List of hydrometer codes to delete"),
 ):
     """Delete multiple hydrometers by their codes"""
-    log = create_log(__name__)
-
-    hydrometers_data = [{"code": code} for code in codes]
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "DELETE", "hydrometers": hydrometers_data},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_set_hydrometers",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await CrmService(ctx).delete_hydrometers_bulk(codes)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.put(
@@ -206,22 +131,8 @@ async def replace_all_hydrometers(
     This will DELETE all existing hydrometers and INSERT only the ones provided.
     Works consistently whether there are 0 or 1000+ existing hydrometers.
     """
-    log = create_log(__name__)
-
-    hydrometers_data = [h.model_dump(mode="json", exclude_unset=True) for h in hydrometers]
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "REPLACE", "hydrometers": hydrometers_data},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_set_hydrometers",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await CrmService(ctx).replace_all_hydrometers(hydrometers)
+    except Exception as exc:
+        raise map_service_error(exc) from exc

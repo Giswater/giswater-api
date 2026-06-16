@@ -107,6 +107,26 @@ def create_api_response(
     return APIResponse(message=message, status=status, result=result)
 
 
+def ensure_procedure_accepted(result: dict | None) -> dict:
+    """
+    Validate procedure result and raise ProcedureError on failure.
+
+    Raises:
+        ProcedureError: If result is None or status is not "Accepted"
+    """
+    if not result:
+        raise ProcedureError(
+            {
+                "status": "Failed",
+                "message": {"level": 2, "text": "Database returned null"},
+                "body": {},
+            }
+        )
+    if result.get("status") != "Accepted":
+        raise ProcedureError(result)
+    return result
+
+
 def handle_procedure_result(result: dict | None) -> dict:
     """
     Validate procedure result and raise appropriate exception on error.
@@ -121,8 +141,9 @@ def handle_procedure_result(result: dict | None) -> dict:
         HTTPException: If result is None
         ProcedureError: If result status is not "Accepted"
     """
-    if not result:
-        raise HTTPException(status_code=500, detail="Database returned null")
-    if result.get("status") != "Accepted":
-        raise ProcedureError(result)
-    return result
+    try:
+        return ensure_procedure_accepted(result)
+    except ProcedureError as exc:
+        if exc.result.get("message", {}).get("text") == "Database returned null":
+            raise HTTPException(status_code=500, detail="Database returned null") from exc
+        raise

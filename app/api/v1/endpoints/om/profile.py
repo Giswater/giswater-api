@@ -7,11 +7,12 @@ or (at your option) any later version.
 
 from fastapi import APIRouter, Body
 from typing import List, Optional
-from app.db.execution import execute_procedure
-from app.utils.body import create_body_dict, handle_procedure_result
-from app.utils.log_setup import create_log
+
 from app.schemas.om.profile_models import ProfileResponse
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
+from app.services.context import service_context_from_commons
+from app.services.om.profile_service import ProfileService
 
 router = APIRouter(prefix="/om", tags=["OM - Profile"])
 
@@ -32,28 +33,10 @@ async def create_profile(
     scale_ev: int = Body(..., description="Scale EV", examples=[1000]),
 ):
     """Insert one or multiple hydrometers"""
-    log = create_log(__name__)
-
-    extras = {
-        "initNode": initial_node_id,
-        "endNode": final_node_id,
-        "midNodes": middle_nodes,
-        "linksDistance": links_distance,
-        "scale": {"eh": scale_eh, "ev": scale_ev},
-    }
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras=extras,
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getprofilevalues",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await ProfileService(ctx).create_profile(
+            initial_node_id, final_node_id, middle_nodes, links_distance, scale_eh, scale_ev
+        )
+    except Exception as exc:
+        raise map_service_error(exc) from exc

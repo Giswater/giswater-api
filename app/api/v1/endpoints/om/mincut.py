@@ -5,14 +5,11 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import json
 from fastapi import APIRouter, Body, Path, Query, HTTPException
 from typing import Optional
-from pydantic import ValidationError
 
 from app.schemas.common import CoordinatesModel
 from app.schemas.om.mincut_models import (
-    MINCUT_CAUSE_VALUES,
     MincutPlanParams,
     MincutExecParams,
     MincutCreateResponse,
@@ -21,18 +18,15 @@ from app.schemas.om.mincut_models import (
     MincutToggleValveStatusResponse,
     MincutStartResponse,
     MincutDeleteResponse,
-    MincutFilterFieldsModel,
-    MincutValveFilterFieldsModel,
     MincutCancelResponse,
     MincutEndResponse,
     MincutDialogResponse,
 )
 from app.schemas.basic.basic_models import GetListResponse
-from app.db.execution import execute_procedure
-from app.utils.body import create_body_dict, handle_procedure_result
-from app.utils.log_setup import create_log
 from app.api.deps import CommonsDep
-from app.api.v1.endpoints.basic import get_list
+from app.api.http_errors import map_service_error
+from app.services.context import service_context_from_commons
+from app.services.om.mincut_service import MincutService
 
 router = APIRouter(prefix="/om", tags=["OM - Mincut"])
 
@@ -47,24 +41,13 @@ async def get_mincuts(
     commons: CommonsDep,
     filter_fields: Optional[str] = Query(None, alias="filterFields", description="Filter fields"),
 ):
-    """Get list of mincuts by calling the generic get_list endpoint with tbl_mincut_manger table"""
-
-    # Validate filterFields using the mincut-specific model
-    if filter_fields:
-        try:
-            filter_fields_dict = json.loads(filter_fields)
-            # Validate using MincutFilterFieldsModel
-            MincutFilterFieldsModel(data=filter_fields_dict)
-        except (json.JSONDecodeError, ValidationError) as e:
-            raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}") from e
-
-    return await get_list(
-        commons=commons,
-        table_name="tbl_mincut_manager",
-        coordinates=None,
-        page_info=None,
-        filter_fields=filter_fields,
-    )
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).get_mincuts(filter_fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -77,19 +60,11 @@ async def get_mincut_dialog(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to fetch", examples=[1]),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(device=commons["device"], extras={"mincutId": mincut_id}, cur_user=commons["user_id"])
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_getmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).get_mincut_dialog(mincut_id)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.post(
@@ -109,38 +84,11 @@ async def create_mincut(
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan of the mincut"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    log = create_log(__name__)
-
-    coordinates_dict = coordinates.model_dump()
-    if plan:
-        plan_dict = plan.model_dump(exclude_unset=True)
-    else:
-        plan_dict = {}
-
-    if plan_dict.get("anl_cause"):
-        plan_dict["anl_cause"] = MINCUT_CAUSE_VALUES.get(plan_dict["anl_cause"])
-
-    extras = {
-        "action": "mincutNetwork",
-        "usePsectors": use_psectors,
-        "coordinates": coordinates_dict,
-        "status": "check",
-        **plan_dict,
-    }
-    body = create_body_dict(
-        device=commons["device"], client_extras={"tiled": True}, extras=extras, cur_user=commons["user_id"]
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).create_mincut(coordinates, plan, use_psectors)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.patch(
@@ -156,42 +104,11 @@ async def update_mincut(
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    log = create_log(__name__)
-
-    if plan:
-        plan_dict = plan.model_dump(exclude_unset=True)
-    else:
-        plan_dict = {}
-
-    if exec:
-        exec_dict = exec.model_dump(exclude_unset=True)
-    else:
-        exec_dict = {}
-
-    body = create_body_dict(
-        device=commons["device"],
-        feature={"featureType": "", "tableName": "om_mincut", "id": mincut_id},
-        extras={
-            "action": "mincutAccept",
-            "mincutClass": 1,
-            "status": "check",
-            "mincutId": mincut_id,
-            "usePsectors": use_psectors,
-            "fields": {**plan_dict, **exec_dict},
-        },
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).update_mincut(mincut_id, plan, exec, use_psectors)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -205,23 +122,13 @@ async def get_valves(
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
     filter_fields: Optional[str] = Query(None, alias="filterFields", description="Filter fields"),
 ):
-    # Validate filterFields using the mincut-specific model
-    if filter_fields:
-        try:
-            filter_fields_dict = json.loads(filter_fields)
-            filter_fields_dict["result_id"] = mincut_id
-            # Validate using MincutValveFilterFieldsModel
-            MincutValveFilterFieldsModel(data=filter_fields_dict)
-        except (json.JSONDecodeError, ValidationError) as e:
-            raise HTTPException(status_code=422, detail=f"Invalid filterFields: {str(e)}") from e
-
-    return await get_list(
-        commons=commons,
-        table_name="v_om_mincut_valve",
-        coordinates=None,
-        page_info=None,
-        filter_fields=filter_fields,
-    )
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).get_valves(mincut_id, filter_fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.post(
@@ -239,28 +146,11 @@ async def valve_unaccess(
     valve_id: int = Path(..., title="Node ID", description="ID of the valve to toggle unaccessible", examples=[1114]),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={
-            "action": "mincutValveUnaccess",
-            "nodeId": valve_id,
-            "mincutId": mincut_id,
-            "usePsectors": use_psectors,
-        },
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).valve_unaccess(mincut_id, valve_id, use_psectors)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.post(
@@ -275,28 +165,11 @@ async def valve_toggle_status(
     valve_id: int = Path(..., title="Valve ID", description="ID of the valve to update", examples=[1114]),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={
-            "action": "mincutChangeValveStatus",
-            "nodeId": valve_id,
-            "mincutId": mincut_id,
-            "usePsectors": use_psectors,
-        },
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).valve_toggle_status(mincut_id, valve_id, use_psectors)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.post(
@@ -314,28 +187,11 @@ async def start_mincut(
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    log = create_log(__name__)
-
-    if plan:
-        plan_dict = plan.model_dump(exclude_unset=True)
-    else:
-        plan_dict = {}
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={"action": "mincutStart", "usePsectors": use_psectors, "mincutId": mincut_id, **plan_dict},
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).start_mincut(mincut_id, plan, use_psectors)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.post(
@@ -359,34 +215,11 @@ async def end_mincut(
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    log = create_log(__name__)
-
-    if exec:
-        exec_dict = exec.model_dump(exclude_unset=True)
-    else:
-        exec_dict = {}
-
-    body = create_body_dict(
-        device=commons["device"],
-        extras={
-            "action": "mincutEnd",
-            "mincutId": mincut_id,
-            "shutoffRequired": shutoff_required,
-            "usePsectors": use_psectors,
-            **exec_dict,
-        },
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).end_mincut(mincut_id, shutoff_required, exec, use_psectors)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.post(
@@ -403,21 +236,11 @@ async def cancel_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"], extras={"action": "mincutCancel", "mincutId": mincut_id}, cur_user=commons["user_id"]
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).cancel_mincut(mincut_id)
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.delete(
@@ -430,18 +253,8 @@ async def delete_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
 ):
-    log = create_log(__name__)
-
-    body = create_body_dict(
-        device=commons["device"], extras={"action": "mincutDelete", "mincutId": mincut_id}, cur_user=commons["user_id"]
-    )
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        "gw_fct_setmincut",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await MincutService(ctx).delete_mincut(mincut_id)
+    except Exception as exc:
+        raise map_service_error(exc) from exc

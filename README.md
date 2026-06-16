@@ -114,6 +114,24 @@ pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
+### CLI (operator scripts)
+
+After `pip install -e .`, the `giswater-api` console script reuses the same service layer as the HTTP API:
+
+```bash
+# List configured tenants
+giswater-api admin tenants list
+
+# Check tenant readiness
+giswater-api tenant --tenant test --schema ws_40 ready
+
+# Insert a hydrometer (example)
+giswater-api tenant --tenant test --schema ws_40 --user postgres crm insert-hydrometer \
+  --code H1 --hydro-number HN1
+```
+
+Use `--tenants-dir` to override `TENANTS_DIR` when not running via the FastAPI lifespan.
+
 ---
 
 <a id="configuration"></a>
@@ -332,10 +350,14 @@ giswater-api/
 │   │── main.py              # FastAPI app entry point (lifespan, sub-app mounts, middleware)
 │   │── api/                 # HTTP layer
 │   │   │── deps.py          # Shared FastAPI dependencies (common_parameters, get_schema, require_feature)
+│   │   │── http_errors.py   # map_service_error (domain -> HTTP)
 │   │   │── v1/              # Versioned tenant API
 │   │   │   │── router.py    # Router wiring + per-tenant OpenAPI filter
-│   │   │   └── endpoints/   # basic, crm, system, om/, epa/, routing/
+│   │   │   └── endpoints/   # Thin handlers; delegate to services/
 │   │   └── admin/           # Platform-admin API (tenants.py, users.py, router.py)
+│   │
+│   │── services/            # HTTP-agnostic business logic (API + CLI)
+│   │── cli/                 # Click CLI (`giswater-api` entry point)
 │   │
 │   │── core/                # Dependency-free leaf: config.py, constants.py, exceptions.py
 │   │── auth/                # session.py, keycloak.py, users.py, schemas.py, constants.py

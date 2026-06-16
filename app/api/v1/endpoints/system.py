@@ -5,33 +5,23 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-import logging
-import uuid
 from datetime import datetime
-
-import psycopg
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from psycopg import sql
-from psycopg.rows import dict_row
 
 from app.auth import verify_admin
-from app.core.config import global_settings
 from app.core.constants import STATIC_PREFIX
-from app.core.exceptions import DatabaseUnavailableError
-from app.db.bootstrap.log import LOG_DB_TABLE, LOG_SCHEMA, LOG_TABLE
-from app.db.version import get_db_version
-from app.tenancy.registry import Tenant
+from app.api.http_errors import map_service_error
+from app.services.system_service import SystemService
 from app.utils.rate_limit import create_rate_limiter
-from app.utils.version import db_version_at_least
+from app.core.config import global_settings
 
 _LOGS_UI_PATH = Path("app/static/logs.html")
 _LOGS_UI_HTML = _LOGS_UI_PATH.read_text(encoding="utf-8").replace("__STATIC_PREFIX__", STATIC_PREFIX)
 
 router = APIRouter(tags=["System"])
-logger = logging.getLogger(__name__)
 
 schema_rate_limiter = create_rate_limiter(
     max_requests=global_settings.rate_limit_default_max_requests,
@@ -40,8 +30,8 @@ schema_rate_limiter = create_rate_limiter(
 )
 
 
-def _tenant(request: Request) -> Tenant:
-    tenant: Tenant | None = getattr(request.state, "tenant", None)
+def _tenant(request: Request):
+    tenant = getattr(request.state, "tenant", None)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not specified")
     return tenant
@@ -51,72 +41,10 @@ def _tenant(request: Request) -> Tenant:
 async def ready(request: Request):
     """Readiness probe for the resolved tenant."""
     tenant = _tenant(request)
-    db_ready = await tenant.db_manager.is_db_available(timeout_seconds=2.0)
-    if not db_ready:
-        return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "tenant": tenant.id, "checks": {"database": "down"}},
-        )
-    checks: dict = {"database": "up"}
-    if global_settings.giswater_db_version_check:
-        try:
-            gv = await get_db_version(logger, tenant.db_manager, tenant.settings.db_schema)
-        except HTTPException as exc:
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "not_ready",
-                    "tenant": tenant.id,
-                    "checks": {"database": "up", "giswater_db": "error", "detail": exc.detail},
-                },
-            )
-        if gv is None:
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "not_ready",
-                    "tenant": tenant.id,
-                    "checks": {"database": "up", "giswater_db": "unknown"},
-                },
-            )
-        min_v = global_settings.giswater_db_min_version
-        if not db_version_at_least(gv, min_v):
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "not_ready",
-                    "tenant": tenant.id,
-                    "checks": {
-                        "database": "up",
-                        "giswater_db": "incompatible",
-                        "giswater_db_version": gv,
-                        "giswater_db_min_required": min_v,
-                    },
-                },
-            )
-        checks["giswater_db"] = gv
-    return {"status": "ready", "tenant": tenant.id, "checks": checks}
-
-
-def _manage_where_clauses(where_clauses: list, params: list, from_, to, endpoint, method, status, user):
-    if from_:
-        where_clauses.append("ts >= %s")
-        params.append(from_)
-    if to:
-        where_clauses.append("ts <= %s")
-        params.append(to)
-    if endpoint:
-        where_clauses.append("endpoint = %s")
-        params.append(endpoint)
-    if method:
-        where_clauses.append("method = %s")
-        params.append(method.upper())
-    if status is not None:
-        where_clauses.append("status = %s")
-        params.append(status)
-    if user:
-        where_clauses.append("user_name = %s")
-        params.append(user)
+    result = await SystemService(tenant).ready()
+    if result.get("status") != "ready":
+        return JSONResponse(status_code=503, content=result)
+    return result
 
 
 @router.get("/logs", dependencies=[Depends(verify_admin)])
@@ -132,55 +60,22 @@ async def get_logs(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ):
-    db_manager = _tenant(request).db_manager
-    where_clauses: list[str] = []
-    params: list = []
-    _manage_where_clauses(where_clauses, params, from_, to, endpoint, method, status, user)
-    if request_id:
-        try:
-            params.append(uuid.UUID(request_id))
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Invalid request_id") from exc
-        where_clauses.append("request_id = %s")
-
-    where_sql = ""
-    if where_clauses:
-        where_sql = " WHERE " + " AND ".join(where_clauses)
-
-    query = sql.SQL(
-        f"""
-        SELECT ts, endpoint, method, status, duration_ms, user_name, request_id,
-               client_ip, query_params, body_size, response_size,
-               request_headers, request_body, response_headers, response_body,
-               EXISTS (
-                   SELECT 1 FROM {{schema}}.{{db_table}} d
-                   WHERE d.request_id = main.request_id
-               ) AS has_db_logs
-        FROM {{schema}}.{{table}} main
-        {where_sql}
-        ORDER BY ts DESC
-        LIMIT %s OFFSET %s
-        """
-    ).format(
-        schema=sql.Identifier(LOG_SCHEMA),
-        table=sql.Identifier(LOG_TABLE),
-        db_table=sql.Identifier(LOG_DB_TABLE),
-    )
-    params.extend([limit, offset])
-
-    async with db_manager.get_db() as conn:
-        if conn is None:
-            raise DatabaseUnavailableError()
-        try:
-            async with conn.cursor(row_factory=dict_row) as cursor:
-                await cursor.execute(query, tuple(params))
-                rows = await cursor.fetchall()
-            await conn.commit()
-        except psycopg.Error as exc:
-            await conn.rollback()
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"count": len(rows), "items": rows}
+    try:
+        return await SystemService(_tenant(request)).get_logs(
+            from_=from_,
+            to=to,
+            endpoint=endpoint,
+            method=method,
+            status=status,
+            user=user,
+            request_id=request_id,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get("/logs/db", dependencies=[Depends(verify_admin)])
@@ -190,36 +85,12 @@ async def get_db_logs(
     limit: int = Query(default=50, ge=1, le=500),
 ):
     """Return database-level logs linked to a specific API request."""
-    db_manager = _tenant(request).db_manager
     try:
-        rid = uuid.UUID(request_id)
+        return await SystemService(_tenant(request)).get_db_logs(request_id, limit)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid request_id") from exc
-
-    query = sql.SQL(
-        """
-        SELECT ts, request_id, schema_name, function_name, sql_text,
-               response_json, duration_ms, status, error
-        FROM {schema}.{table}
-        WHERE request_id = %s
-        ORDER BY ts ASC
-        LIMIT %s
-        """
-    ).format(schema=sql.Identifier(LOG_SCHEMA), table=sql.Identifier(LOG_DB_TABLE))
-
-    async with db_manager.get_db() as conn:
-        if conn is None:
-            raise DatabaseUnavailableError()
-        try:
-            async with conn.cursor(row_factory=dict_row) as cursor:
-                await cursor.execute(query, (rid, limit))
-                rows = await cursor.fetchall()
-            await conn.commit()
-        except psycopg.Error as exc:
-            await conn.rollback()
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"count": len(rows), "items": rows}
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get("/logs/ui", include_in_schema=False, dependencies=[Depends(verify_admin)])
@@ -231,7 +102,9 @@ async def logs_ui():
 @router.get("/schemas/{schema}", dependencies=[Depends(schema_rate_limiter)])
 async def get_schema_endpoint(request: Request, schema: str):
     """Validate that a schema exists in the current tenant's database."""
-    db_manager = _tenant(request).db_manager
-    if not await db_manager.validate_schema(schema):
-        raise HTTPException(status_code=404, detail=f"Schema '{schema}' not found")
-    return {"status": "Accepted", "message": f"Schema '{schema}' is valid"}
+    try:
+        return await SystemService(_tenant(request)).validate_schema(schema)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc

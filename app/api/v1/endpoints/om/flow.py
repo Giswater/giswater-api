@@ -7,12 +7,13 @@ or (at your option) any later version.
 
 from fastapi import APIRouter, Body, HTTPException
 from typing import Optional, Literal
-from app.db.execution import execute_procedure
-from app.utils.body import create_body_dict, handle_procedure_result
-from app.utils.log_setup import create_log
+
 from app.schemas.om.flow_models import FlowResponse
 from app.schemas.common import CoordinatesModel
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
+from app.services.context import service_context_from_commons
+from app.services.om.flow_service import FlowService
 
 router = APIRouter(prefix="/om", tags=["OM - Flow"])
 
@@ -33,39 +34,10 @@ async def flow(
     ),
 ):
     """Calculate flow trace"""
-    log = create_log(__name__)
-
-    if coordinates:
-        coordinates_dict = coordinates.model_dump()
-    else:
-        coordinates_dict = None
-
-    feature = None
-    extras = None
-    if node_id:
-        feature = {"id": [node_id]}
-    elif coordinates_dict:
-        extras = {"coordinates": coordinates_dict}
-    else:
-        raise HTTPException(status_code=400, detail="Either node ID or coordinates must be provided")
-
-    body = create_body_dict(
-        device=commons["device"],
-        feature=feature,
-        extras=extras,
-        cur_user=commons["user_id"],
-    )
-
-    procedure = "gw_fct_graphanalytics_upstream"
-    if direction == "downstream":
-        procedure = "gw_fct_graphanalytics_downstream"
-
-    result = await execute_procedure(
-        log,
-        commons["db_manager"],
-        procedure,
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await FlowService(ctx).flow(direction, node_id, coordinates)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise map_service_error(exc) from exc

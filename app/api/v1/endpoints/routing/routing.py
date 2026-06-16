@@ -5,31 +5,17 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 from typing import Literal, Optional
-import json
-import logging
-import requests
-from pydantic import ValidationError
-from app.utils.routing import (
-    get_network_points,
-    get_valhalla_optimized_route,
-    get_geojson_from_optimized_route,
-    get_maneuvers,
-)
-from app.db.execution import execute_procedure
-from app.utils.body import create_body_dict, handle_procedure_result
-from app.utils.log_setup import create_log
+
 from app.api.deps import CommonsDep
+from app.api.http_errors import map_service_error
 from app.schemas.routing.routing_models import (
-    OptimalPathParams,
     GetObjectOptimalPathOrderResponse,
-    Location,
     GetObjectParameterOrderResponse,
 )
-
-logger = logging.getLogger(__name__)
-
+from app.services.context import service_context_from_commons
+from app.services.routing_service import RoutingService
 
 router = APIRouter(prefix="/routing", tags=["OM - Routing"])
 
@@ -118,132 +104,15 @@ async def get_object_optimal_path_order(
         "en-US",
         title="Language",
         description="Language for the response",
-        examples=[
-            "bg-BG",
-            "ca-ES",
-            "cs-CZ",
-            "da-DK",
-            "de-DE",
-            "el-GR",
-            "en-GB",
-            "en-US-x-pirate",
-            "en-US",
-            "es-ES",
-            "et-EE",
-            "fi-FI",
-            "fr-FR",
-            "hi-IN",
-            "hu-HU",
-            "it-IT",
-            "ja-JP",
-            "nb-NO",
-            "nl-NL",
-            "pl-PL",
-            "pt-BR",
-            "pt-PT",
-            "ro-RO",
-            "ru-RU",
-            "sk-SK",
-            "sl-SI",
-            "sv-SE",
-            "tr-TR",
-            "uk-UA",
-        ],
     ),
 ):
-    file_logger = create_log(__name__)
-
     try:
-        if final_point is None:
-            final_point_value = initial_point
-        else:
-            final_point_value = final_point
-        # Parse the locations JSON strings and convert to Location objects
-        initial_point_data = json.loads(initial_point)
-        final_point_data = json.loads(final_point_value)
-
-        initial_point = Location(**initial_point_data)
-        final_point = Location(**final_point_data)
-
-        mapzone_type_value = mapzone_type
-        if mapzone_type_value == "EXPLOITATION":
-            mapzone_type_value = "EXPL"
-
-        # Get the network of points
-        json_result, network_points = await get_network_points(
-            object_type,
-            mapzone_type_value,
-            mapzone_id,
-            file_logger,
-            commons["db_manager"],
-            commons["schema"],
-            api_version=commons["api_version"],
+        ctx = service_context_from_commons(commons)
+        return await RoutingService(ctx).get_object_optimal_path_order(
+            object_type, mapzone_type, mapzone_id, initial_point, final_point, transport_mode, units, language
         )
-        features = json_result["body"]["data"]["features"]
-
-        locations_data = [initial_point, *network_points, final_point]
-        # Create a ShortestPathParams instance to validate the input
-        params = OptimalPathParams(locations=locations_data, costing=transport_mode, units=units)
-
-        valhalla_params = {
-            "locations": [location.to_dict() for location in locations_data],
-            "costing": params.costing,
-            "units": params.units,
-            "language": language,
-        }
-        # Get the route from Valhalla API
-        valhalla_response, legs = get_valhalla_optimized_route(valhalla_params)
-        logger.debug("Valhalla optimized_route response: %s", json.dumps(valhalla_response, default=str))
-
-        # Check if we got a valid response
-        if not isinstance(valhalla_response, dict):
-            raise HTTPException(status_code=500, detail="Invalid response from Valhalla API")
-
-        try:
-            # Use the new function to create GeoJSON with multiple legs
-            geojson_response = get_geojson_from_optimized_route(valhalla_response.get("trip", {}), params.costing)
-        except (KeyError, TypeError, ValueError):
-            logger.warning("Error creating GeoJSON from optimized route", exc_info=True)
-            geojson_response = {}
-
-        trip = valhalla_response.get("trip") or {}
-        summary = trip.get("summary") or {}
-        distance = summary.get("length")
-        duration = summary.get("time")
-        status_message = trip.get("status_message")
-
-        # Add maneuvers information
-        try:
-            maneuvers = get_maneuvers(valhalla_response)
-        except (KeyError, TypeError, IndexError):
-            maneuvers = []
-
-        version = (json_result.get("version") or {}) if isinstance(json_result, dict) else {}
-        version["api"] = commons["api_version"]
-
-        result = {
-            "status": "Accepted",
-            "message": {"level": 1, "text": status_message},
-            "version": version,
-            "body": {
-                "data": {
-                    "distance": distance,
-                    "duration": duration,
-                    "path": geojson_response,
-                    "maneuvers": maneuvers,
-                    "features": features,
-                }
-            },
-        }
-    except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=400, detail="Invalid JSON format for initialPoint or finalPoint parameter"
-        ) from e
-    except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Routing provider unavailable: {e}") from e
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    return result
+    except Exception as exc:
+        raise map_service_error(exc) from exc
 
 
 @router.get(
@@ -286,31 +155,10 @@ async def get_object_parameter_order(
     ),
     order: Literal["asc", "desc"] = Query("asc", title="Order", description="Order of the parameter"),
 ):
-    file_logger = create_log(__name__)
-
-    mapzone_type_value = mapzone_type
-    if mapzone_type_value == "EXPLOITATION":
-        mapzone_type_value = "EXPL"
-
-    # Get the features from the database
-    body = create_body_dict(
-        device=commons["device"],
-        extras={
-            "sysType": object_type,
-            "mapzoneType": mapzone_type_value,
-            "mapzoneId": mapzone_id,
-            "parameter": parameter,
-            "order": order,
-        },
-        cur_user=commons["user_id"],
-    )
-
-    result = await execute_procedure(
-        file_logger,
-        commons["db_manager"],
-        "gw_fct_getfeatures",
-        body,
-        schema=commons["schema"],
-        api_version=commons["api_version"],
-    )
-    return handle_procedure_result(result)
+    try:
+        ctx = service_context_from_commons(commons)
+        return await RoutingService(ctx).get_object_parameter_order(
+            object_type, mapzone_type, mapzone_id, parameter, order
+        )
+    except Exception as exc:
+        raise map_service_error(exc) from exc
