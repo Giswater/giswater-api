@@ -14,8 +14,8 @@ conventions and the [full-stack template](https://github.com/fastapi/full-stack-
 app/
   main.py                 # lifespan, the three FastAPI sub-apps, mounts, middleware + handler registration
   api/                    # HTTP layer (uses absolute `from app...` imports)
-    deps.py               # common_parameters / CommonsDep, get_schema, require_feature
-    http_errors.py        # map_service_error (domain exceptions -> HTTPException)
+    deps.py               # CommonsDep, get_service_context, get_schema, require_feature
+    exception_handlers.py # register_exception_handlers
     v1/
       router.py           # ROUTER_FEATURES wiring + per-tenant OpenAPI filter
       endpoints/          # thin route handlers; delegate to services/
@@ -39,7 +39,7 @@ app/
   core/                   # LEAF: no intra-app imports
     config.py             # GlobalSettings / TenantSettings, AUTH_MODES, deprecation constants
     constants.py          # API_ROOT, TENANT_PREFIX, ADMIN_PREFIX, STATIC_PREFIX, GLOBAL_HEALTH_PATH
-    exceptions.py         # ProcedureError, DatabaseUnavailableError + handlers
+    exceptions.py         # ProcedureError, DatabaseUnavailableError, InvalidParametersError
   auth/
     __init__.py           # re-exports get_current_user, verify_admin, require_role, ApiUser
     session.py            # token verification, get_current_user, require_role, verify_admin
@@ -91,32 +91,47 @@ Rules that keep this acyclic:
   shared layers (`core`, `auth`, `db`, `tenancy`, `utils`, `middleware`) use
   relative imports among themselves.
 
-## Where to add code
+## Code locations
 
-| Task | Location |
+| Concern | Location |
 | --- | --- |
-| New tenant endpoint | Add handler in `app/api/v1/endpoints/`, implement logic in `app/services/`, wire in `app/api/v1/router.py` `ROUTER_FEATURES` |
-| New admin endpoint | `app/api/admin/` + `app/services/admin/` + include in `app/api/admin/router.py` |
-| New CLI command | `app/cli/main.py` (call the same service the route uses) |
-| New request/response model | `app/schemas/<domain>/` (or `schemas/common.py` for shared) |
-| New shared FastAPI dependency | `app/api/deps.py` |
-| Shared procedure/body execution | `app/services/procedure.py`, `app/utils/body.py` |
-| DB function call / raw SQL helper | `app/db/execution.py` |
-| New DDL bootstrap | `app/db/bootstrap/` |
-| New config/env var | `app/core/config.py` (+ `docs/ENVIRONMENT_VARIABLES.md`) |
-| New auth mode / role logic | `app/auth/` |
-| Pure helper (no DB) | `app/utils/` |
+| Tenant HTTP endpoints | `app/api/v1/endpoints/` — handlers call `app/services/`; registered in `app/api/v1/router.py` `ROUTER_FEATURES` |
+| Admin HTTP endpoints | `app/api/admin/` with logic in `app/services/admin/`; aggregated in `app/api/admin/router.py` |
+| CLI commands | `app/cli/main.py` — invokes the same services as the HTTP routes |
+| Request/response models | `app/schemas/<domain>/` or `schemas/common.py` for shared models |
+| FastAPI dependencies | `app/api/deps.py` |
+| Service-layer exceptions | `app/core/exceptions.py`; HTTP mapping in `app/api/exception_handlers.py` |
+| Procedure/body execution | `app/services/procedure.py`, `app/utils/body.py` |
+| DB function calls / raw SQL | `app/db/execution.py` |
+| DDL bootstrap | `app/db/bootstrap/` |
+| Configuration / env vars | `app/core/config.py` (+ `docs/ENVIRONMENT_VARIABLES.md`) |
+| Auth modes / roles | `app/auth/` |
+| Pure helpers (no DB) | `app/utils/` |
+
+## Error handling
+
+Route handlers call services and let exceptions propagate to `exception_handlers.py`. FastAPI handles request-parameter validation (e.g. `Query`).
+
+| Exception | HTTP | Response body |
+| --- | --- | --- |
+| `ProcedureError` | 500 | Giswater JSON (`status`, `message`, `version`, `body`) |
+| `DatabaseUnavailableError` | 503 | Giswater unavailable payload |
+| `InvalidParametersError` | 422 | `{"detail": "..."}` |
+| `ValueError` | 400 | `{"detail": "..."}` |
+| `LookupError` | 404 | `{"detail": "..."}` |
+| `GwapiUserError` | 400/404 | `{"detail": "..."}` |
+| `TenantServiceError` | varies | `{"detail": "..."}` |
+| `RuntimeError` (routing) | 502/500 | `{"detail": "..."}` |
+
+Handlers live in [`app/api/exception_handlers.py`](app/api/exception_handlers.py) and are registered via `register_exception_handlers()` in `main.py`.
 
 ## Request lifecycle (tenant API)
 
 1. `host_middleware` resolves the `Host` header to a `Tenant` and stores it on `request.state`.
 2. `request_logging` assigns a request id and records the HTTP log entry.
-3. `api/deps.py` builds `CommonsDep` (auth identity, schema, DB identity context).
-4. The route builds a `ServiceContext` and calls the domain service.
-5. The service calls `db/execution.py` (`execute_procedure` / `execute_sql*`), which
-   runs the Giswater DB function under the resolved role and optionally writes a DB log.
-
-The same services are available from the CLI (`giswater-api`) for operator scripts.
+3. `api/deps.py` builds `CommonsDep` and `get_service_context()`.
+4. The route calls a service method.
+5. Uncaught service exceptions are mapped by `exception_handlers.py`; successful calls return the service dict as JSON.
 
 ## Versioning
 

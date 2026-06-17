@@ -11,10 +11,9 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import global_settings
 from app.schemas.admin import TenantCreateIn, TenantIn, TenantOut
+from app.services.admin.tenant_service import TenantService
 from app.tenancy import state
 from app.tenancy.registry import TenantRegistry
-from app.api.http_errors import map_service_error
-from app.services.admin.tenant_service import TenantService
 
 router = APIRouter(tags=["Admin"])
 
@@ -44,63 +43,45 @@ def _audit_log(request: Request, action: str, tid: str | None = None, **extra) -
     )
 
 
-@router.get("/tenants", response_model=list[TenantOut])
+@router.get("/tenants", description="List all configured tenants.", response_model=list[TenantOut])
 async def list_tenants():
     return TenantService(_registry()).list_tenants()
 
 
-@router.get("/tenants/{tid}", response_model=TenantOut)
+@router.get("/tenants/{tid}", description="Get a tenant by id.", response_model=TenantOut)
 async def get_tenant(tid: str):
-    try:
-        return TenantService(_registry()).get_tenant(tid)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    return TenantService(_registry()).get_tenant(tid)
 
 
-@router.post("/tenants", response_model=TenantOut, status_code=201)
+@router.post("/tenants", description="Create a new tenant.", response_model=TenantOut, status_code=201)
 async def create_tenant(payload: TenantCreateIn, request: Request):
-    try:
-        tenant = await TenantService(_registry()).create_tenant(payload)
-        _audit_log(request, "create", tid=payload.id)
-        return tenant
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    tenant = await TenantService(_registry()).create_tenant(payload)
+    _audit_log(request, "create", tid=payload.id)
+    return tenant
 
 
-@router.put("/tenants/{tid}", response_model=TenantOut)
+@router.put("/tenants/{tid}", description="Update a tenant configuration.", response_model=TenantOut)
 async def update_tenant(tid: str, payload: TenantIn, request: Request):
-    try:
-        tenant = await TenantService(_registry()).update_tenant(tid, payload)
-        _audit_log(request, "update", tid=tid)
-        return tenant
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    tenant = await TenantService(_registry()).update_tenant(tid, payload)
+    _audit_log(request, "update", tid=tid)
+    return tenant
 
 
-@router.delete("/tenants/{tid}", status_code=204)
+@router.delete("/tenants/{tid}", description="Delete a tenant.", status_code=204)
 async def delete_tenant(tid: str, request: Request):
-    try:
-        await TenantService(_registry()).delete_tenant(tid)
-        _audit_log(request, "delete", tid=tid)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    await TenantService(_registry()).delete_tenant(tid)
+    _audit_log(request, "delete", tid=tid)
 
 
-@router.post("/tenants/{tid}/reload", response_model=TenantOut)
+@router.post("/tenants/{tid}/reload", description="Reload a single tenant from disk.", response_model=TenantOut)
 async def reload_tenant(tid: str, request: Request):
-    try:
-        tenant = await TenantService(_registry()).reload_tenant(tid)
-        _audit_log(request, "reload_one", tid=tid)
-        return tenant
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    tenant = await TenantService(_registry()).reload_tenant(tid)
+    _audit_log(request, "reload_one", tid=tid)
+    return tenant
 
 
-@router.post("/tenants/reload")
+@router.post("/tenants/reload", description="Reload all tenants from disk.")
 async def reload_tenants(request: Request):
-    try:
-        result = await TenantService(_registry()).reload_all()
-        _audit_log(request, "reload_all", **result)
-        return result
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    result = await TenantService(_registry()).reload_all()
+    _audit_log(request, "reload_all", **result)
+    return result

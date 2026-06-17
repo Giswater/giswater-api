@@ -5,14 +5,13 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Body, HTTPException
-from typing import Optional, Literal
+from typing import Literal, Optional
 
-from app.schemas.om.flow_models import FlowResponse
+from fastapi import APIRouter, Body
+
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.common import CoordinatesModel
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
-from app.services.context import service_context_from_commons
+from app.schemas.om.flow_models import FlowResponse
 from app.services.om.flow_service import FlowService
 
 router = APIRouter(prefix="/om", tags=["OM - Flow"])
@@ -34,10 +33,5 @@ async def flow(
     ),
 ):
     """Calculate flow trace"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await FlowService(ctx).flow(direction, node_id, coordinates)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await FlowService(ctx).flow(direction, node_id, coordinates)

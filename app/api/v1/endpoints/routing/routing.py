@@ -5,16 +5,15 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Query
 from typing import Literal, Optional
 
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
+from fastapi import APIRouter, Query
+
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.routing.routing_models import (
     GetObjectOptimalPathOrderResponse,
     GetObjectParameterOrderResponse,
 )
-from app.services.context import service_context_from_commons
 from app.services.routing_service import RoutingService
 
 router = APIRouter(prefix="/routing", tags=["OM - Routing"])
@@ -106,13 +105,10 @@ async def get_object_optimal_path_order(
         description="Language for the response",
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await RoutingService(ctx).get_object_optimal_path_order(
-            object_type, mapzone_type, mapzone_id, initial_point, final_point, transport_mode, units, language
-        )
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await RoutingService(ctx).get_object_optimal_path_order(
+        object_type, mapzone_type, mapzone_id, initial_point, final_point, transport_mode, units, language
+    )
 
 
 @router.get(
@@ -155,10 +151,5 @@ async def get_object_parameter_order(
     ),
     order: Literal["asc", "desc"] = Query("asc", title="Order", description="Order of the parameter"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await RoutingService(ctx).get_object_parameter_order(
-            object_type, mapzone_type, mapzone_id, parameter, order
-        )
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await RoutingService(ctx).get_object_parameter_order(object_type, mapzone_type, mapzone_id, parameter, order)

@@ -350,7 +350,7 @@ giswater-api/
 │   │── main.py              # FastAPI app entry point (lifespan, sub-app mounts, middleware)
 │   │── api/                 # HTTP layer
 │   │   │── deps.py          # Shared FastAPI dependencies (common_parameters, get_schema, require_feature)
-│   │   │── http_errors.py   # map_service_error (domain -> HTTP)
+│   │   │── exception_handlers.py  # Service error → HTTP response mapping
 │   │   │── v1/              # Versioned tenant API
 │   │   │   │── router.py    # Router wiring + per-tenant OpenAPI filter
 │   │   │   └── endpoints/   # Thin handlers; delegate to services/
@@ -381,7 +381,7 @@ giswater-api/
 │── gunicorn.conf.py     # Gunicorn + Uvicorn worker defaults for production images
 │── pyproject.toml       # Project metadata, dependencies, and tooling config
 │── docs/
-│   ├── ARCHITECTURE.md            # Package map, dependency rules, where to add code
+│   ├── ARCHITECTURE.md            # Package map, dependency rules, code locations
 │   ├── VERSIONING.md              # API + per-tenant DB versioning policy
 │   ├── DEPLOYMENT_CHECKLIST.md
 │   └── ENVIRONMENT_VARIABLES.md   # Human-readable env reference (tables + descriptions)

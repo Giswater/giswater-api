@@ -5,27 +5,26 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Body, Path, Query, HTTPException
 from typing import Optional
 
+from fastapi import APIRouter, Body, Path, Query
+
+from app.api.deps import CommonsDep, get_service_context
+from app.schemas.basic.basic_models import GetListResponse
 from app.schemas.common import CoordinatesModel
 from app.schemas.om.mincut_models import (
-    MincutPlanParams,
-    MincutExecParams,
-    MincutCreateResponse,
-    MincutUpdateResponse,
-    MincutToggleValveUnaccessResponse,
-    MincutToggleValveStatusResponse,
-    MincutStartResponse,
-    MincutDeleteResponse,
     MincutCancelResponse,
-    MincutEndResponse,
+    MincutCreateResponse,
+    MincutDeleteResponse,
     MincutDialogResponse,
+    MincutEndResponse,
+    MincutExecParams,
+    MincutPlanParams,
+    MincutStartResponse,
+    MincutToggleValveStatusResponse,
+    MincutToggleValveUnaccessResponse,
+    MincutUpdateResponse,
 )
-from app.schemas.basic.basic_models import GetListResponse
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
-from app.services.context import service_context_from_commons
 from app.services.om.mincut_service import MincutService
 
 router = APIRouter(prefix="/om", tags=["OM - Mincut"])
@@ -41,13 +40,8 @@ async def get_mincuts(
     commons: CommonsDep,
     filter_fields: Optional[str] = Query(None, alias="filterFields", description="Filter fields"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).get_mincuts(filter_fields)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).get_mincuts(filter_fields)
 
 
 @router.get(
@@ -60,11 +54,8 @@ async def get_mincut_dialog(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to fetch", examples=[1]),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).get_mincut_dialog(mincut_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).get_mincut_dialog(mincut_id)
 
 
 @router.post(
@@ -84,11 +75,8 @@ async def create_mincut(
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan of the mincut"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).create_mincut(coordinates, plan, use_psectors)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).create_mincut(coordinates, plan, use_psectors)
 
 
 @router.patch(
@@ -104,11 +92,8 @@ async def update_mincut(
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).update_mincut(mincut_id, plan, exec, use_psectors)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).update_mincut(mincut_id, plan, exec, use_psectors)
 
 
 @router.get(
@@ -122,13 +107,8 @@ async def get_valves(
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut associated to the valve", examples=[1]),
     filter_fields: Optional[str] = Query(None, alias="filterFields", description="Filter fields"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).get_valves(mincut_id, filter_fields)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).get_valves(mincut_id, filter_fields)
 
 
 @router.post(
@@ -146,11 +126,8 @@ async def valve_unaccess(
     valve_id: int = Path(..., title="Node ID", description="ID of the valve to toggle unaccessible", examples=[1114]),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).valve_unaccess(mincut_id, valve_id, use_psectors)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).valve_unaccess(mincut_id, valve_id, use_psectors)
 
 
 @router.post(
@@ -165,11 +142,8 @@ async def valve_toggle_status(
     valve_id: int = Path(..., title="Valve ID", description="ID of the valve to update", examples=[1114]),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).valve_toggle_status(mincut_id, valve_id, use_psectors)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).valve_toggle_status(mincut_id, valve_id, use_psectors)
 
 
 @router.post(
@@ -187,11 +161,8 @@ async def start_mincut(
     plan: Optional[MincutPlanParams] = Body(None, title="Plan", description="Plan parameters"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).start_mincut(mincut_id, plan, use_psectors)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).start_mincut(mincut_id, plan, use_psectors)
 
 
 @router.post(
@@ -215,11 +186,8 @@ async def end_mincut(
     exec: Optional[MincutExecParams] = Body(None, title="Execution", description="Execution parameters"),
     use_psectors: bool = Body(False, title="Use Psectors", description="Whether to use the planified network or not"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).end_mincut(mincut_id, shutoff_required, exec, use_psectors)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).end_mincut(mincut_id, shutoff_required, exec, use_psectors)
 
 
 @router.post(
@@ -236,11 +204,8 @@ async def cancel_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to cancel", examples=[1]),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).cancel_mincut(mincut_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).cancel_mincut(mincut_id)
 
 
 @router.delete(
@@ -253,8 +218,5 @@ async def delete_mincut(
     commons: CommonsDep,
     mincut_id: int = Path(..., title="Mincut ID", description="ID of the mincut to delete", examples=[1]),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MincutService(ctx).delete_mincut(mincut_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MincutService(ctx).delete_mincut(mincut_id)

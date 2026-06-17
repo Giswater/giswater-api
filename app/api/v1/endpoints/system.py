@@ -12,11 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.auth import verify_admin
+from app.core.config import global_settings
 from app.core.constants import STATIC_PREFIX
-from app.api.http_errors import map_service_error
 from app.services.system_service import SystemService
 from app.utils.rate_limit import create_rate_limiter
-from app.core.config import global_settings
 
 _LOGS_UI_PATH = Path("app/static/logs.html")
 _LOGS_UI_HTML = _LOGS_UI_PATH.read_text(encoding="utf-8").replace("__STATIC_PREFIX__", STATIC_PREFIX)
@@ -37,9 +36,8 @@ def _tenant(request: Request):
     return tenant
 
 
-@router.get("/ready")
+@router.get("/ready", description="Readiness probe for the resolved tenant.")
 async def ready(request: Request):
-    """Readiness probe for the resolved tenant."""
     tenant = _tenant(request)
     result = await SystemService(tenant).ready()
     if result.get("status") != "ready":
@@ -47,7 +45,9 @@ async def ready(request: Request):
     return result
 
 
-@router.get("/logs", dependencies=[Depends(verify_admin)])
+@router.get(
+    "/logs", description="Query HTTP request logs for the current tenant.", dependencies=[Depends(verify_admin)]
+)
 async def get_logs(
     request: Request,
     from_: datetime | None = Query(default=None, alias="from"),
@@ -60,51 +60,46 @@ async def get_logs(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ):
-    try:
-        return await SystemService(_tenant(request)).get_logs(
-            from_=from_,
-            to=to,
-            endpoint=endpoint,
-            method=method,
-            status=status,
-            user=user,
-            request_id=request_id,
-            limit=limit,
-            offset=offset,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    return await SystemService(_tenant(request)).get_logs(
+        from_=from_,
+        to=to,
+        endpoint=endpoint,
+        method=method,
+        status=status,
+        user=user,
+        request_id=request_id,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.get("/logs/db", dependencies=[Depends(verify_admin)])
+@router.get(
+    "/logs/db",
+    description="Return database-level logs linked to a specific API request.",
+    dependencies=[Depends(verify_admin)],
+)
 async def get_db_logs(
     request: Request,
     request_id: str = Query(...),
     limit: int = Query(default=50, ge=1, le=500),
 ):
-    """Return database-level logs linked to a specific API request."""
-    try:
-        return await SystemService(_tenant(request)).get_db_logs(request_id, limit)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    return await SystemService(_tenant(request)).get_db_logs(request_id, limit)
 
 
-@router.get("/logs/ui", include_in_schema=False, dependencies=[Depends(verify_admin)])
+@router.get(
+    "/logs/ui",
+    description="Serve the log viewer UI with the resolved STATIC_PREFIX baked in.",
+    include_in_schema=False,
+    dependencies=[Depends(verify_admin)],
+)
 async def logs_ui():
-    """Serve the log viewer UI with the resolved STATIC_PREFIX baked in."""
     return HTMLResponse(_LOGS_UI_HTML)
 
 
-@router.get("/schemas/{schema}", dependencies=[Depends(schema_rate_limiter)])
+@router.get(
+    "/schemas/{schema}",
+    description="Validate that a schema exists in the current tenant's database.",
+    dependencies=[Depends(schema_rate_limiter)],
+)
 async def get_schema_endpoint(request: Request, schema: str):
-    """Validate that a schema exists in the current tenant's database."""
-    try:
-        return await SystemService(_tenant(request)).validate_schema(schema)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    return await SystemService(_tenant(request)).validate_schema(schema)

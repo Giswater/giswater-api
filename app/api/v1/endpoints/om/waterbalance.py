@@ -7,10 +7,8 @@ or (at your option) any later version.
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.om.waterbalance_models import GetWaterbalanceResponse
-from app.services.context import service_context_from_commons
 from app.services.om.waterbalance_service import WaterbalanceService
 
 router = APIRouter(prefix="/om", tags=["OM - Water Balance"])
@@ -26,8 +24,5 @@ async def get_waterbalance(
     commons: CommonsDep,
     dma_id: list[int] | None = Query(None, title="DMA ID", description="Filter by DMA ID(s)", examples=[1]),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await WaterbalanceService(ctx).get_waterbalance(dma_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await WaterbalanceService(ctx).get_waterbalance(dma_id)

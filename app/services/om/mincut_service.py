@@ -12,6 +12,7 @@ from typing import Optional
 
 from pydantic import ValidationError
 
+from app.core.exceptions import InvalidParametersError
 from app.schemas.common import CoordinatesModel
 from app.schemas.om.mincut_models import (
     MINCUT_CAUSE_VALUES,
@@ -38,7 +39,7 @@ class MincutService:
             filter_fields_dict = json.loads(filter_fields)
             MincutFilterFieldsModel(data=filter_fields_dict)
         except (json.JSONDecodeError, ValidationError) as exc:
-            raise ValueError(f"Invalid filterFields: {exc}") from exc
+            raise InvalidParametersError(f"Invalid filterFields: {exc}") from exc
 
     def _validate_valve_filter_fields(self, mincut_id: int, filter_fields: str | None) -> None:
         if not filter_fields:
@@ -48,7 +49,7 @@ class MincutService:
             filter_fields_dict["result_id"] = mincut_id
             MincutValveFilterFieldsModel(data=filter_fields_dict)
         except (json.JSONDecodeError, ValidationError) as exc:
-            raise ValueError(f"Invalid filterFields: {exc}") from exc
+            raise InvalidParametersError(f"Invalid filterFields: {exc}") from exc
 
     async def get_mincuts(self, filter_fields: Optional[str] = None) -> dict:
         self._validate_mincut_filter_fields(filter_fields)

@@ -5,13 +5,12 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Body
-from typing import Union, List
+from typing import List, Union
 
-from app.schemas.crm.crm_models import HydrometerCreate, HydrometerUpdate, HydrometerResponse
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
-from app.services.context import service_context_from_commons
+from fastapi import APIRouter, Body
+
+from app.api.deps import CommonsDep, get_service_context
+from app.schemas.crm.crm_models import HydrometerCreate, HydrometerResponse, HydrometerUpdate
 from app.services.crm_service import CrmService
 
 router = APIRouter(prefix="/crm", tags=["CRM"])
@@ -30,12 +29,9 @@ async def insert_hydrometers(
     ),
 ):
     """Insert one or multiple hydrometers"""
-    try:
-        ctx = service_context_from_commons(commons)
-        hydrometers_list = hydrometers if isinstance(hydrometers, list) else [hydrometers]
-        return await CrmService(ctx).insert_hydrometers(hydrometers_list)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    hydrometers_list = hydrometers if isinstance(hydrometers, list) else [hydrometers]
+    return await CrmService(ctx).insert_hydrometers(hydrometers_list)
 
 
 @router.patch(
@@ -52,11 +48,8 @@ async def update_hydrometer(
     ),
 ):
     """Update a single hydrometer identified by code"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await CrmService(ctx).update_hydrometer(code, hydrometer)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await CrmService(ctx).update_hydrometer(code, hydrometer)
 
 
 @router.patch(
@@ -72,11 +65,8 @@ async def update_hydrometers_bulk(
     ),
 ):
     """Update multiple hydrometers. Each must include 'code' as identifier"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await CrmService(ctx).update_hydrometers_bulk(hydrometers)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await CrmService(ctx).update_hydrometers_bulk(hydrometers)
 
 
 @router.delete(
@@ -87,11 +77,8 @@ async def update_hydrometers_bulk(
 )
 async def delete_hydrometer(commons: CommonsDep, code: str):
     """Delete a single hydrometer identified by code"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await CrmService(ctx).delete_hydrometer(code)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await CrmService(ctx).delete_hydrometer(code)
 
 
 @router.delete(
@@ -105,11 +92,8 @@ async def delete_hydrometers_bulk(
     codes: List[str] = Body(..., title="Codes", description="List of hydrometer codes to delete"),
 ):
     """Delete multiple hydrometers by their codes"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await CrmService(ctx).delete_hydrometers_bulk(codes)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await CrmService(ctx).delete_hydrometers_bulk(codes)
 
 
 @router.put(
@@ -131,8 +115,5 @@ async def replace_all_hydrometers(
     This will DELETE all existing hydrometers and INSERT only the ones provided.
     Works consistently whether there are 0 or 1000+ existing hydrometers.
     """
-    try:
-        ctx = service_context_from_commons(commons)
-        return await CrmService(ctx).replace_all_hydrometers(hydrometers)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await CrmService(ctx).replace_all_hydrometers(hydrometers)

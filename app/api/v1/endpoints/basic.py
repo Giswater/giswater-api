@@ -10,8 +10,7 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.basic.basic_models import (
     GetArcAuditValuesResponse,
     GetFeatureChangesResponse,
@@ -23,7 +22,6 @@ from app.schemas.basic.basic_models import (
 )
 from app.schemas.common import CoordinatesModel
 from app.services.basic_service import BasicService
-from app.services.context import service_context_from_commons
 
 router = APIRouter(prefix="/basic", tags=["Basic"])
 
@@ -50,11 +48,8 @@ async def get_feature_changes(
         examples=["2024-11-11"],
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_feature_changes(feature_type, action, last_feeding)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_feature_changes(feature_type, action, last_feeding)
 
 
 @router.get(
@@ -66,11 +61,8 @@ async def get_feature_changes(
 async def get_info_from_coordinates(
     commons: CommonsDep, coordinates: CoordinatesModel = Query(..., description="Coordinates of the info")
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_info_from_coordinates(coordinates)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_info_from_coordinates(coordinates)
 
 
 @router.get(
@@ -94,11 +86,8 @@ async def get_features_from_polygon(
         ],  # noqa: E501
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_features_from_polygon(feature_type, polygon_geom)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_features_from_polygon(feature_type, polygon_geom)
 
 
 @router.get(
@@ -119,11 +108,8 @@ async def get_selectors(
         None, alias="currentTab", title="Current tab", description="Current tab to fetch"
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_selectors(selector_type, filter_text, current_tab)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_selectors(selector_type, filter_text, current_tab)
 
 
 @router.get(
@@ -133,11 +119,8 @@ async def get_search(
     commons: CommonsDep,
     search_text: str = Query("", alias="searchText", title="Search text", description="Text to search for"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_search(search_text)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_search(search_text)
 
 
 @router.get(
@@ -163,11 +146,8 @@ async def get_arc_audit_values(
         examples=["2026-01-31"],
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_arc_audit_values(start_date, end_date)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_arc_audit_values(start_date, end_date)
 
 
 @router.get(
@@ -192,16 +172,10 @@ async def get_list(
     ),
 ):
     """Get list"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await BasicService(ctx).get_list(table_name, coordinates, page_info, filter_fields)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await BasicService(ctx).get_list(table_name, coordinates, page_info, filter_fields)
 
 
-@router.get("/exploitations/{exploitation}")
+@router.get("/exploitations/{exploitation}", description="Not implemented.")
 async def get_exploitations(commons: CommonsDep, exploitation: str):
-    """Not implemented."""
     raise HTTPException(status_code=501, detail="Method not implemented")

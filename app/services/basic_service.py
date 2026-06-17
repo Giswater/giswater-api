@@ -13,6 +13,7 @@ from typing import Literal, Optional
 
 from pydantic import ValidationError
 
+from app.core.exceptions import InvalidParametersError
 from app.schemas.common import CoordinatesModel, ExtentModel, FilterFieldModel, PageInfoModel
 from app.services.context import ServiceContext
 from app.services.procedure import empty_procedure_response, run_procedure, run_procedure_raw
@@ -163,7 +164,7 @@ class BasicService:
                     for k, v in filter_fields_raw.items()
                 }
         except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
+            raise InvalidParametersError(str(exc)) from exc
 
         data = {"tableName": table_name}
         if coordinates:

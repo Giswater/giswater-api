@@ -5,18 +5,17 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Body, HTTPException, Path, Query
 from typing import Any, Dict, List, Optional, Union
 
+from fastapi import APIRouter, Body, Path, Query
+
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.basic.basic_models import GetListResponse
 from app.schemas.epa.dscenario_models import (
     DscenarioCreateRequest,
     DscenarioObjectResponse,
     DscenarioObjectType,
 )
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
-from app.services.context import service_context_from_commons
 from app.services.epa.dscenario_service import DscenarioService
 
 router = APIRouter(prefix="/epa", tags=["EPA - Dscenario"])
@@ -32,11 +31,8 @@ async def create_dscenario(
     commons: CommonsDep,
     payload: DscenarioCreateRequest = Body(..., description="Dscenario creation parameters"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).create_dscenario(payload)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).create_dscenario(payload)
 
 
 @router.get(
@@ -49,13 +45,8 @@ async def get_dscenarios(
     commons: CommonsDep,
     filter_fields: Optional[str] = Query(None, alias="filterFields", description="Filter fields"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).get_dscenarios(filter_fields)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).get_dscenarios(filter_fields)
 
 
 @router.post(
@@ -68,11 +59,8 @@ async def select_dscenario(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).select_dscenario(dscenario_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).select_dscenario(dscenario_id)
 
 
 @router.delete(
@@ -85,11 +73,8 @@ async def delete_dscenario(
     commons: CommonsDep,
     dscenario_id: int = Path(..., description="Dscenario id"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).delete_dscenario(dscenario_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).delete_dscenario(dscenario_id)
 
 
 @router.get(
@@ -104,13 +89,8 @@ async def get_dscenario_objects(
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
     filter_fields: Optional[str] = Query(None, alias="filterFields", description="Additional filter fields"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).get_dscenario_objects(dscenario_id, object_type, filter_fields)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).get_dscenario_objects(dscenario_id, object_type, filter_fields)
 
 
 @router.post(
@@ -129,11 +109,8 @@ async def insert_dscenario_objects(
         description="Single object or list of objects to insert",
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).insert_dscenario_objects(dscenario_id, object_type, objects)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).insert_dscenario_objects(dscenario_id, object_type, objects)
 
 
 @router.put(
@@ -152,13 +129,8 @@ async def upsert_dscenario_objects(
         description="Single object or list of objects to upsert; each must include the id field for this object type",
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).upsert_dscenario_objects(dscenario_id, object_type, objects)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).upsert_dscenario_objects(dscenario_id, object_type, objects)
 
 
 @router.get(
@@ -173,11 +145,8 @@ async def get_dscenario_object(
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
     object_id: str = Path(..., description="Object id"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).get_dscenario_object(dscenario_id, object_type, object_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).get_dscenario_object(dscenario_id, object_type, object_id)
 
 
 @router.patch(
@@ -193,13 +162,8 @@ async def update_dscenario_object(
     object_id: str = Path(..., description="Object id"),
     data: Dict[str, Any] = Body(..., title="Object", description="Fields to update"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).update_dscenario_object(dscenario_id, object_type, object_id, data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).update_dscenario_object(dscenario_id, object_type, object_id, data)
 
 
 @router.put(
@@ -215,11 +179,8 @@ async def upsert_dscenario_object(
     object_id: str = Path(..., description="Object id"),
     data: Dict[str, Any] = Body(..., title="Object", description="Fields to upsert"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).upsert_dscenario_object(dscenario_id, object_type, object_id, data)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).upsert_dscenario_object(dscenario_id, object_type, object_id, data)
 
 
 @router.delete(
@@ -234,8 +195,5 @@ async def delete_dscenario_object(
     object_type: DscenarioObjectType = Path(..., description="Dscenario object type"),
     object_id: str = Path(..., description="Object id"),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DscenarioService(ctx).delete_dscenario_object(dscenario_id, object_type, object_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DscenarioService(ctx).delete_dscenario_object(dscenario_id, object_type, object_id)

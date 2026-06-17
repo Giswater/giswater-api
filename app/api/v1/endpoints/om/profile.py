@@ -5,13 +5,12 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from fastapi import APIRouter, Body
 from typing import List, Optional
 
+from fastapi import APIRouter, Body
+
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.om.profile_models import ProfileResponse
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
-from app.services.context import service_context_from_commons
 from app.services.om.profile_service import ProfileService
 
 router = APIRouter(prefix="/om", tags=["OM - Profile"])
@@ -32,11 +31,8 @@ async def create_profile(
     scale_eh: int = Body(..., description="Scale EH", examples=[1000]),
     scale_ev: int = Body(..., description="Scale EV", examples=[1000]),
 ):
-    """Insert one or multiple hydrometers"""
-    try:
-        ctx = service_context_from_commons(commons)
-        return await ProfileService(ctx).create_profile(
-            initial_node_id, final_node_id, middle_nodes, links_distance, scale_eh, scale_ev
-        )
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    """Create a profile from node IDs and display settings."""
+    ctx = get_service_context(commons)
+    return await ProfileService(ctx).create_profile(
+        initial_node_id, final_node_id, middle_nodes, links_distance, scale_eh, scale_ev
+    )

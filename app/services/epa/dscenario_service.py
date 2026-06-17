@@ -21,6 +21,7 @@ from app.db.execution import (
     execute_sql_upsert,
 )
 from app.db.version import get_db_version
+from app.core.exceptions import InvalidParametersError
 from app.schemas.epa.dscenario_models import (
     DscenarioCreateRequest,
     DscenarioFilterFieldsModel,
@@ -74,7 +75,7 @@ class DscenarioService:
                 filter_fields_dict = json.loads(filter_fields)
                 DscenarioFilterFieldsModel(data=filter_fields_dict)
             except (json.JSONDecodeError, ValidationError) as exc:
-                raise ValueError(f"Invalid filterFields: {exc}") from exc
+                raise InvalidParametersError(f"Invalid filterFields: {exc}") from exc
         return await self._basic.get_list("ve_cat_dscenario", filter_fields=filter_fields)
 
     async def select_dscenario(self, dscenario_id: int) -> dict:
@@ -114,9 +115,9 @@ class DscenarioService:
             try:
                 merged_filters = json.loads(filter_fields)
                 if not isinstance(merged_filters, dict):
-                    raise ValueError("filterFields must be a JSON object")
+                    raise InvalidParametersError("filterFields must be a JSON object")
             except (json.JSONDecodeError, ValueError) as exc:
-                raise ValueError(f"Invalid filterFields: {exc}") from exc
+                raise InvalidParametersError(f"Invalid filterFields: {exc}") from exc
         else:
             merged_filters = {}
         merged_filters["dscenario_id"] = {"value": dscenario_id, "filterSign": "="}

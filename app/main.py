@@ -17,17 +17,12 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from .api.exception_handlers import register_exception_handlers
 from .api.admin.router import register_admin
 from .api.v1.router import register_v1, tenant_openapi_routes
 from .auth import verify_admin
 from .core.config import global_settings
 from .core.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
-from .core.exceptions import (
-    DatabaseUnavailableError,
-    ProcedureError,
-    database_unavailable_error_handler,
-    procedure_error_handler,
-)
 from .middleware.request_logging import request_logging_middleware
 from .schemas.common import GwErrorResponse
 from .tenancy import state
@@ -176,8 +171,7 @@ parent.middleware("http")(host_middleware)
 parent.middleware("http")(request_logging_middleware)
 
 for _app in (parent, tenant_app, admin_app):
-    _app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore[arg-type]
-    _app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore[arg-type]
+    register_exception_handlers(_app)
 
 load_plugins(tenant_app)
 

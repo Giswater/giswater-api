@@ -11,8 +11,14 @@ from fastapi import Depends, Header, HTTPException, Query, Request
 
 from app.auth import get_current_user
 from app.auth.schemas import ApiUser
+from app.services.context import ServiceContext, service_context_from_commons
 from app.tenancy.registry import Tenant
 from app.db.context import DB_IDENTITY_CTX, DbIdentity
+
+
+def get_service_context(commons: dict) -> ServiceContext:
+    """Build a service context from route dependencies."""
+    return service_context_from_commons(commons)
 
 
 def _get_tenant(request: Request) -> Tenant:

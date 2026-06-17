@@ -14,9 +14,7 @@ from app.schemas.om.dma_models import (
     GetDmaConnecsResponse,
 )
 from app.schemas.om.mapzone_models import GetMacrodmasResponse
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
-from app.services.context import service_context_from_commons
+from app.api.deps import CommonsDep, get_service_context
 from app.services.om.dma_service import DmaService
 
 router = APIRouter(prefix="/om", tags=["OM - District Metered Areas"])
@@ -29,11 +27,8 @@ router = APIRouter(prefix="/om", tags=["OM - District Metered Areas"])
     response_model_exclude_unset=True,
 )
 async def get_dmas(commons: CommonsDep):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DmaService(ctx).get_dmas()
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DmaService(ctx).get_dmas()
 
 
 @router.get(
@@ -43,11 +38,8 @@ async def get_dmas(commons: CommonsDep):
     response_model_exclude_unset=True,
 )
 async def get_macrodmas(commons: CommonsDep):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DmaService(ctx).get_macrodmas()
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DmaService(ctx).get_macrodmas()
 
 
 @router.get(
@@ -65,11 +57,8 @@ async def get_dma_hydrometers(
         ..., title="DMA ID", description="The unique identifier of the DMA for which to fetch hydrometers", examples=[1]
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DmaService(ctx).get_dma_hydrometers(dma_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DmaService(ctx).get_dma_hydrometers(dma_id)
 
 
 @router.get(
@@ -88,11 +77,8 @@ async def get_dma_parameters(
         ..., title="DMA ID", description="The unique identifier of the DMA for which to fetch parameters", examples=[1]
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DmaService(ctx).get_dma_parameters(dma_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DmaService(ctx).get_dma_parameters(dma_id)
 
 
 @router.get(
@@ -107,8 +93,5 @@ async def get_dma_connecs(
         ..., title="DMA ID", description="The unique identifier of the DMA for which to fetch connecs", examples=[1]
     ),
 ):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await DmaService(ctx).get_dma_connecs(dma_id)
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await DmaService(ctx).get_dma_connecs(dma_id)

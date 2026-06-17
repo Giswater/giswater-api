@@ -7,10 +7,8 @@ or (at your option) any later version.
 
 from fastapi import APIRouter
 
-from app.api.deps import CommonsDep
-from app.api.http_errors import map_service_error
+from app.api.deps import CommonsDep, get_service_context
 from app.schemas.om.mapzone_models import GetMacroomzonesResponse, GetOmzonesResponse
-from app.services.context import service_context_from_commons
 from app.services.om.mapzones_service import MapzonesService
 
 router = APIRouter(prefix="/om", tags=["OM - Mapzones"])
@@ -23,11 +21,8 @@ router = APIRouter(prefix="/om", tags=["OM - Mapzones"])
     response_model_exclude_unset=True,
 )
 async def get_macroomzones(commons: CommonsDep):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MapzonesService(ctx).get_macroomzones()
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MapzonesService(ctx).get_macroomzones()
 
 
 @router.get(
@@ -37,8 +32,5 @@ async def get_macroomzones(commons: CommonsDep):
     response_model_exclude_unset=True,
 )
 async def get_omzones(commons: CommonsDep):
-    try:
-        ctx = service_context_from_commons(commons)
-        return await MapzonesService(ctx).get_omzones()
-    except Exception as exc:
-        raise map_service_error(exc) from exc
+    ctx = get_service_context(commons)
+    return await MapzonesService(ctx).get_omzones()
