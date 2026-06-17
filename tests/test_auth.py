@@ -11,9 +11,9 @@ or (at your option) any later version.
 import warnings
 
 
-from app.config import _build_tenant, _resolve_auth_mode
-from app.models.auth_models import ApiUser
-from app.utils.utils import DB_IDENTITY_CTX, DbIdentity, _resolve_db_identity
+from app.core.config import _build_tenant, _resolve_auth_mode
+from app.auth.schemas import ApiUser
+from app.db.context import DB_IDENTITY_CTX, DbIdentity, _resolve_db_identity
 
 
 def test_resolve_auth_mode_explicit_none():

@@ -7,84 +7,34 @@ or (at your option) any later version.
 
 import logging
 import os
-from collections.abc import Callable
 from contextlib import asynccontextmanager
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Any
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.routing import BaseRoute
 
-from . import state
+from .api.exception_handlers import register_exception_handlers
+from .api.admin.router import register_admin
+from .api.v1.router import register_v1, tenant_openapi_routes
 from .auth import verify_admin
-from .config import global_settings
-from .constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
-from .dependencies import require_feature
-from .exceptions import (
-    DatabaseUnavailableError,
-    ProcedureError,
-    database_unavailable_error_handler,
-    procedure_error_handler,
-)
-from .host_middleware import host_middleware
-from .logging import request_logging_middleware
-from .models.util_models import GwErrorResponse
-from .routers import admin, admin_users, system
-from .routers.basic import basic
-from .routers.crm import crm
-from .routers.epa import dscenario
-from .routers.om import flow, mincut, profile, waterbalance
-from .routers.om.mapzones import dma, dqa, omunit, omzone, presszone, sector
-from .routers.routing import routing
-from .tenant import Tenant, TenantRegistry
-from .utils import utils
+from .core.config import global_settings
+from .core.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
+from .middleware.request_logging import request_logging_middleware
+from .schemas.common import GwErrorResponse
+from .tenancy import state
+from .tenancy.host_middleware import host_middleware
+from .tenancy.registry import Tenant, TenantRegistry
+from .utils.log_setup import create_log
+from .utils.plugins import load_plugins
 
 TITLE = "Giswater API"
 VERSION = pkg_version("giswater-api")
 DESCRIPTION = "API for interacting with a Giswater database."
 logger = logging.getLogger(__name__)
-
-# Tuple list: `APIRouter` is not hashable in Python 3.13+ (cannot use as dict keys).
-ROUTER_FEATURES: list[tuple[APIRouter, str]] = [
-    (basic.router, "api_basic"),
-    (profile.router, "api_profile"),
-    (flow.router, "api_flow"),
-    (mincut.router, "api_mincut"),
-    (waterbalance.router, "api_water_balance"),
-    (routing.router, "api_routing"),
-    (crm.router, "api_crm"),
-    (dscenario.router, "api_epa"),
-    (dma.router, "api_mapzones"),
-    (sector.router, "api_mapzones"),
-    (presszone.router, "api_mapzones"),
-    (dqa.router, "api_mapzones"),
-    (omzone.router, "api_mapzones"),
-    (omunit.router, "api_mapzones"),
-]
-
-# Map endpoint callables to feature flag — used for per-tenant OpenAPI filtering.
-FEATURE_BY_ENDPOINT: dict[Callable[..., Any], str] = {}
-for _rtr, _flag in ROUTER_FEATURES:
-    for _route in _rtr.routes:
-        ep = getattr(_route, "endpoint", None)
-        if callable(ep):
-            FEATURE_BY_ENDPOINT[ep] = _flag
-
-
-def _tenant_openapi_routes(tenant: Tenant) -> list[BaseRoute]:
-    """Routes to expose in OpenAPI for this tenant (feature toggles)."""
-    out: list[BaseRoute] = []
-    for route in tenant_app.routes:
-        ep = getattr(route, "endpoint", None)
-        flag = FEATURE_BY_ENDPOINT.get(ep) if callable(ep) else None
-        if flag is None or getattr(tenant.settings, flag, False):
-            out.append(route)
-    return out
 
 
 def _register_health_route(app: FastAPI, path: str = "/health") -> None:
@@ -114,7 +64,7 @@ async def lifespan(_app: FastAPI):
         logger.info("Loaded tenants from %s: %s", tenants_dir, registry.ids())
 
     state.registry = registry
-    state.global_logger = utils.create_log("api", os.path.join(global_settings.log_dir, "_global"))
+    state.global_logger = create_log("api", os.path.join(global_settings.log_dir, "_global"))
 
     try:
         yield
@@ -151,9 +101,7 @@ tenant_app = FastAPI(
     },
 )
 
-for _router, _flag in ROUTER_FEATURES:
-    tenant_app.include_router(_router, dependencies=[Depends(require_feature(_flag))])
-tenant_app.include_router(system.router)
+register_v1(tenant_app)
 
 
 @tenant_app.get("/", summary="Service status")
@@ -169,7 +117,7 @@ async def tenant_root():
 @tenant_app.get("/openapi.json", include_in_schema=False)
 async def tenant_openapi_json(request: Request):
     tenant: Tenant = request.state.tenant
-    routes = _tenant_openapi_routes(tenant)
+    routes = tenant_openapi_routes(tenant_app, tenant)
     root_path = request.scope.get("root_path") or TENANT_PREFIX
     schema = get_openapi(
         title=TITLE,
@@ -207,8 +155,7 @@ admin_app = FastAPI(
         503: {"model": GwErrorResponse, "description": "Database unavailable"},
     },
 )
-admin_app.include_router(admin.router)
-admin_app.include_router(admin_users.router)
+register_admin(admin_app)
 
 parent.mount(ADMIN_PREFIX, admin_app)
 parent.mount(TENANT_PREFIX, tenant_app)
@@ -224,9 +171,8 @@ parent.middleware("http")(host_middleware)
 parent.middleware("http")(request_logging_middleware)
 
 for _app in (parent, tenant_app, admin_app):
-    _app.add_exception_handler(ProcedureError, procedure_error_handler)  # type: ignore[arg-type]
-    _app.add_exception_handler(DatabaseUnavailableError, database_unavailable_error_handler)  # type: ignore[arg-type]
+    register_exception_handlers(_app)
 
-utils.load_plugins(tenant_app)
+load_plugins(tenant_app)
 
 app = parent

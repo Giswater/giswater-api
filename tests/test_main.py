@@ -5,7 +5,7 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from app.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH
+from app.core.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH
 
 from tests.helpers import api
 

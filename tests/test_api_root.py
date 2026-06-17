@@ -12,8 +12,8 @@ import textwrap
 
 import pytest
 
-from app.config import _normalize_api_root
-from app.constants import ADMIN_PREFIX, API_ROOT, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
+from app.core.config import _normalize_api_root
+from app.core.constants import ADMIN_PREFIX, API_ROOT, GLOBAL_HEALTH_PATH, STATIC_PREFIX, TENANT_PREFIX
 
 
 @pytest.mark.parametrize(
@@ -49,7 +49,7 @@ def test_default_prefixes_are_under_giswater():
 
 
 def test_logs_ui_html_uses_resolved_static_prefix():
-    from app.routers import system
+    from app.api.v1.endpoints import system
 
     assert "/giswater/static/css/logs.css" in system._LOGS_UI_HTML
     assert "/giswater/static/js/logs.js" in system._LOGS_UI_HTML
@@ -70,7 +70,7 @@ def test_api_root_override_reroutes_app(tmp_path):
         os.environ.setdefault("GISWATER_DB_VERSION_CHECK", "false")
 
         from fastapi.testclient import TestClient
-        from app.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, TENANT_PREFIX
+        from app.core.constants import ADMIN_PREFIX, GLOBAL_HEALTH_PATH, TENANT_PREFIX
         from app.main import app
 
         with TestClient(app, base_url="http://test.bgeo360.com") as c:

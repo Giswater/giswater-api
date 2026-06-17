@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Service layer** (`app/services/`): business logic extracted from FastAPI routes into HTTP-agnostic services (`ServiceContext`, domain services for basic/CRM/OM/EPA/routing/system/admin). HTTP handlers and the CLI share the same code path.
+- **`giswater-api` CLI** (`app/cli/`, Click): console script entry point after `pip install -e .`. Commands:
+  - `admin tenants list|get` — platform tenant registry
+  - `admin users list|create` — gwapi user management (basic-auth tenants)
+  - `tenant --tenant … --schema … ready` — tenant readiness probe (exit code 1 when not ready)
+  - `tenant … crm insert-hydrometer` — example tenant-scoped CRM operation
+  - Global `--tenants-dir` overrides `TENANTS_DIR` outside the FastAPI lifespan
+- **`app/api/exception_handlers.py`**: centralized mapping of service-layer exceptions to HTTP responses (replaces per-route error handling).
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (package map, dependency rules, where to add code) and [`docs/VERSIONING.md`](docs/VERSIONING.md) (API/DB versioning policy).
+- CLI smoke test (`tests/test_cli_smoke.py`).
+
+### Changed
+
+- **FastAPI-aligned internal layout** (no HTTP path, env var, or behavior changes). `app/` is now split into standard subpackages:
+  - `app/api/` — `deps.py` (was `dependencies.py`), `v1/` (`router.py` wiring + `endpoints/` tenant routers), and `admin/` (`tenants.py`, `users.py`, `router.py`).
+  - `app/core/` — `config.py`, `constants.py`, `exceptions.py` (dependency-free leaf). `AUTH_MODES` / `DEPRECATED_KEYCLOAK_ENABLED_ISSUE` now live in `core/config.py`, fixing a latent `config`<=>`auth` import cycle.
+  - `app/auth/` — `session.py` (was `auth.py`), `keycloak.py`, `users.py` (was `gwapi_users.py`), `schemas.py` (`ApiUser` + gwapi user DTOs), `constants.py`.
+  - `app/db/` — `manager.py` (was `database.py`), `context.py`, `execution.py`, `version.py`, `log_store.py`, and `bootstrap/{log,gwapi}.py` (the old `app/schemas.py` DDL).
+  - `app/tenancy/` — `registry.py` (was `tenant.py`), `state.py`, `host_middleware.py`.
+  - `app/middleware/request_logging.py` (was `app/logging.py`, no longer shadows stdlib `logging`).
+  - `app/schemas/` now holds all Pydantic request/response models (was `app/models/`).
+  - `app/utils/` slimmed into focused modules: `body.py`, `version.py` (merges `giswater_version.py`), `rate_limit.py`, `plugins.py`, `log_setup.py`, `routing.py`.
+- All v1 and admin route handlers are now thin wrappers: `CommonsDep` → `get_service_context()` → service method → JSON response.
+- OpenAPI `description` metadata added or improved across admin, system, and tenant endpoints.
+- README updated with CLI usage examples and the new package layout.
+
+### Fixed
+
+- Service-layer exceptions are re-raised after handling so FastAPI's registered exception handlers produce the correct HTTP status and body (instead of being swallowed or mapped inline in routes).
+
+### Removed
+
+- `app/api/http_errors.py` (superseded by `exception_handlers.py`).
+
 ## [1.4.0] - 2026-06-12
 
 ### Added
@@ -270,7 +306,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.3.0...main
+[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.4.0...main
+[1.4.0]: https://github.com/Giswater/giswater-api/compare/v1.3.2...v1.4.0
+[1.3.2]: https://github.com/Giswater/giswater-api/compare/v1.3.1...v1.3.2
 [1.3.0]: https://github.com/Giswater/giswater-api/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Giswater/giswater-api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Giswater/giswater-api/compare/v1.0.0...v1.1.0

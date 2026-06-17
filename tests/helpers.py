@@ -7,7 +7,7 @@ or (at your option) any later version.
 
 from fastapi.testclient import TestClient
 
-from app.constants import GLOBAL_HEALTH_PATH, TENANT_PREFIX
+from app.core.constants import GLOBAL_HEALTH_PATH, TENANT_PREFIX
 
 
 def api(path: str) -> str:
