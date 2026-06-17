@@ -11,11 +11,9 @@ import click
 
 from app.cli.bootstrap import (
     build_tenant_context,
-    close_registry,
     emit_json,
     get_registry,
     resolve_tenant,
-    run_async,
     run_service,
     tenants_dir_from_ctx,
 )
@@ -32,12 +30,6 @@ from app.services.system_service import SystemService
 def main(ctx: click.Context, tenants_dir: str | None) -> None:
     ctx.ensure_object(dict)
     ctx.obj["tenants_dir"] = tenants_dir
-
-
-@main.result_callback()
-@click.pass_context
-def _shutdown(_ctx: click.Context, _result, **_kwargs) -> None:
-    run_async(close_registry())
 
 
 @main.group()

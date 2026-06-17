@@ -78,8 +78,15 @@ def emit_json(data: object, *, exit_code: int = 0) -> None:
 
 def run_service(coro_factory: Callable[[], Awaitable[Any]]) -> Any:
     """Run an async service call; map domain errors to JSON + exit code."""
+
+    async def _wrapped() -> Any:
+        try:
+            return await coro_factory()
+        finally:
+            await close_registry()
+
     try:
-        return run_async(coro_factory())
+        return run_async(_wrapped())
     except ProcedureError as exc:
         emit_json(exc.result, exit_code=1)
     except Exception as exc:
