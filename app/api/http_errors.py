@@ -15,12 +15,11 @@ from app.services.admin.tenant_service import TenantServiceError
 
 
 def map_service_error(exc: Exception) -> HTTPException:  # noqa: C901
+    """Map domain errors to HTTPException; re-raise errors with registered handlers."""
     if isinstance(exc, HTTPException):
         return exc
-    if isinstance(exc, ProcedureError):
-        return HTTPException(status_code=500, detail=exc.result)
-    if isinstance(exc, DatabaseUnavailableError):
-        return HTTPException(status_code=503, detail="Database unavailable")
+    if isinstance(exc, (ProcedureError, DatabaseUnavailableError)):
+        raise exc
     if isinstance(exc, GwapiUserError):
         status = 404 if "not found" in str(exc).lower() else 400
         return HTTPException(status_code=status, detail=str(exc))
