@@ -20,7 +20,7 @@ from psycopg.rows import dict_row
 from ..core.config import TenantSettings
 from .constants import MIN_PASSWORD_LENGTH
 from .schemas import ApiUser
-from ..db.bootstrap.gwapi import GWAPI_ROLES_TABLE, GWAPI_SCHEMA, GWAPI_USER_ROLES_TABLE, GWAPI_USERS_TABLE
+from ..db.schema import GWAPI_ROLES_TABLE, GWAPI_SCHEMA, GWAPI_USER_ROLES_TABLE, GWAPI_USERS_TABLE
 
 logger = logging.getLogger(__name__)
 

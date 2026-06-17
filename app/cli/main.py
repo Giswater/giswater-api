@@ -17,6 +17,7 @@ from app.cli.bootstrap import (
     run_service,
     tenants_dir_from_ctx,
 )
+from app.db.migrate import get_current_revision, history, run_alembic_upgrade
 from app.schemas.crm.crm_models import HydrometerCreate
 from app.services.admin.tenant_service import TenantService
 from app.services.admin.user_service import GwapiUserService
@@ -110,6 +111,61 @@ def admin_users_create(
         return user.model_dump()
 
     emit_json(run_service(_run))
+
+
+@main.group("db")
+def db_group() -> None:
+    """Database migrations for the API-owned `gwapi` schema."""
+
+
+async def _db_targets(ctx: click.Context, tenant: str | None, all_tenants: bool):
+    registry = await get_registry(tenants_dir_from_ctx(ctx.obj))
+    if all_tenants:
+        return registry.all()
+    if not tenant:
+        raise click.UsageError("Provide --tenant <id> or --all")
+    return [await resolve_tenant(tenant, tenants_dir_from_ctx(ctx.obj))]
+
+
+@db_group.command("upgrade")
+@click.option("--tenant", default=None, help="Tenant id")
+@click.option("--all", "all_tenants", is_flag=True, help="Upgrade every loaded tenant")
+@click.pass_context
+def db_upgrade(ctx: click.Context, tenant: str | None, all_tenants: bool) -> None:
+    """Run `alembic upgrade head` against one or all tenants."""
+
+    async def _run():
+        results = []
+        for t in await _db_targets(ctx, tenant, all_tenants):
+            await run_alembic_upgrade(t.db_manager)
+            revision = await get_current_revision(t.db_manager.database_url)
+            results.append({"tenant": t.id, "revision": revision})
+        return results
+
+    emit_json(run_service(_run))
+
+
+@db_group.command("current")
+@click.option("--tenant", default=None, help="Tenant id")
+@click.option("--all", "all_tenants", is_flag=True, help="Report every loaded tenant")
+@click.pass_context
+def db_current(ctx: click.Context, tenant: str | None, all_tenants: bool) -> None:
+    """Show the applied Alembic revision per tenant."""
+
+    async def _run():
+        results = []
+        for t in await _db_targets(ctx, tenant, all_tenants):
+            revision = await get_current_revision(t.db_manager.database_url)
+            results.append({"tenant": t.id, "revision": revision})
+        return results
+
+    emit_json(run_service(_run))
+
+
+@db_group.command("history")
+def db_history() -> None:
+    """List available migration revisions (newest first)."""
+    emit_json(history())
 
 
 @main.group()

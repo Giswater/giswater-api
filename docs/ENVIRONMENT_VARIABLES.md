@@ -46,7 +46,16 @@ Request logging writes JSON lines to rotating files under `LOG_DIR`, and optiona
 | `LOG_DB_SAMPLE_RATE` | `1.0` | Fraction (0–1) of tenant-scoped requests that pass random sampling for **DB** log inserts. `1.0` means every eligible request is considered (typical for QGIS plugin traffic). `0` turns off DB sampling together with `LOG_DB_ENABLED` logic; prefer `LOG_DB_ENABLED=false` to disable DB logging entirely. Lower the rate if the log table becomes a bottleneck. |
 | `LOG_HTTP_BODY_CAPTURE` | `true` | When `true`, request/response **payload text** is included for failed requests (`4xx`/`5xx`) with redaction and truncation. Binary/multipart payloads are skipped. When `false`, only metadata (sizes, timing, allowlisted headers, etc.) is logged. |
 | `LOG_DB_MAX_BODY_BYTES` | `2048` | Max bytes stored per request/response body when capture is on. `0` uses an internal safe cap (same as 2048-style limit). |
-| `LOG_DB_RESPONSE_MAX_BYTES` | `8192` | Max bytes stored in `log.gw_api_logs_db.response_json` (raw DB function output captured by `execute_procedure`). Separate from `LOG_DB_MAX_BODY_BYTES` because DB payloads are typically much larger than HTTP form bodies. `0` (or negative) disables truncation (full payload stored). |
+| `LOG_DB_RESPONSE_MAX_BYTES` | `8192` | Max bytes stored in `gwapi.gw_api_logs_db.response_json` (raw DB function output captured by `execute_procedure`). Separate from `LOG_DB_MAX_BODY_BYTES` because DB payloads are typically much larger than HTTP form bodies. `0` (or negative) disables truncation (full payload stored). |
+
+### Database migrations (`gwapi` schema)
+
+The API owns the `gwapi` schema (basic-auth tables plus audit logs). Its layout is managed by Alembic; see [Database migrations](DATABASE_MIGRATIONS.md).
+
+| Variable | Default | Description |
+| -------- | ------- | ----------- |
+| `DB_AUTO_MIGRATE` | `true` | When `true`, `alembic upgrade head` runs per tenant on load (creating/relocating the `gwapi` schema). Set `false` to defer schema changes to a controlled window and apply them with `giswater-api db upgrade`. The API keeps serving against the legacy `log` schema until the upgrade runs. |
+| `DB_MIGRATE_TIMEOUT` | `30` | Seconds allowed for the per-tenant migration during startup. |
 
 ### Giswater DB compatibility (readiness)
 

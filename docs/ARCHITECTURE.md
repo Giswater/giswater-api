@@ -53,7 +53,9 @@ app/
     execution.py          # execute_procedure, execute_sql*
     version.py            # get_db_version (DB query)
     log_store.py          # insert_api_log, insert_api_db_log
-    bootstrap/            # DDL bootstrap: __init__ (ensure_tenant_schemas), log.py, gwapi.py
+    schema.py             # gwapi schema/table constants + resolve_log_schema (legacy log fallback)
+    partitions.py         # monthly partition DDL (runtime-managed)
+    migrate.py            # Alembic runner + ensure_tenant_database orchestrator
   tenancy/
     registry.py           # Tenant + TenantRegistry
     state.py              # process-global registry / global_logger
@@ -85,8 +87,9 @@ Rules that keep this acyclic:
   rather than under `auth/` (a `core.config -> auth -> core.config` cycle otherwise).
 - **`db/__init__.py` is empty** (no eager imports), so importing a `db` submodule
   never drags in the whole package.
-- The only `db -> auth` edge (`db/bootstrap` bootstrapping the first gwapi user)
-  is a **function-local import** inside `ensure_tenant_schemas`, not a module-level one.
+- The only `db -> auth` edge (bootstrapping the first gwapi user) is a
+  **function-local import** inside `ensure_tenant_database` (`db/migrate.py`),
+  not a module-level one.
 - The `api/` layer uses **absolute imports** (`from app.schemas... import ...`);
   shared layers (`core`, `auth`, `db`, `tenancy`, `utils`, `middleware`) use
   relative imports among themselves.
@@ -103,7 +106,7 @@ Rules that keep this acyclic:
 | Service-layer exceptions | `app/core/exceptions.py`; HTTP mapping in `app/api/exception_handlers.py` |
 | Procedure/body execution | `app/services/procedure.py`, `app/utils/body.py` |
 | DB function calls / raw SQL | `app/db/execution.py` |
-| DDL bootstrap | `app/db/bootstrap/` |
+| Schema migrations (`gwapi`) | `alembic/` (revisions) + `app/db/migrate.py` (runner); see [DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md) |
 | Configuration / env vars | `app/core/config.py` (+ `docs/ENVIRONMENT_VARIABLES.md`) |
 | Auth modes / roles | `app/auth/` |
 | Pure helpers (no DB) | `app/utils/` |
