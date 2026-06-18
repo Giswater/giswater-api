@@ -22,11 +22,15 @@ from app.db.log_store import insert_api_log
 from app.db.manager import DatabaseManager
 from app.db.migrate import get_current_revision, head_revision, run_alembic_upgrade
 from app.db.schema import (
-    GWAPI_LOG_TABLE,
+    DB_LOG_TABLE,
     GWAPI_SCHEMA,
+    HTTP_LOG_TABLE,
+    LEGACY_DB_LOG_TABLE,
+    LEGACY_HTTP_LOG_TABLE,
     LEGACY_LOG_SCHEMA,
     invalidate_log_schema_cache,
     resolve_log_schema,
+    resolve_log_targets,
 )
 
 
@@ -80,8 +84,8 @@ async def _reset_api_objects(db) -> None:
         db,
         [
             "DROP SCHEMA IF EXISTS gwapi CASCADE",
-            f"DROP TABLE IF EXISTS {LEGACY_LOG_SCHEMA}.gw_api_logs CASCADE",
-            f"DROP TABLE IF EXISTS {LEGACY_LOG_SCHEMA}.gw_api_logs_db CASCADE",
+            f"DROP TABLE IF EXISTS {LEGACY_LOG_SCHEMA}.{LEGACY_HTTP_LOG_TABLE} CASCADE",
+            f"DROP TABLE IF EXISTS {LEGACY_LOG_SCHEMA}.{LEGACY_DB_LOG_TABLE} CASCADE",
         ],
     )
 
@@ -89,7 +93,7 @@ async def _reset_api_objects(db) -> None:
 _LEGACY_LOG_DDL = [
     f"CREATE SCHEMA IF NOT EXISTS {LEGACY_LOG_SCHEMA}",
     f"""
-    CREATE TABLE IF NOT EXISTS {LEGACY_LOG_SCHEMA}.gw_api_logs (
+    CREATE TABLE IF NOT EXISTS {LEGACY_LOG_SCHEMA}.{LEGACY_HTTP_LOG_TABLE} (
         ts timestamptz NOT NULL,
         id bigserial NOT NULL,
         method text NOT NULL,
@@ -110,7 +114,7 @@ _LEGACY_LOG_DDL = [
     ) PARTITION BY RANGE (ts)
     """,
     f"""
-    CREATE TABLE IF NOT EXISTS {LEGACY_LOG_SCHEMA}.gw_api_logs_db (
+    CREATE TABLE IF NOT EXISTS {LEGACY_LOG_SCHEMA}.{LEGACY_DB_LOG_TABLE} (
         ts timestamptz NOT NULL,
         id bigserial NOT NULL,
         request_id uuid,
@@ -125,8 +129,8 @@ _LEGACY_LOG_DDL = [
     ) PARTITION BY RANGE (ts)
     """,
     f"""
-    CREATE TABLE IF NOT EXISTS {LEGACY_LOG_SCHEMA}.gw_api_logs_2026_06
-    PARTITION OF {LEGACY_LOG_SCHEMA}.gw_api_logs
+    CREATE TABLE IF NOT EXISTS {LEGACY_LOG_SCHEMA}.{LEGACY_HTTP_LOG_TABLE}_2026_06
+    PARTITION OF {LEGACY_LOG_SCHEMA}.{LEGACY_HTTP_LOG_TABLE}
     FOR VALUES FROM ('2026-06-01') TO ('2026-07-01')
     """,
 ]
@@ -147,12 +151,15 @@ def test_alembic_fresh_install():
 
             await run_alembic_upgrade(db)
 
-            assert await _table_exists(db, GWAPI_SCHEMA, GWAPI_LOG_TABLE)
+            assert await _table_exists(db, GWAPI_SCHEMA, HTTP_LOG_TABLE)
+            assert await _table_exists(db, GWAPI_SCHEMA, DB_LOG_TABLE)
             assert await _table_exists(db, GWAPI_SCHEMA, "users")
-            # API log tables must not remain in the legacy schema on a fresh install.
-            assert not await _table_exists(db, LEGACY_LOG_SCHEMA, GWAPI_LOG_TABLE)
+            assert not await _table_exists(db, LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE)
             assert await get_current_revision(db.database_url) == head_revision()
-            assert await resolve_log_schema(db) == GWAPI_SCHEMA
+            targets = await resolve_log_targets(db)
+            assert targets.schema == GWAPI_SCHEMA
+            assert targets.http_table == HTTP_LOG_TABLE
+            assert targets.db_table == DB_LOG_TABLE
         finally:
             await _reset_api_objects(db)
             await db.close()
@@ -172,19 +179,23 @@ def test_alembic_relocate_log_schema():
             await _exec(
                 db,
                 [
-                    "INSERT INTO log.gw_api_logs (ts, method, endpoint, status) "
+                    f"INSERT INTO {LEGACY_LOG_SCHEMA}.{LEGACY_HTTP_LOG_TABLE} "
+                    "(ts, method, endpoint, status) "
                     "VALUES ('2026-06-15T10:00:00Z', 'GET', '/probe', 200)"
                 ],
             )
 
             await run_alembic_upgrade(db)
 
-            # Tables (and their historical rows) now live in gwapi.
-            assert await _table_exists(db, GWAPI_SCHEMA, GWAPI_LOG_TABLE)
-            assert not await _table_exists(db, LEGACY_LOG_SCHEMA, GWAPI_LOG_TABLE)
+            assert await _table_exists(db, GWAPI_SCHEMA, HTTP_LOG_TABLE)
+            assert await _table_exists(db, GWAPI_SCHEMA, DB_LOG_TABLE)
+            assert not await _table_exists(db, GWAPI_SCHEMA, LEGACY_HTTP_LOG_TABLE)
+            assert not await _table_exists(db, LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE)
+            assert await _table_exists(db, GWAPI_SCHEMA, f"{HTTP_LOG_TABLE}_2026_06")
+            assert not await _table_exists(db, GWAPI_SCHEMA, f"{LEGACY_HTTP_LOG_TABLE}_2026_06")
             async with db.get_db() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("SELECT count(*) FROM gwapi.gw_api_logs")
+                    await cur.execute(f"SELECT count(*) FROM {GWAPI_SCHEMA}.{HTTP_LOG_TABLE}")
                     (count,) = await cur.fetchone()
             assert count == 1
             assert await resolve_log_schema(db) == GWAPI_SCHEMA
@@ -219,7 +230,7 @@ def test_log_insert_after_migration():
             async with db.get_db() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute(
-                        "SELECT count(*) FROM gwapi.gw_api_logs WHERE endpoint = %s",
+                        f"SELECT count(*) FROM {GWAPI_SCHEMA}.{HTTP_LOG_TABLE} WHERE endpoint = %s",
                         ("/after-migration",),
                     )
                     (count,) = await cur.fetchone()
@@ -242,7 +253,10 @@ def test_legacy_log_schema_without_migrate():
             invalidate_log_schema_cache(tid)
             await _exec(db, _LEGACY_LOG_DDL)
 
-            assert await resolve_log_schema(db) == LEGACY_LOG_SCHEMA
+            targets = await resolve_log_targets(db)
+            assert targets.schema == LEGACY_LOG_SCHEMA
+            assert targets.http_table == LEGACY_HTTP_LOG_TABLE
+            assert targets.db_table == LEGACY_DB_LOG_TABLE
 
             await insert_api_log(
                 db,
@@ -257,7 +271,10 @@ def test_legacy_log_schema_without_migrate():
 
             async with db.get_db() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("SELECT count(*) FROM log.gw_api_logs WHERE endpoint = %s", ("/legacy",))
+                    await cur.execute(
+                        f"SELECT count(*) FROM {LEGACY_LOG_SCHEMA}.{LEGACY_HTTP_LOG_TABLE} WHERE endpoint = %s",
+                        ("/legacy",),
+                    )
                     (count,) = await cur.fetchone()
             assert count == 1
         finally:
@@ -278,9 +295,12 @@ def test_resolver_switches_after_upgrade():
             await _exec(db, _LEGACY_LOG_DDL)
             assert await resolve_log_schema(db) == LEGACY_LOG_SCHEMA
 
-            await run_alembic_upgrade(db)  # invalidates the cache on success
+            await run_alembic_upgrade(db)
 
-            assert await resolve_log_schema(db) == GWAPI_SCHEMA
+            targets = await resolve_log_targets(db)
+            assert targets.schema == GWAPI_SCHEMA
+            assert targets.http_table == HTTP_LOG_TABLE
+            assert targets.db_table == DB_LOG_TABLE
         finally:
             await _reset_api_objects(db)
             await db.close()

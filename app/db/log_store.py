@@ -12,18 +12,18 @@ from psycopg import sql
 from psycopg.types.json import Json
 
 from .partitions import ensure_log_partition
-from .schema import GWAPI_LOG_DB_TABLE, GWAPI_LOG_TABLE, resolve_log_schema
+from .schema import resolve_log_targets
 
 logger = logging.getLogger(__name__)
 
 
 async def insert_api_log(db_manager, record: Dict[str, Any]) -> None:
-    schema = await resolve_log_schema(db_manager)
+    targets = await resolve_log_targets(db_manager)
     async with db_manager.get_db() as conn:
         if conn is None:
             return
         try:
-            await ensure_log_partition(conn, record["ts"], GWAPI_LOG_TABLE, schema)
+            await ensure_log_partition(conn, record["ts"], targets.http_table, targets.schema)
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     sql.SQL(
@@ -47,7 +47,7 @@ async def insert_api_log(db_manager, record: Dict[str, Any]) -> None:
                         )
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """
-                    ).format(sql.Identifier(schema), sql.Identifier(GWAPI_LOG_TABLE)),
+                    ).format(sql.Identifier(targets.schema), sql.Identifier(targets.http_table)),
                     (
                         record.get("ts"),
                         record.get("method"),
@@ -72,12 +72,12 @@ async def insert_api_log(db_manager, record: Dict[str, Any]) -> None:
 
 
 async def insert_api_db_log(db_manager, record: Dict[str, Any]) -> None:
-    schema = await resolve_log_schema(db_manager)
+    targets = await resolve_log_targets(db_manager)
     async with db_manager.get_db() as conn:
         if conn is None:
             return
         try:
-            await ensure_log_partition(conn, record["ts"], GWAPI_LOG_DB_TABLE, schema)
+            await ensure_log_partition(conn, record["ts"], targets.db_table, targets.schema)
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     sql.SQL(
@@ -95,7 +95,7 @@ async def insert_api_db_log(db_manager, record: Dict[str, Any]) -> None:
                         )
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """
-                    ).format(sql.Identifier(schema), sql.Identifier(GWAPI_LOG_DB_TABLE)),
+                    ).format(sql.Identifier(targets.schema), sql.Identifier(targets.db_table)),
                     (
                         record.get("ts"),
                         record.get("request_id"),

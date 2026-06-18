@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from psycopg import sql
 
-from .schema import GWAPI_LOG_DB_TABLE, GWAPI_LOG_TABLE
+from .schema import DB_LOG_TABLE, HTTP_LOG_TABLE, LEGACY_DB_LOG_TABLE, LEGACY_HTTP_LOG_TABLE, LogTargets
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,32 @@ def _month_range(ts: datetime, table_name: str) -> tuple[datetime, datetime, str
     return month_start, month_end, partition_name
 
 
+def _candidate_partition_names(table_name: str, partition_name: str) -> tuple[str, ...]:
+    """Names a monthly partition may already have (current or legacy prefix)."""
+    if table_name == HTTP_LOG_TABLE:
+        legacy = partition_name.replace(f"{HTTP_LOG_TABLE}_", f"{LEGACY_HTTP_LOG_TABLE}_", 1)
+        return (partition_name, legacy)
+    if table_name == DB_LOG_TABLE:
+        legacy = partition_name.replace(f"{DB_LOG_TABLE}_", f"{LEGACY_DB_LOG_TABLE}_", 1)
+        return (partition_name, legacy)
+    return (partition_name,)
+
+
+async def _partition_table_exists(conn, schema: str, name: str) -> bool:
+    async with conn.cursor() as cursor:
+        await cursor.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+            (schema, name),
+        )
+        return await cursor.fetchone() is not None
+
+
 async def ensure_log_partition(conn, ts: datetime, table_name: str, schema: str) -> None:
     """Create the monthly partition for `ts` if it does not already exist."""
     month_start, month_end, partition_name = _month_range(ts, table_name)
+    for name in _candidate_partition_names(table_name, partition_name):
+        if await _partition_table_exists(conn, schema, name):
+            return
     async with conn.cursor() as cursor:
         await cursor.execute(
             sql.SQL(
@@ -47,15 +70,15 @@ async def ensure_log_partition(conn, ts: datetime, table_name: str, schema: str)
         )
 
 
-async def ensure_current_month_partitions(db_manager, schema: str) -> None:
+async def ensure_current_month_partitions(db_manager, targets: LogTargets) -> None:
     """Ensure the current-month partitions exist for both audit log tables."""
     async with db_manager.get_db() as conn:
         if conn is None:
             return
         now = datetime.now(timezone.utc)
         try:
-            await ensure_log_partition(conn, now, GWAPI_LOG_TABLE, schema)
-            await ensure_log_partition(conn, now, GWAPI_LOG_DB_TABLE, schema)
+            await ensure_log_partition(conn, now, targets.http_table, targets.schema)
+            await ensure_log_partition(conn, now, targets.db_table, targets.schema)
             await conn.commit()
         except Exception as exc:
             await conn.rollback()

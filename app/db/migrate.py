@@ -13,6 +13,7 @@ runtime queries; SQLAlchemy is only the engine Alembic needs to run.
 
 import asyncio
 import logging
+import threading
 from pathlib import Path
 
 from alembic import command
@@ -23,28 +24,21 @@ from sqlalchemy import create_engine, pool
 
 from ..core.config import TenantSettings, global_settings
 from .partitions import ensure_current_month_partitions
-from .schema import invalidate_log_schema_cache, resolve_log_schema
+from .schema import invalidate_log_schema_cache, resolve_log_targets
 
 logger = logging.getLogger(__name__)
 
 VERSION_TABLE_SCHEMA = "gwapi"
+# Alembic's EnvironmentContext proxy lives in module globals; not safe concurrently.
+_alembic_upgrade_lock = threading.Lock()
 
 
-def _alembic_dir() -> Path:
-    """Locate the `alembic/` directory across layouts.
-
-    Works for the repo / editable install (sibling of `app/`) and for the
-    Docker image, where the source tree is copied to the working directory but
-    the package is installed into site-packages.
-    """
-    candidates = (
-        Path(__file__).resolve().parents[2] / "alembic",  # repo / editable install
-        Path.cwd() / "alembic",  # Docker: WORKDIR with the source tree copied in
-    )
-    for candidate in candidates:
-        if candidate.is_dir():
+def _alembic_ini() -> Path:
+    """Return the project ``alembic.ini`` (Docker WORKDIR or repo root)."""
+    for candidate in (Path.cwd() / "alembic.ini", Path(__file__).resolve().parents[2] / "alembic.ini"):
+        if candidate.is_file():
             return candidate
-    return candidates[0]
+    raise RuntimeError(f"alembic.ini not found (cwd={Path.cwd()})")
 
 
 def _to_sqlalchemy_url(database_url: str) -> str:
@@ -60,14 +54,16 @@ def _to_sqlalchemy_url(database_url: str) -> str:
 
 
 def build_alembic_config(database_url: str) -> Config:
-    cfg = Config()
-    cfg.set_main_option("script_location", str(_alembic_dir()))
-    cfg.set_main_option("sqlalchemy.url", _to_sqlalchemy_url(database_url))
+    cfg = Config(str(_alembic_ini()))
+    # ConfigParser treats `%` as interpolation syntax; escape for set/get round-trip.
+    url = _to_sqlalchemy_url(database_url).replace("%", "%%")
+    cfg.set_main_option("sqlalchemy.url", url)
     return cfg
 
 
 def _sync_upgrade(database_url: str) -> None:
-    command.upgrade(build_alembic_config(database_url), "head")
+    with _alembic_upgrade_lock:
+        command.upgrade(build_alembic_config(database_url), "head")
 
 
 def _sync_current_revision(database_url: str) -> str | None:
@@ -129,7 +125,12 @@ async def ensure_tenant_database(db_manager, settings: TenantSettings) -> None:
         try:
             await run_alembic_upgrade(db_manager)
         except Exception as exc:
-            logger.warning("[%s] alembic upgrade failed; keeping legacy schema: %s", db_manager.tenant_id, exc)
+            logger.warning(
+                "[%s] alembic upgrade failed; keeping legacy schema: %r",
+                db_manager.tenant_id,
+                exc,
+                exc_info=True,
+            )
     else:
         logger.info(
             "[%s] DB_AUTO_MIGRATE=false; audit logs stay in their current schema until "
@@ -139,8 +140,8 @@ async def ensure_tenant_database(db_manager, settings: TenantSettings) -> None:
         await _warn_if_behind(db_manager)
 
     if global_settings.log_db_enabled:
-        schema = await resolve_log_schema(db_manager)
-        await ensure_current_month_partitions(db_manager, schema)
+        targets = await resolve_log_targets(db_manager)
+        await ensure_current_month_partitions(db_manager, targets)
 
     if settings.auth_mode == "basic":
         from ..auth.users import maybe_bootstrap_user

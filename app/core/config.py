@@ -106,7 +106,7 @@ class GlobalSettings:
     log_http_body_capture: bool = True
     # Max bytes stored per body when capture is enabled; 0 means use safe default (2048).
     log_db_max_body_bytes: int = 2048
-    # Max bytes stored for `gwapi.gw_api_logs_db.response_json` (raw DB function output).
+    # Max bytes stored for `gwapi.db_logs.response_json` (raw DB function output).
     # DB responses can be much larger than HTTP form bodies, so this is a separate knob.
     # 0 (or negative) disables truncation (full payload stored).
     log_db_response_max_bytes: int = 8192

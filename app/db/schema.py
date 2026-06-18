@@ -5,7 +5,10 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -22,20 +25,34 @@ GWAPI_USERS_TABLE = "users"
 GWAPI_ROLES_TABLE = "roles"
 GWAPI_USER_ROLES_TABLE = "user_roles"
 
-# Audit log tables
-GWAPI_LOG_TABLE = "gw_api_logs"
-GWAPI_LOG_DB_TABLE = "gw_api_logs_db"
+# Audit log tables (current names in `gwapi`)
+HTTP_LOG_TABLE = "http_logs"
+DB_LOG_TABLE = "db_logs"
 
-# Per-tenant cache of the resolved log schema. Cleared after a successful
-# migration so the next request picks up `gwapi` (see migrate.run_alembic_upgrade).
-_log_schema_cache: dict[str, str] = {}
+# Legacy table names (still used in the `log` schema until migration succeeds)
+LEGACY_HTTP_LOG_TABLE = "gw_api_logs"
+LEGACY_DB_LOG_TABLE = "gw_api_logs_db"
+
+
+@dataclass(frozen=True)
+class LogTargets:
+    """Schema + table names for HTTP and DB audit logs."""
+
+    schema: str
+    http_table: str
+    db_table: str
+
+
+# Per-tenant cache of resolved log targets. Cleared after a successful migration
+# so the next request picks up `gwapi` (see migrate.run_alembic_upgrade).
+_log_targets_cache: dict[str, LogTargets] = {}
 
 
 def invalidate_log_schema_cache(tenant_id: str | None = None) -> None:
     if tenant_id is None:
-        _log_schema_cache.clear()
+        _log_targets_cache.clear()
     else:
-        _log_schema_cache.pop(tenant_id, None)
+        _log_targets_cache.pop(tenant_id, None)
 
 
 async def _table_exists(conn, schema: str, table: str) -> bool:
@@ -47,8 +64,8 @@ async def _table_exists(conn, schema: str, table: str) -> bool:
         return await cursor.fetchone() is not None
 
 
-async def _detect_log_schema(db_manager) -> str | None:
-    """Return the schema that currently holds the audit log tables.
+async def _detect_log_targets(db_manager) -> LogTargets | None:
+    """Detect where audit log tables live for this tenant.
 
     Returns None when the database is unreachable so the caller can avoid
     caching a transient default.
@@ -56,32 +73,38 @@ async def _detect_log_schema(db_manager) -> str | None:
     async with db_manager.get_db() as conn:
         if conn is None:
             return None
-        if await _table_exists(conn, GWAPI_SCHEMA, GWAPI_LOG_TABLE):
-            return GWAPI_SCHEMA
-        if await _table_exists(conn, LEGACY_LOG_SCHEMA, GWAPI_LOG_TABLE):
+        if await _table_exists(conn, GWAPI_SCHEMA, HTTP_LOG_TABLE):
+            return LogTargets(GWAPI_SCHEMA, HTTP_LOG_TABLE, DB_LOG_TABLE)
+        if await _table_exists(conn, LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE):
             logger.warning(
                 "[%s] DEPRECATED #26: audit logs still in the 'log' schema; run "
                 "'giswater-api db upgrade' to relocate them to 'gwapi'. Removal in 2.0.0.",
                 db_manager.tenant_id,
             )
-            return LEGACY_LOG_SCHEMA
+            return LogTargets(LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE, LEGACY_DB_LOG_TABLE)
     # Neither exists yet (e.g. fresh DB before migration); target gwapi.
-    return GWAPI_SCHEMA
+    return LogTargets(GWAPI_SCHEMA, HTTP_LOG_TABLE, DB_LOG_TABLE)
+
+
+async def resolve_log_targets(db_manager) -> LogTargets:
+    """Resolve schema and table names for audit log reads/writes.
+
+    Prefers `gwapi.http_logs` / `gwapi.db_logs`; falls back to the legacy
+    `log.gw_api_logs*` names until migration has moved and renamed the tables.
+    Result is cached per tenant.
+    """
+    tenant_id = db_manager.tenant_id
+    cached = _log_targets_cache.get(tenant_id)
+    if cached is not None:
+        return cached
+    targets = await _detect_log_targets(db_manager)
+    if targets is None:
+        # DB transiently unavailable; do not cache the optimistic default.
+        return LogTargets(GWAPI_SCHEMA, HTTP_LOG_TABLE, DB_LOG_TABLE)
+    _log_targets_cache[tenant_id] = targets
+    return targets
 
 
 async def resolve_log_schema(db_manager) -> str:
-    """Resolve which schema audit log reads/writes should target for a tenant.
-
-    Prefers `gwapi`; falls back to the legacy `log` schema until migration has
-    moved the tables. Result is cached per tenant.
-    """
-    tenant_id = db_manager.tenant_id
-    cached = _log_schema_cache.get(tenant_id)
-    if cached is not None:
-        return cached
-    schema = await _detect_log_schema(db_manager)
-    if schema is None:
-        # DB transiently unavailable; do not cache the optimistic default.
-        return GWAPI_SCHEMA
-    _log_schema_cache[tenant_id] = schema
-    return schema
+    """Return the schema for audit log reads/writes (legacy fallback aware)."""
+    return (await resolve_log_targets(db_manager)).schema

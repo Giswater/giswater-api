@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Alembic-managed `gwapi` schema** (`alembic/`, `app/db/migrate.py`): the API-owned schema (basic-auth tables + audit logs) is now versioned with plain-SQL migrations instead of runtime DDL. psycopg remains the runtime driver; SQLAlchemy is only the engine Alembic needs. New CLI: `giswater-api db upgrade|current|history`. See [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md).
 - **`DB_AUTO_MIGRATE`** (default `true`, no `.env` change required) and **`DB_MIGRATE_TIMEOUT`** (default `30`): control whether `alembic upgrade head` runs per tenant on startup or is deferred to a manual `giswater-api db upgrade` in a maintenance window.
-- **Legacy `log` schema compatibility resolver** (`app/db/schema.py` `resolve_log_schema`): audit reads/writes target `gwapi` once migrated and transparently fall back to the old `log` schema until then (`DEPRECATED #26`; removed in 2.0.0).
+- **Legacy `log` schema compatibility resolver** (`app/db/schema.py` `resolve_log_targets`): audit reads/writes target `gwapi.http_logs` / `gwapi.db_logs` once migrated and transparently fall back to legacy `log.gw_api_logs*` table names until then (`DEPRECATED #26`; removed in 2.0.0).
 - Migration integration tests (`tests/test_db_migrations.py`) and CLI `db` smoke tests.
 - **Service layer** (`app/services/`): business logic extracted from FastAPI routes into HTTP-agnostic services (`ServiceContext`, domain services for basic/CRM/OM/EPA/routing/system/admin). HTTP handlers and the CLI share the same code path.
 - **`giswater-api` CLI** (`app/cli/`, Click): console script entry point after `pip install -e .`. Commands:
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `app/core/` — `config.py`, `constants.py`, `exceptions.py` (dependency-free leaf). `AUTH_MODES` / `DEPRECATED_KEYCLOAK_ENABLED_ISSUE` now live in `core/config.py`, fixing a latent `config`<=>`auth` import cycle.
   - `app/auth/` — `session.py` (was `auth.py`), `keycloak.py`, `users.py` (was `gwapi_users.py`), `schemas.py` (`ApiUser` + gwapi user DTOs), `constants.py`.
   - `app/db/` — `manager.py` (was `database.py`), `context.py`, `execution.py`, `version.py`, `log_store.py`, plus `schema.py` (constants + schema resolver), `partitions.py` (runtime partition DDL), and `migrate.py` (Alembic runner). The runtime DDL bootstrap (`bootstrap/{log,gwapi}.py`) is removed in favor of Alembic.
-- **API-owned audit log tables moved from the `log` schema to `gwapi`** (`gwapi.gw_api_logs`, `gwapi.gw_api_logs_db`). On upgrade, the tables and their rows are relocated automatically; 1.6.0 keeps reading/writing `log.*` until the migration runs, so there is no HTTP/API contract change. `gwapi` is now the single API-owned schema (auth + audit logs).
+- **API-owned audit log tables moved from the `log` schema to `gwapi`** (`gwapi.http_logs`, `gwapi.db_logs`; renamed from legacy `gw_api_logs` / `gw_api_logs_db`). On upgrade, the tables and their rows are relocated automatically; 1.6.0 keeps reading/writing `log.gw_api_logs*` until the migration runs, so there is no HTTP/API contract change. `gwapi` is now the single API-owned schema (auth + audit logs).
   - `app/tenancy/` — `registry.py` (was `tenant.py`), `state.py`, `host_middleware.py`.
   - `app/middleware/request_logging.py` (was `app/logging.py`, no longer shadows stdlib `logging`).
   - `app/schemas/` now holds all Pydantic request/response models (was `app/models/`).
@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- **`log` schema** for API audit tables (`DEPRECATED #26`; removal in **2.0.0**). After upgrading, move any external SQL/reporting that reads `log.gw_api_logs*` to `gwapi.*`.
+- **`log` schema** for API audit tables (`DEPRECATED #26`; removal in **2.0.0**). After upgrading, move any external SQL/reporting that reads `log.gw_api_logs*` to `gwapi.http_logs` / `gwapi.db_logs`.
 
 ### Fixed
 

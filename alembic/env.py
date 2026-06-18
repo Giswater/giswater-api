@@ -5,8 +5,6 @@ General Public License as published by the Free Software Foundation, either vers
 or (at your option) any later version.
 """
 
-from logging.config import fileConfig
-
 from alembic import context
 from sqlalchemy import create_engine, pool, text
 
@@ -14,17 +12,12 @@ from sqlalchemy import create_engine, pool, text
 # bookkeeping table lives here too, so all API metadata stays inside `gwapi`.
 VERSION_TABLE_SCHEMA = "gwapi"
 
-config = context.config
-
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
 # Raw-SQL migrations only: no ORM metadata / autogenerate.
 target_metadata = None
 
 
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    url = context.config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -37,7 +30,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    url = context.config.get_main_option("sqlalchemy.url")
     connectable = create_engine(url, poolclass=pool.NullPool)
     with connectable.connect() as connection:
         # The version table lives in `gwapi`; ensure the schema exists before

@@ -4,11 +4,12 @@ Revision ID: 0002_log_tables
 Revises: 0001_gwapi_initial
 Create Date: 2026-06-17
 
-On existing 1.4.0 deployments the API audit tables live in the `log` schema.
-This revision moves them (with their partitions and indexes) into `gwapi`,
-preserving all historical rows, then drops the now-empty `log` schema. On a
-fresh install there is no `log` schema, so the tables are created directly in
-`gwapi`. Both paths are idempotent.
+On existing 1.4.0 deployments the API audit tables live in the `log` schema as
+`gw_api_logs` / `gw_api_logs_db`. This revision moves them (with their partitions
+and indexes) into `gwapi`, renames them to `http_logs` / `db_logs`, preserves
+all historical rows, then drops the now-empty `log` schema. On a fresh install
+there is no `log` schema, so the tables are created directly in `gwapi`. Both
+paths are idempotent.
 """
 
 from alembic import op
@@ -18,7 +19,9 @@ down_revision = "0001_gwapi_initial"
 branch_labels = None
 depends_on = None
 
-LOG_TABLES = ("gw_api_logs", "gw_api_logs_db")
+LEGACY_LOG_TABLES = ("gw_api_logs", "gw_api_logs_db")
+HTTP_LOG_TABLE = "http_logs"
+DB_LOG_TABLE = "db_logs"
 
 
 def _relocate_sql(src_schema: str, dst_schema: str) -> str:
@@ -28,7 +31,7 @@ def _relocate_sql(src_schema: str, dst_schema: str) -> str:
     `ALTER TABLE ... SET SCHEMA` on the parent, so they are moved explicitly
     first. Owned sequences and indexes move with their table.
     """
-    tables = ", ".join(f"'{t}'" for t in LOG_TABLES)
+    tables = ", ".join(f"'{t}'" for t in LEGACY_LOG_TABLES)
     return f"""
     DO $$
     DECLARE
@@ -64,9 +67,115 @@ def _relocate_sql(src_schema: str, dst_schema: str) -> str:
     """
 
 
+def _rename_migrated_tables_sql(schema: str) -> str:
+    """Rename relocated legacy tables to their current names."""
+    return f"""
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = '{HTTP_LOG_TABLE}'
+        ) THEN
+            EXECUTE format('ALTER TABLE {schema}.gw_api_logs RENAME TO {HTTP_LOG_TABLE}');
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs_db'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = '{DB_LOG_TABLE}'
+        ) THEN
+            EXECUTE format('ALTER TABLE {schema}.gw_api_logs_db RENAME TO {DB_LOG_TABLE}');
+        END IF;
+    END $$;
+    """
+
+
+def _rename_log_partitions_sql(schema: str) -> str:
+    """Rename child partitions that still use legacy prefixes after parent renames."""
+    return f"""
+    DO $$
+    DECLARE
+        part record;
+        new_name text;
+    BEGIN
+        FOR part IN
+            SELECT c.relname AS name
+            FROM pg_inherits i
+            JOIN pg_class c ON c.oid = i.inhrelid
+            JOIN pg_class p ON p.oid = i.inhparent
+            JOIN pg_namespace n ON n.oid = p.relnamespace
+            WHERE n.nspname = '{schema}'
+              AND p.relname = '{HTTP_LOG_TABLE}'
+              AND c.relname LIKE 'gw_api_logs_%'
+              AND c.relname NOT LIKE 'gw_api_logs_db_%'
+        LOOP
+            new_name := replace(part.name, 'gw_api_logs', '{HTTP_LOG_TABLE}');
+            IF new_name <> part.name AND NOT EXISTS (
+                SELECT 1 FROM pg_class c2
+                JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+                WHERE n2.nspname = '{schema}' AND c2.relname = new_name
+            ) THEN
+                EXECUTE format('ALTER TABLE {schema}.%I RENAME TO %I', part.name, new_name);
+            END IF;
+        END LOOP;
+
+        FOR part IN
+            SELECT c.relname AS name
+            FROM pg_inherits i
+            JOIN pg_class c ON c.oid = i.inhrelid
+            JOIN pg_class p ON p.oid = i.inhparent
+            JOIN pg_namespace n ON n.oid = p.relnamespace
+            WHERE n.nspname = '{schema}'
+              AND p.relname = '{DB_LOG_TABLE}'
+              AND c.relname LIKE 'gw_api_logs_db_%'
+        LOOP
+            new_name := replace(part.name, 'gw_api_logs_db', '{DB_LOG_TABLE}');
+            IF new_name <> part.name AND NOT EXISTS (
+                SELECT 1 FROM pg_class c2
+                JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+                WHERE n2.nspname = '{schema}' AND c2.relname = new_name
+            ) THEN
+                EXECUTE format('ALTER TABLE {schema}.%I RENAME TO %I', part.name, new_name);
+            END IF;
+        END LOOP;
+    END $$;
+    """
+
+
+def _rename_tables_back_sql(schema: str) -> str:
+    """Downgrade helper: restore legacy table names before relocating back to `log`."""
+    return f"""
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = '{HTTP_LOG_TABLE}'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs'
+        ) THEN
+            EXECUTE format('ALTER TABLE {schema}.{HTTP_LOG_TABLE} RENAME TO gw_api_logs');
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = '{DB_LOG_TABLE}'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs_db'
+        ) THEN
+            EXECUTE format('ALTER TABLE {schema}.{DB_LOG_TABLE} RENAME TO gw_api_logs_db');
+        END IF;
+    END $$;
+    """
+
+
 def _create_log_tables_sql(schema: str) -> str:
     return f"""
-    CREATE TABLE IF NOT EXISTS {schema}.gw_api_logs (
+    CREATE TABLE IF NOT EXISTS {schema}.{HTTP_LOG_TABLE} (
         ts timestamptz NOT NULL,
         id bigserial NOT NULL,
         method text NOT NULL,
@@ -86,14 +195,14 @@ def _create_log_tables_sql(schema: str) -> str:
         PRIMARY KEY (ts, id)
     ) PARTITION BY RANGE (ts);
 
-    CREATE INDEX IF NOT EXISTS gw_api_logs_ts_idx ON {schema}.gw_api_logs (ts DESC);
-    CREATE INDEX IF NOT EXISTS gw_api_logs_endpoint_idx ON {schema}.gw_api_logs (endpoint);
-    CREATE INDEX IF NOT EXISTS gw_api_logs_method_idx ON {schema}.gw_api_logs (method);
-    CREATE INDEX IF NOT EXISTS gw_api_logs_status_idx ON {schema}.gw_api_logs (status);
-    CREATE INDEX IF NOT EXISTS gw_api_logs_user_idx ON {schema}.gw_api_logs (user_name);
-    CREATE INDEX IF NOT EXISTS gw_api_logs_request_id_idx ON {schema}.gw_api_logs (request_id);
+    CREATE INDEX IF NOT EXISTS http_logs_ts_idx ON {schema}.{HTTP_LOG_TABLE} (ts DESC);
+    CREATE INDEX IF NOT EXISTS http_logs_endpoint_idx ON {schema}.{HTTP_LOG_TABLE} (endpoint);
+    CREATE INDEX IF NOT EXISTS http_logs_method_idx ON {schema}.{HTTP_LOG_TABLE} (method);
+    CREATE INDEX IF NOT EXISTS http_logs_status_idx ON {schema}.{HTTP_LOG_TABLE} (status);
+    CREATE INDEX IF NOT EXISTS http_logs_user_idx ON {schema}.{HTTP_LOG_TABLE} (user_name);
+    CREATE INDEX IF NOT EXISTS http_logs_request_id_idx ON {schema}.{HTTP_LOG_TABLE} (request_id);
 
-    CREATE TABLE IF NOT EXISTS {schema}.gw_api_logs_db (
+    CREATE TABLE IF NOT EXISTS {schema}.{DB_LOG_TABLE} (
         ts timestamptz NOT NULL,
         id bigserial NOT NULL,
         request_id uuid,
@@ -107,8 +216,8 @@ def _create_log_tables_sql(schema: str) -> str:
         PRIMARY KEY (ts, id)
     ) PARTITION BY RANGE (ts);
 
-    CREATE INDEX IF NOT EXISTS gw_api_logs_db_ts_idx ON {schema}.gw_api_logs_db (ts DESC);
-    CREATE INDEX IF NOT EXISTS gw_api_logs_db_request_id_idx ON {schema}.gw_api_logs_db (request_id);
+    CREATE INDEX IF NOT EXISTS db_logs_ts_idx ON {schema}.{DB_LOG_TABLE} (ts DESC);
+    CREATE INDEX IF NOT EXISTS db_logs_request_id_idx ON {schema}.{DB_LOG_TABLE} (request_id);
     """
 
 
@@ -116,8 +225,11 @@ def upgrade() -> None:
     op.execute("CREATE SCHEMA IF NOT EXISTS gwapi")
     # Move legacy `log.*` tables into `gwapi` (no-op on fresh installs).
     op.execute(_relocate_sql("log", "gwapi"))
+    # Rename relocated tables to their current names (no-op when already renamed).
+    op.execute(_rename_migrated_tables_sql("gwapi"))
+    op.execute(_rename_log_partitions_sql("gwapi"))
     # Create the tables when they were not relocated (fresh install). Existing
-    # (moved) tables and their indexes are skipped via IF NOT EXISTS.
+    # (moved/renamed) tables and their indexes are skipped via IF NOT EXISTS.
     op.execute(_create_log_tables_sql("gwapi"))
     # Drop the legacy schema only if it is now empty; tolerate leftovers.
     op.execute(
@@ -135,7 +247,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Emergency rollback: move the audit tables back to the `log` schema so a
-    # previous (1.4.x) image can read/write them again.
+    # Emergency rollback: rename back to legacy names, then move to the `log`
+    # schema so a previous (1.4.x / early 1.6.x) image can read/write them again.
     op.execute("CREATE SCHEMA IF NOT EXISTS log")
+    op.execute(_rename_tables_back_sql("gwapi"))
     op.execute(_relocate_sql("gwapi", "log"))

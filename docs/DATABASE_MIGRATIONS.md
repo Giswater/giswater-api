@@ -2,7 +2,7 @@
 
 The API owns a single Postgres schema, `gwapi`, in each tenant database. It holds
 the basic-auth tables (`users`, `roles`, `user_roles`) and the audit log tables
-(`gw_api_logs`, `gw_api_logs_db`). Its layout is managed by [Alembic](https://alembic.sqlalchemy.org/)
+(`http_logs`, `db_logs`). Its layout is managed by [Alembic](https://alembic.sqlalchemy.org/)
 with plain SQL migrations — there are no ORM models, and the application keeps
 using psycopg for all runtime queries.
 
@@ -17,7 +17,7 @@ API and is installed/upgraded separately.
 | Migration bookkeeping | `gwapi.alembic_version` |
 | Monthly log partitions | Runtime (`app/db/partitions.py`), created on demand |
 | First basic-auth user | Runtime (`maybe_bootstrap_user`), driven by `AUTH_BASIC_BOOTSTRAP_*` |
-| Schema resolution / legacy fallback | `app/db/schema.py` (`resolve_log_schema`) |
+| Schema resolution / legacy fallback | `app/db/schema.py` (`resolve_log_targets`) |
 | Migration runner + orchestration | `app/db/migrate.py` (`ensure_tenant_database`) |
 
 ## When migrations run
@@ -51,17 +51,17 @@ The two shipped revisions are idempotent and cover both cases:
 
 - `0001_gwapi_initial` — creates the `gwapi` schema and the auth tables (these
   already lived in `gwapi` on 1.4.0, so this is a no-op on existing deployments).
-- `0002_log_tables` — relocates `log.gw_api_logs*` into `gwapi` (moving partitions
-  and preserving all rows) when present, otherwise creates the log tables fresh in
-  `gwapi`, then drops the now-empty `log` schema.
+- `0002_log_tables` — relocates legacy `log.gw_api_logs*` into `gwapi`, renames them to
+  `http_logs` / `db_logs` (moving partitions and preserving all rows) when present,
+  otherwise creates the log tables fresh in `gwapi`, then drops the now-empty `log` schema.
 
 ### Legacy `log` schema compatibility (DEPRECATED #26)
 
-Until a tenant has been migrated, `resolve_log_schema()` detects where the audit
+Until a tenant has been migrated, `resolve_log_targets()` detects where the audit
 tables live and routes reads/writes accordingly:
 
-1. `gwapi.gw_api_logs` exists -> use `gwapi`.
-2. else `log.gw_api_logs` exists -> use `log` (logs a `DEPRECATED #26` warning).
+1. `gwapi.http_logs` exists -> use `gwapi` (`http_logs`, `db_logs`).
+2. else `log.gw_api_logs` exists -> use `log` (legacy table names; logs a `DEPRECATED #26` warning).
 3. else -> target `gwapi` (fresh database; Alembic will create the tables).
 
 The result is cached per tenant and invalidated after a successful upgrade, so

@@ -53,7 +53,7 @@ app/
     execution.py          # execute_procedure, execute_sql*
     version.py            # get_db_version (DB query)
     log_store.py          # insert_api_log, insert_api_db_log
-    schema.py             # gwapi schema/table constants + resolve_log_schema (legacy log fallback)
+    schema.py             # gwapi schema/table constants + resolve_log_targets (legacy log fallback)
     partitions.py         # monthly partition DDL (runtime-managed)
     migrate.py            # Alembic runner + ensure_tenant_database orchestrator
   tenancy/
