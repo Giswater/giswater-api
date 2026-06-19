@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-19
+
 ### Added
 
 - **Service layer** (`app/services/`): business logic extracted from FastAPI routes into HTTP-agnostic services (`ServiceContext`, domain services for basic/CRM/OM/EPA/routing/system/admin). HTTP handlers and the CLI share the same code path.
