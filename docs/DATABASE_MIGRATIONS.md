@@ -47,13 +47,13 @@ flowchart TD
 
 ## Fresh install vs upgrade from the `log` schema
 
-The two shipped revisions are idempotent and cover both cases:
+The single shipped revision is idempotent and covers both cases:
 
-- `0001_gwapi_initial` — creates the `gwapi` schema and the auth tables (these
-  already lived in `gwapi` on 1.4.0, so this is a no-op on existing deployments).
-- `0002_log_tables` — relocates legacy `log.gw_api_logs*` into `gwapi`, renames them to
-  `http_logs` / `db_logs` (moving partitions and preserving all rows) when present,
-  otherwise creates the log tables fresh in `gwapi`, then drops the now-empty `log` schema.
+- `0001_gwapi_initial` — creates the `gwapi` schema, auth tables (already in
+  `gwapi` on 1.4.0), and audit log tables. On upgrade from 1.4.0 it relocates
+  legacy `log.gw_api_logs*` into `gwapi`, renames them to `http_logs` / `db_logs`
+  (moving partitions and preserving all rows) when present, otherwise creates the
+  log tables fresh in `gwapi`, then drops the now-empty `log` schema.
 
 ### Legacy `log` schema compatibility (DEPRECATED #26)
 

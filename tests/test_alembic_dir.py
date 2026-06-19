@@ -29,4 +29,4 @@ def test_build_alembic_config_escapes_percent_in_database_url():
 
 
 def test_head_revision_is_latest():
-    assert head_revision() == "0003_log_partition_names"
+    assert head_revision() == "0001_gwapi_initial"
