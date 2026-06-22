@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 # Single API-owned schema: basic-auth tables + audit log tables.
 GWAPI_SCHEMA = "gwapi"
 
-# DEPRECATED #26: pre-1.6.0 deployments kept audit logs in the `log` schema.
+# DEPRECATED #28: pre-1.6.0 deployments kept audit logs in the `log` schema.
 # The resolver below keeps reading/writing it until Alembic relocates the
-# tables into `gwapi`. Remove in 2.0.0 (grep `DEPRECATED #26`).
+# tables into `gwapi`. Remove in 2.0.0 (grep `DEPRECATED #28`).
 LEGACY_LOG_SCHEMA = "log"
 
 # Auth tables
@@ -78,7 +78,7 @@ async def _detect_log_targets(db_manager) -> LogTargets | None:
             return LogTargets(GWAPI_SCHEMA, HTTP_LOG_TABLE, DB_LOG_TABLE)
         if await table_exists(conn, LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE):
             logger.warning(
-                "[%s] DEPRECATED #26: audit logs still in the 'log' schema; run "
+                "[%s] DEPRECATED #28: audit logs still in the 'log' schema; run "
                 "'giswater-api db upgrade' to relocate them to 'gwapi'. Removal in 2.0.0.",
                 db_manager.tenant_id,
             )

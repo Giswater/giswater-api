@@ -55,18 +55,18 @@ The single shipped revision is idempotent and covers both cases:
   (moving partitions and preserving all rows) when present, otherwise creates the
   log tables fresh in `gwapi`, then drops the now-empty `log` schema.
 
-### Legacy `log` schema compatibility (DEPRECATED #26)
+### Legacy `log` schema compatibility (DEPRECATED #28)
 
 Until a tenant has been migrated, `resolve_log_targets()` detects where the audit
 tables live and routes reads/writes accordingly:
 
 1. `gwapi.http_logs` exists -> use `gwapi` (`http_logs`, `db_logs`).
-2. else `log.gw_api_logs` exists -> use `log` (legacy table names; logs a `DEPRECATED #26` warning).
+2. else `log.gw_api_logs` exists -> use `log` (legacy table names; logs a `DEPRECATED #28` warning).
 3. else -> target `gwapi` (fresh database; Alembic will create the tables).
 
 The result is cached per tenant and invalidated after a successful upgrade, so
 the switch to `gwapi` is automatic. The `log` schema fallback is removed in
-**2.0.0** (grep `DEPRECATED #26`).
+**2.0.0** (grep `DEPRECATED #28`).
 
 ## CLI
 

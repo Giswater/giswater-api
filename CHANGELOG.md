@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Alembic-managed `gwapi` schema** (`alembic/`, `app/db/migrate.py`): the API-owned schema (basic-auth tables + audit logs) is now versioned with plain-SQL migrations instead of runtime DDL. psycopg remains the runtime driver; SQLAlchemy is only the engine Alembic needs. New CLI: `giswater-api db upgrade|current|history`. See [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md).
 - **`DB_AUTO_MIGRATE`** (default `true`, no `.env` change required) and **`DB_MIGRATE_TIMEOUT`** (default `30`): control whether `alembic upgrade head` runs per tenant on startup or is deferred to a manual `giswater-api db upgrade` in a maintenance window.
-- **Legacy `log` schema compatibility resolver** (`app/db/schema.py` `resolve_log_targets`): audit reads/writes target `gwapi.http_logs` / `gwapi.db_logs` once migrated and transparently fall back to legacy `log.gw_api_logs*` table names until then (`DEPRECATED #26`; removed in 2.0.0).
+- **Legacy `log` schema compatibility resolver** (`app/db/schema.py` `resolve_log_targets`): audit reads/writes target `gwapi.http_logs` / `gwapi.db_logs` once migrated and transparently fall back to legacy `log.gw_api_logs*` table names until then (`DEPRECATED #28`; removed in 2.0.0).
 - Migration integration tests (`tests/test_db_migrations.py`) and CLI `db` smoke tests.
 
 ### Changed
@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- **`log` schema** for API audit tables (`DEPRECATED #26`; removal in **2.0.0**). After upgrading, move any external SQL/reporting that reads `log.gw_api_logs*` to `gwapi.http_logs` / `gwapi.db_logs`.
+- **`log` schema** for API audit tables (`DEPRECATED #28`; removal in **2.0.0**). After upgrading, move any external SQL/reporting that reads `log.gw_api_logs*` to `gwapi.http_logs` / `gwapi.db_logs`.
 
 ### Removed
 
