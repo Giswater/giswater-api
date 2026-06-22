@@ -194,14 +194,14 @@ class TenantRegistry:
             logger.warning("[%s] pool init failed; tenant kept, will retry on demand: %s", tid, exc)
         if db.connection_pool is not None:
             try:
-                from ..db.bootstrap import ensure_tenant_schemas
+                from ..db.migrate import ensure_tenant_database
 
                 await asyncio.wait_for(
-                    ensure_tenant_schemas(db, settings),
-                    timeout=max(settings.db_connect_timeout, 5.0),
+                    ensure_tenant_database(db, settings),
+                    timeout=max(settings.db_connect_timeout, global_settings.db_migrate_timeout),
                 )
             except Exception as exc:
-                logger.warning("[%s] tenant schema init failed: %s", tid, exc)
+                logger.warning("[%s] tenant database init failed: %s", tid, exc)
         idp = build_idp(settings)
         api_logger, api_log_date = _build_tenant_logger(tid)
         return Tenant(

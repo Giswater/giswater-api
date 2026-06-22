@@ -11,6 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Alembic-managed `gwapi` schema** (`alembic/`, `app/db/migrate.py`): the API-owned schema (basic-auth tables + audit logs) is now versioned with plain-SQL migrations instead of runtime DDL. psycopg remains the runtime driver; SQLAlchemy is only the engine Alembic needs. New CLI: `giswater-api db upgrade|current|history`. See [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md).
+- **`DB_AUTO_MIGRATE`** (default `true`, no `.env` change required) and **`DB_MIGRATE_TIMEOUT`** (default `30`): control whether `alembic upgrade head` runs per tenant on startup or is deferred to a manual `giswater-api db upgrade` in a maintenance window.
+- **Legacy `log` schema compatibility resolver** (`app/db/schema.py` `resolve_log_targets`): audit reads/writes target `gwapi.http_logs` / `gwapi.db_logs` once migrated and transparently fall back to legacy `log.gw_api_logs*` table names until then (`DEPRECATED #26`; removed in 2.0.0).
+- Migration integration tests (`tests/test_db_migrations.py`) and CLI `db` smoke tests.
+
+### Changed
+
+- **`app/db/`** — `schema.py` (constants + schema resolver), `partitions.py` (runtime partition DDL), and `migrate.py` (Alembic runner) added; runtime DDL bootstrap (`bootstrap/{log,gwapi}.py`) removed in favor of Alembic.
+- **API-owned audit log tables moved from the `log` schema to `gwapi`** (`gwapi.http_logs`, `gwapi.db_logs`; renamed from legacy `gw_api_logs` / `gw_api_logs_db`). On upgrade, the tables and their rows are relocated automatically; 1.6.0 keeps reading/writing `log.gw_api_logs*` until the migration runs, so there is no HTTP/API contract change. `gwapi` is now the single API-owned schema (auth + audit logs).
+
+### Deprecated
+
+- **`log` schema** for API audit tables (`DEPRECATED #26`; removal in **2.0.0**). After upgrading, move any external SQL/reporting that reads `log.gw_api_logs*` to `gwapi.http_logs` / `gwapi.db_logs`.
+
+### Removed
+
+- Runtime DDL bootstrap modules (`app/db/bootstrap/`); schema creation is now handled by Alembic.
+
+### Migration notes
+
+- **1.5.0 -> 1.6.0 with unchanged `.env`:** restart only. Auto-migrate relocates the audit tables into `gwapi`; tenants keep working.
+- **Controlled window:** set `DB_AUTO_MIGRATE=false`, deploy, then run `giswater-api db upgrade --all`. The API serves against `log.*` until the upgrade completes.
+- Rolling back the image alone is insufficient once a schema move has completed — run `alembic downgrade` or restore from backup first.
+
+## [1.5.0] - 2026-06-19
+
+### Added
+
 - **Service layer** (`app/services/`): business logic extracted from FastAPI routes into HTTP-agnostic services (`ServiceContext`, domain services for basic/CRM/OM/EPA/routing/system/admin). HTTP handlers and the CLI share the same code path.
 - **`giswater-api` CLI** (`app/cli/`, Click): console script entry point after `pip install -e .`. Commands:
   - `admin tenants list|get` — platform tenant registry
@@ -308,7 +336,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic test with pytest.
 - Basic CI workflow.
 
-[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.4.0...main
+[unreleased]: https://github.com/Giswater/giswater-api/compare/v1.5.0...main
+[1.5.0]: https://github.com/Giswater/giswater-api/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Giswater/giswater-api/compare/v1.3.2...v1.4.0
 [1.3.2]: https://github.com/Giswater/giswater-api/compare/v1.3.1...v1.3.2
 [1.3.0]: https://github.com/Giswater/giswater-api/compare/v1.2.0...v1.3.0

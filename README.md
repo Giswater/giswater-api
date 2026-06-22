@@ -128,9 +128,16 @@ giswater-api tenant --tenant test --schema ws_40 ready
 # Insert a hydrometer (example)
 giswater-api tenant --tenant test --schema ws_40 --user postgres crm insert-hydrometer \
   --code H1 --hydro-number HN1
+
+# Database migrations for the API-owned gwapi schema
+giswater-api db upgrade --all          # or --tenant <id>
+giswater-api db current --tenant test
+giswater-api db history
 ```
 
 Use `--tenants-dir` to override `TENANTS_DIR` when not running via the FastAPI lifespan.
+
+The `gwapi` schema (basic-auth tables and audit logs) is managed by Alembic and, by default, migrated automatically on startup. See [Database migrations](docs/DATABASE_MIGRATIONS.md).
 
 ---
 
@@ -361,13 +368,15 @@ giswater-api/
 │   │
 │   │── core/                # Dependency-free leaf: config.py, constants.py, exceptions.py
 │   │── auth/                # session.py, keycloak.py, users.py, schemas.py, constants.py
-│   │── db/                  # manager.py, context.py, execution.py, version.py, log_store.py, bootstrap/
+│   │── db/                  # manager.py, context.py, execution.py, version.py, log_store.py, schema.py, partitions.py, migrate.py
 │   │── tenancy/             # registry.py, state.py, host_middleware.py
 │   │── middleware/          # request_logging.py
 │   │── schemas/             # Pydantic request/response models (basic/, crm/, om/, routing/, epa/, admin.py, common.py)
 │   │── utils/               # body.py, version.py, rate_limit.py, plugins.py, log_setup.py, routing.py
 │   └── static/              # Static files (favicon, logs UI, etc.)
 │
+│── alembic/             # gwapi schema migrations (env.py + versions/)
+│── alembic.ini          # Alembic config (dev CLI; runtime config is programmatic)
 │── config/
 │   └── tenants/         # Per-tenant .env files (e.g. test.env, acme.env)
 │── deploy/
@@ -383,6 +392,7 @@ giswater-api/
 │── docs/
 │   ├── ARCHITECTURE.md            # Package map, dependency rules, code locations
 │   ├── VERSIONING.md              # API + per-tenant DB versioning policy
+│   ├── DATABASE_MIGRATIONS.md     # Alembic gwapi schema migrations + upgrade paths
 │   ├── DEPLOYMENT_CHECKLIST.md
 │   └── ENVIRONMENT_VARIABLES.md   # Human-readable env reference (tables + descriptions)
 │── scripts/

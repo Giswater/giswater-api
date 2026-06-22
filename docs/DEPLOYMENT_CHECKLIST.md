@@ -20,7 +20,11 @@ Use with [deploy/install.sh](../deploy/install.sh) (recommended), [deploy/.env.p
 ## Rollout / rollback
 
 - [ ] Tag image / artifact with app version; keep previous image for quick rollback.
-- [ ] DB migrations (if any) run in a controlled window; have rollback SQL or restore point.
+- [ ] **gwapi schema migrations** (see [DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md)):
+    - [ ] Back up tenant DBs and note whether a `log` schema exists (`\dn log` in psql).
+    - [ ] Choose rollout: default auto-migrate (`DB_AUTO_MIGRATE=true`, runs on startup) or controlled window (`DB_AUTO_MIGRATE=false` + `giswater-api db upgrade --all`).
+    - [ ] Post-deploy verify: `giswater-api db current --tenant <id>` and spot-check the admin log endpoints.
+    - [ ] Rollback note: if a schema move already completed, rolling back the image alone is insufficient — run `alembic downgrade` or restore from backup first.
 - [ ] After deploy: [scripts/smoke_test.sh](../scripts/smoke_test.sh) or `pytest` operability test in CI.
 
 ## Ongoing

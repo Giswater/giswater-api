@@ -24,3 +24,26 @@ def test_cli_lists_materialized_test_tenant():
     assert result.exit_code == 0, result.output
     tenants = json.loads(result.output)
     assert any(t["id"] == "test" for t in tenants)
+
+
+def test_cli_db_history():
+    """`db history` lists the known revisions without touching the database."""
+    runner = CliRunner()
+    result = runner.invoke(main, ["db", "history"])
+
+    assert result.exit_code == 0, result.output
+    revisions = {r["revision"] for r in json.loads(result.output)}
+    assert revisions == {"0001_gwapi_initial"}
+
+
+def test_cli_db_current():
+    """`db current` reports the applied revision for the test tenant (needs Postgres)."""
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["--tenants-dir", os.environ["TENANTS_DIR"], "db", "current", "--tenant", "test"],
+    )
+
+    assert result.exit_code == 0, result.output
+    rows = json.loads(result.output)
+    assert any(row["tenant"] == "test" for row in rows)

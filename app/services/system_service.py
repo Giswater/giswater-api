@@ -18,7 +18,7 @@ from psycopg.rows import dict_row
 
 from app.core.config import global_settings
 from app.core.exceptions import DatabaseUnavailableError
-from app.db.bootstrap.log import LOG_DB_TABLE, LOG_SCHEMA, LOG_TABLE
+from app.db.schema import resolve_log_targets
 from app.db.version import get_db_version
 from app.services.context import ServiceContext
 from app.tenancy.registry import Tenant
@@ -124,6 +124,7 @@ class SystemService:
         if where_clauses:
             where_sql = " WHERE " + " AND ".join(where_clauses)
 
+        targets = await resolve_log_targets(db_manager)
         query = sql.SQL(
             f"""
         SELECT ts, endpoint, method, status, duration_ms, user_name, request_id,
@@ -139,9 +140,9 @@ class SystemService:
         LIMIT %s OFFSET %s
         """
         ).format(
-            schema=sql.Identifier(LOG_SCHEMA),
-            table=sql.Identifier(LOG_TABLE),
-            db_table=sql.Identifier(LOG_DB_TABLE),
+            schema=sql.Identifier(targets.schema),
+            table=sql.Identifier(targets.http_table),
+            db_table=sql.Identifier(targets.db_table),
         )
         params.extend([limit, offset])
 
@@ -166,6 +167,7 @@ class SystemService:
         except ValueError as exc:
             raise ValueError("Invalid request_id") from exc
 
+        targets = await resolve_log_targets(db_manager)
         query = sql.SQL(
             """
         SELECT ts, request_id, schema_name, function_name, sql_text,
@@ -175,7 +177,7 @@ class SystemService:
         ORDER BY ts ASC
         LIMIT %s
         """
-        ).format(schema=sql.Identifier(LOG_SCHEMA), table=sql.Identifier(LOG_DB_TABLE))
+        ).format(schema=sql.Identifier(targets.schema), table=sql.Identifier(targets.db_table))
 
         async with db_manager.get_db() as conn:
             if conn is None:

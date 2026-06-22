@@ -106,7 +106,7 @@ class GlobalSettings:
     log_http_body_capture: bool = True
     # Max bytes stored per body when capture is enabled; 0 means use safe default (2048).
     log_db_max_body_bytes: int = 2048
-    # Max bytes stored for `log.gw_api_logs_db.response_json` (raw DB function output).
+    # Max bytes stored for `gwapi.db_logs.response_json` (raw DB function output).
     # DB responses can be much larger than HTTP form bodies, so this is a separate knob.
     # 0 (or negative) disables truncation (full payload stored).
     log_db_response_max_bytes: int = 8192
@@ -141,6 +141,12 @@ class GlobalSettings:
     # DB compatibility (optional readiness gate; see GISWATER_DB_* env vars)
     giswater_db_version_check: bool = False
     giswater_db_min_version: str = "4.8.0"
+
+    # Alembic migrations for the API-owned `gwapi` schema.
+    # When True, `alembic upgrade head` runs per tenant on load. Set False to
+    # defer schema changes to a controlled window (`giswater-api db upgrade`).
+    db_auto_migrate: bool = True
+    db_migrate_timeout: float = 30.0
 
     # Legacy aliases (kept for the duration of the multi-tenant migration).
     @property
@@ -274,6 +280,8 @@ def _build_global(env: Mapping[str, str | None]) -> GlobalSettings:
         platform_keycloak_client_secret=env.get("PLATFORM_KEYCLOAK_CLIENT_SECRET") or None,
         giswater_db_version_check=_to_bool(env.get("GISWATER_DB_VERSION_CHECK"), False),
         giswater_db_min_version=(env.get("GISWATER_DB_MIN_VERSION") or "4.8.0"),
+        db_auto_migrate=_to_bool(env.get("DB_AUTO_MIGRATE"), True),
+        db_migrate_timeout=_to_float(env.get("DB_MIGRATE_TIMEOUT"), 30.0),
     )
 
 
