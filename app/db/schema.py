@@ -55,13 +55,14 @@ def invalidate_log_schema_cache(tenant_id: str | None = None) -> None:
         _log_targets_cache.pop(tenant_id, None)
 
 
-async def _table_exists(conn, schema: str, table: str) -> bool:
+async def table_exists(conn, schema: str, table: str) -> bool:
     async with conn.cursor() as cursor:
         await cursor.execute(
-            "SELECT 1 FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
-            (schema, table),
+            "SELECT to_regclass(%s) IS NOT NULL",
+            (f"{schema}.{table}",),
         )
-        return await cursor.fetchone() is not None
+        row = await cursor.fetchone()
+        return bool(row and row[0])
 
 
 async def _detect_log_targets(db_manager) -> LogTargets | None:
@@ -73,9 +74,9 @@ async def _detect_log_targets(db_manager) -> LogTargets | None:
     async with db_manager.get_db() as conn:
         if conn is None:
             return None
-        if await _table_exists(conn, GWAPI_SCHEMA, HTTP_LOG_TABLE):
+        if await table_exists(conn, GWAPI_SCHEMA, HTTP_LOG_TABLE):
             return LogTargets(GWAPI_SCHEMA, HTTP_LOG_TABLE, DB_LOG_TABLE)
-        if await _table_exists(conn, LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE):
+        if await table_exists(conn, LEGACY_LOG_SCHEMA, LEGACY_HTTP_LOG_TABLE):
             logger.warning(
                 "[%s] DEPRECATED #26: audit logs still in the 'log' schema; run "
                 "'giswater-api db upgrade' to relocate them to 'gwapi'. Removal in 2.0.0.",

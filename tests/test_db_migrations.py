@@ -31,6 +31,7 @@ from app.db.schema import (
     invalidate_log_schema_cache,
     resolve_log_schema,
     resolve_log_targets,
+    table_exists,
 )
 
 
@@ -70,12 +71,7 @@ async def _exec(db, statements: list[str]) -> None:
 async def _table_exists(db, schema: str, table: str) -> bool:
     async with db.get_db() as conn:
         assert conn is not None
-        async with conn.cursor() as cur:
-            await cur.execute(
-                "SELECT 1 FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
-                (schema, table),
-            )
-            return await cur.fetchone() is not None
+        return await table_exists(conn, schema, table)
 
 
 async def _reset_api_objects(db) -> None:

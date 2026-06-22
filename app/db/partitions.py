@@ -10,7 +10,14 @@ from datetime import datetime, timezone
 
 from psycopg import sql
 
-from .schema import DB_LOG_TABLE, HTTP_LOG_TABLE, LEGACY_DB_LOG_TABLE, LEGACY_HTTP_LOG_TABLE, LogTargets
+from .schema import (
+    DB_LOG_TABLE,
+    HTTP_LOG_TABLE,
+    LEGACY_DB_LOG_TABLE,
+    LEGACY_HTTP_LOG_TABLE,
+    LogTargets,
+    table_exists,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,20 +43,11 @@ def _candidate_partition_names(table_name: str, partition_name: str) -> tuple[st
     return (partition_name,)
 
 
-async def _partition_table_exists(conn, schema: str, name: str) -> bool:
-    async with conn.cursor() as cursor:
-        await cursor.execute(
-            "SELECT 1 FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
-            (schema, name),
-        )
-        return await cursor.fetchone() is not None
-
-
 async def ensure_log_partition(conn, ts: datetime, table_name: str, schema: str) -> None:
     """Create the monthly partition for `ts` if it does not already exist."""
     month_start, month_end, partition_name = _month_range(ts, table_name)
     for name in _candidate_partition_names(table_name, partition_name):
-        if await _partition_table_exists(conn, schema, name):
+        if await table_exists(conn, schema, name):
             return
     async with conn.cursor() as cursor:
         await cursor.execute(

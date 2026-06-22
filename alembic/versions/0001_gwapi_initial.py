@@ -43,13 +43,8 @@ def _relocate_sql(src_schema: str, dst_schema: str) -> str:
     BEGIN
         FOREACH parent IN ARRAY ARRAY[{tables}]
         LOOP
-            IF EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_schema = '{src_schema}' AND table_name = parent
-            ) AND NOT EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_schema = '{dst_schema}' AND table_name = parent
-            ) THEN
+            IF to_regclass('{src_schema}.' || parent) IS NOT NULL
+               AND to_regclass('{dst_schema}.' || parent) IS NULL THEN
                 FOR part IN
                     SELECT c.relname AS name
                     FROM pg_inherits i
@@ -75,22 +70,12 @@ def _rename_migrated_tables_sql(schema: str) -> str:
     return f"""
     DO $$
     BEGIN
-        IF EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs'
-        ) AND NOT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = '{HTTP_LOG_TABLE}'
-        ) THEN
+        IF to_regclass('{schema}.gw_api_logs') IS NOT NULL
+           AND to_regclass('{schema}.{HTTP_LOG_TABLE}') IS NULL THEN
             EXECUTE format('ALTER TABLE {schema}.gw_api_logs RENAME TO {HTTP_LOG_TABLE}');
         END IF;
-        IF EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs_db'
-        ) AND NOT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = '{DB_LOG_TABLE}'
-        ) THEN
+        IF to_regclass('{schema}.gw_api_logs_db') IS NOT NULL
+           AND to_regclass('{schema}.{DB_LOG_TABLE}') IS NULL THEN
             EXECUTE format('ALTER TABLE {schema}.gw_api_logs_db RENAME TO {DB_LOG_TABLE}');
         END IF;
     END $$;
@@ -117,11 +102,8 @@ def _rename_log_partitions_sql(schema: str) -> str:
               AND c.relname NOT LIKE 'gw_api_logs_db_%'
         LOOP
             new_name := replace(part.name, 'gw_api_logs', '{HTTP_LOG_TABLE}');
-            IF new_name <> part.name AND NOT EXISTS (
-                SELECT 1 FROM pg_class c2
-                JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
-                WHERE n2.nspname = '{schema}' AND c2.relname = new_name
-            ) THEN
+            IF new_name <> part.name
+               AND to_regclass(format('{schema}.%I', new_name)) IS NULL THEN
                 EXECUTE format('ALTER TABLE {schema}.%I RENAME TO %I', part.name, new_name);
             END IF;
         END LOOP;
@@ -137,11 +119,8 @@ def _rename_log_partitions_sql(schema: str) -> str:
               AND c.relname LIKE 'gw_api_logs_db_%'
         LOOP
             new_name := replace(part.name, 'gw_api_logs_db', '{DB_LOG_TABLE}');
-            IF new_name <> part.name AND NOT EXISTS (
-                SELECT 1 FROM pg_class c2
-                JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
-                WHERE n2.nspname = '{schema}' AND c2.relname = new_name
-            ) THEN
+            IF new_name <> part.name
+               AND to_regclass(format('{schema}.%I', new_name)) IS NULL THEN
                 EXECUTE format('ALTER TABLE {schema}.%I RENAME TO %I', part.name, new_name);
             END IF;
         END LOOP;
@@ -154,22 +133,12 @@ def _rename_tables_back_sql(schema: str) -> str:
     return f"""
     DO $$
     BEGIN
-        IF EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = '{HTTP_LOG_TABLE}'
-        ) AND NOT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs'
-        ) THEN
+        IF to_regclass('{schema}.{HTTP_LOG_TABLE}') IS NOT NULL
+           AND to_regclass('{schema}.gw_api_logs') IS NULL THEN
             EXECUTE format('ALTER TABLE {schema}.{HTTP_LOG_TABLE} RENAME TO gw_api_logs');
         END IF;
-        IF EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = '{DB_LOG_TABLE}'
-        ) AND NOT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = '{schema}' AND table_name = 'gw_api_logs_db'
-        ) THEN
+        IF to_regclass('{schema}.{DB_LOG_TABLE}') IS NOT NULL
+           AND to_regclass('{schema}.gw_api_logs_db') IS NULL THEN
             EXECUTE format('ALTER TABLE {schema}.{DB_LOG_TABLE} RENAME TO gw_api_logs_db');
         END IF;
     END $$;
