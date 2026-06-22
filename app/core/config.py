@@ -172,6 +172,7 @@ class TenantSettings:
     api_routing: bool = False
     api_crm: bool = False
     api_epa: bool = False
+    api_features: bool = False
 
     # Database
     db_host: str = "localhost"
@@ -296,6 +297,7 @@ def _build_tenant(env: Mapping[str, str | None]) -> TenantSettings:
         api_routing=_to_bool(env.get("API_ROUTING"), False),
         api_crm=_to_bool(env.get("API_CRM"), False),
         api_epa=_to_bool(env.get("API_EPA"), False),
+        api_features=_to_bool(env.get("API_FEATURES"), False),
         db_host=(env.get("DB_HOST") or "localhost"),
         db_port=(env.get("DB_PORT") or "5432"),
         db_name=(env.get("DB_NAME") or "postgres"),
